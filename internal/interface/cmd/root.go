@@ -1,0 +1,23 @@
+package cmd
+
+import (
+	"fmt"
+	"os"
+	"github.com/spf13/cobra"
+)
+
+var rootCmd *cobra.Command
+
+func Execute() {
+	AddCommand(InitCmd())
+	AddCommand(PublishCmd())
+
+	if err := RootCmd().Execute(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+}
+
+func AddCommand(cmds ...*cobra.Command) {
+	RootCmd().AddCommand(cmds...)
+}
