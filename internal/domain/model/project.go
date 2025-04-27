@@ -1,27 +1,23 @@
 package model
 
-const teamNameDefault = "Akatsuki"
-const organizationNameDefault = "Jailux"
-
 type Project struct {
-	ProjectID    string                   `yaml:"projectId"`
+	ProjectId    string                   `yaml:"projectId"`
 	TeamName     string                   `yaml:"teamName"`
 	Organization string                   `yaml:"organization"`
-	Language     string                   `yaml:"language"`
 	Dependencies map[string]Dependency  `yaml:"dependencies"`
 	Support      map[string]Support     `yaml:"support"`
 }
 
 func GetNewProject(projectId, teamName, organizationName string) *Project {
 	if teamName == "" {
-		teamName = teamNameDefault
+		teamName = "Akatsuki"
 	} 
 	if organizationName == "" {
-		organizationName = organizationNameDefault
+		organizationName = "Jailux"
 	} 
 
 	return &Project {
-		ProjectID:    projectId,
+		ProjectId:    projectId,
 		TeamName:     teamName,
 		Organization: organizationName,
 		Dependencies: nil,

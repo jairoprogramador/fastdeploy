@@ -3,21 +3,18 @@ package presenter
 import (
 	"fmt"
 	"time"	
-) 
+)
 
-func PackagingStartBanner(){
-	banner := `[PACK] -------------------------------------------------------
-[PACK]  🎁            STARTING PACKAGING PROCESS            🎁
-[PACK] -------------------------------------------------------`
-	fmt.Println(banner)
-}
-
-func DeliveyStartBanner(){
-	banner := `[DELIVERY] -------------------------------------------------------
-[DELIVERY]  🚚            STARTING DELIVERY PROCESS            🚚
-[DELIVERY] -------------------------------------------------------`
-	fmt.Println(banner)
-}
+const (
+    ColorReset  = "\033[0m"
+    ColorRed    = "\033[31m"
+    ColorGreen  = "\033[32m"
+    ColorYellow = "\033[33m"
+    ColorBlue   = "\033[34m"
+    ColorPurple = "\033[35m"
+    ColorCyan   = "\033[36m"
+    ColorWhite  = "\033[37m"
+)
 
 func ShowLoader(done chan bool) {
     loader := []string{"|", "/", "-", "\\"}
@@ -50,12 +47,17 @@ func ShowMessage(message string) {
     fmt.Println(message)
 }
 
+func ShowStart(message string) {
+	output := fmt.Sprintf("%s[START] 🚚%s %s", ColorPurple, ColorReset, message)
+	fmt.Println(output)
+}
+
 func ShowError(err error) {
-	output := fmt.Sprintf("[ERROR] ❌ %v\n", err)
+	output := fmt.Sprintf("%s ❌  [ERROR]%s %v", ColorRed, ColorReset, err)
 	fmt.Println(output)
 }
 
 func ShowSuccess(message string){
-    output := fmt.Sprintf("[SUCCESS] ✅ %s\n", message)
+    output := fmt.Sprintf("%s ✅  [SUCCESS]%s %s", ColorGreen, ColorReset, message)
 	fmt.Println(output)
 }

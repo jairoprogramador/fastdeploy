@@ -6,20 +6,20 @@ import (
 	"deploy/internal/domain/service"
 )
 
-func PublishProject() *dto.Message  {
+func PublishProject() *dto.ResponseDto  {
 	publishRepository := repository.GetPublishRepository()
 	publishService := service.GetPublishService(publishRepository)
 
 	responseBuild := publishService.Build()
 	if responseBuild.Error != nil {
-		return dto.GetNewMessageFromResponse(responseBuild) 
+		return dto.GetNewResponseDtoFromModel(responseBuild) 
 	}
 
 	responsePackage := publishService.Package(responseBuild)
 	if responsePackage.Error != nil {
-		return dto.GetNewMessageFromResponse(responsePackage)
+		return dto.GetNewResponseDtoFromModel(responsePackage)
 	}
 
-	resp := publishService.Deliver(responsePackage)
-	return dto.GetNewMessageFromResponse(resp)
+	responseDeliver := publishService.Deliver(responsePackage)
+	return dto.GetNewResponseDtoFromModel(responseDeliver)
 }

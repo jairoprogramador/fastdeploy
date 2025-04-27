@@ -7,6 +7,7 @@ import (
 )
 
 func Publish(cmd *cobra.Command, args []string) {
+	presenter.ShowStart("Publish")
 	message := command.PublishProject()
 	if message.Error != nil {
 		presenter.ShowError(message.Error)

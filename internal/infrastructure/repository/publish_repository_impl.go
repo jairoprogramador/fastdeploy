@@ -65,7 +65,7 @@ func (s *publishRepositoryImpl) Build() *model.Response {
 	response.SetCommitHash(commitHash)
 	response.SetImageId(imageId)
 
-	//presenter.ShowSuccess("Build")
+	presenter.ShowSuccess("Build")
 	return response
 }
 
@@ -102,6 +102,7 @@ func (s *publishRepositoryImpl) Deliver(response *model.Response) *model.Respons
 			return model.GetNewResponseError(err)
 		}
 	}
+	presenter.ShowSuccess("Deliver")
 	return response
 }
 
@@ -212,7 +213,7 @@ func buildContainer(response *model.Response) error {
 	}
 	
 	param := make(map[string]string, 3)
-	param[constants.NameDeliveryKey] = project.ProjectID + commitHash
+	param[constants.NameDeliveryKey] = project.ProjectId + commitHash
 	param[constants.CommitHashKey] = commitHash
 	param[constants.PortKey] = getPortForContainer()
 

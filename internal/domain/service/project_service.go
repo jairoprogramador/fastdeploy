@@ -32,11 +32,28 @@ func (s *ProjectService) SetProjectRepository(projectRepo repository.ProjectRepo
     s.projectRepo = projectRepo
 }
 
-func (s *ProjectService) IsInitialized() bool {
-	return s.projectRepo.IsInitialized(constants.RootDirectory, constants.NameProjectFile)
+func (s *ProjectService) Exists() bool {
+	return s.projectRepo.Exists()
 }
 
-func (s *ProjectService) CreateProyect() *model.Response {
+func (s *ProjectService) Create() *model.Response {
+
+	if resp := s.createProyect(); resp.Error != nil {
+        return resp
+    }
+
+	if resp:= s.createDockerfileTemplate(); resp.Error != nil {
+        return resp
+    }
+
+	if resp:= s.createComposeTemplate(); resp.Error != nil {
+        return resp
+    }
+
+	return model.GetNewResponseMessage(constants.MessageSuccessInitializingProject)
+}
+
+func (s *ProjectService) createProyect() *model.Response {
 	projectId, _ := s.projectRepo.GetProjectId()
 	teamName := s.projectRepo.GetTeamName()
 	organizationName := s.projectRepo.GetOrganizationName()
@@ -48,11 +65,11 @@ func (s *ProjectService) CreateProyect() *model.Response {
 	return s.projectRepo.Save(project)
 }
 
-func (s *ProjectService) CreateDockerfileTemplate() *model.Response {
+func (s *ProjectService) createDockerfileTemplate() *model.Response {
 	return s.projectRepo.SaveDockerfileTemplate()
 }
 
-func (s *ProjectService) CreateDockercomposeTemplate() *model.Response {
+func (s *ProjectService) createComposeTemplate() *model.Response {
 	return s.projectRepo.SaveDockercomposeTemplate()
 }
 

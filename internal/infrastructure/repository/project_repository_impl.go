@@ -23,8 +23,8 @@ func GetProjectRepository() repository.ProjectRepository {
     return instanceProjectRepository
 }
 
-func (s *projectRepositoryImpl) IsInitialized(rootDirectory, nameProjectFile string) bool {
-	filePath := filesystem.GetPath(rootDirectory, nameProjectFile)
+func (s *projectRepositoryImpl) Exists() bool {
+	filePath := filesystem.GetPath(constants.RootDirectory, constants.NameProjectFile)
 	exists := filesystem.FileExists(filePath)
 	if !exists {
 		return exists
