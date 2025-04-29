@@ -3,10 +3,9 @@ package handler
 import (
 	"deploy/internal/application"
 	"deploy/internal/interface/presenter"
-	"github.com/spf13/cobra"
 )
 
-func Initialize(cmd *cobra.Command, args []string) {
+func Initialize() {
 	presenter.ShowBanner()
 	message := command.InitializeProject()
 

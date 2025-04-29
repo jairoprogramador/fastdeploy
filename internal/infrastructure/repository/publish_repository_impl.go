@@ -125,13 +125,13 @@ func (s *publishRepositoryImpl) Validate(response *model.Response) *model.Respon
 
 func getUrlsContainer(containerIDs []string) (string, error) {
 	var result strings.Builder
-	for index, id := range containerIDs {
+	for _, id := range containerIDs {
 		port, err := getHostPort(id)
 		if err != nil {
 			return "", err
 		}
-		url := fmt.Sprintf(constants.MessageSuccessPublish, index, port)
-		result.WriteString(url + "\n")
+		url := fmt.Sprintf(constants.MessageSuccessPublish, port)
+		result.WriteString(url)
 	}
 	return result.String(), nil	
 }
@@ -213,7 +213,7 @@ func buildContainer(response *model.Response) error {
 	}
 	
 	param := make(map[string]string, 3)
-	param[constants.NameDeliveryKey] = project.ProjectId + commitHash
+	param[constants.NameDeliveryKey] = project.ProjectId + commitHash[:5]
 	param[constants.CommitHashKey] = commitHash
 	param[constants.PortKey] = getPortForContainer()
 

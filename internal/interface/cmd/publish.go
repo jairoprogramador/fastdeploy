@@ -10,7 +10,9 @@ func PublishCmd() *cobra.Command {
 	return &cobra.Command {
 		Use:   "publish",
 		Short: "Publicar aplicación",
-		Run:   handler.Publish,
+		Run:  func(cmd *cobra.Command, args []string) {
+			handler.Publish()
+		},
 	}
 }
 

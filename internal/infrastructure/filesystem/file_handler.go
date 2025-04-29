@@ -66,6 +66,10 @@ func GetParentDirectory() (string, error){
 	return projectId, nil
 }
 
+func GetHomeDirectory() (string, error){
+	return os.UserHomeDir()
+}
+
 func GetPath(directory, file string) string {
 	return filepath.Join(directory, file)
 }

@@ -57,6 +57,11 @@ func ShowError(err error) {
 	fmt.Println(output)
 }
 
+func ShowErrorAndMessage(message string, err error) {
+	output := fmt.Sprintf("%s ❌  [ERROR]%s %s: %v", ColorRed, ColorReset, message, err)
+	fmt.Println(output)
+}
+
 func ShowSuccess(message string){
     output := fmt.Sprintf("%s ✅  [SUCCESS]%s %s", ColorGreen, ColorReset, message)
 	fmt.Println(output)

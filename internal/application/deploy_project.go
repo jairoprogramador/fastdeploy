@@ -2,7 +2,6 @@ package command
 
 import (
 	"deploy/internal/infrastructure/repository"
-	//"deploy/internal/domain/service"
 )
 
 func IsInitialized() bool {

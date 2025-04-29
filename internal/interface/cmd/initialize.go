@@ -9,7 +9,9 @@ func InitCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "init",
 		Short: "Configura un nuevo proyecto Deploy",
-		Run:   handler.Initialize,
+		Run: func(cmd *cobra.Command, args []string) {
+			handler.Initialize()
+		},
 	}
 }
 

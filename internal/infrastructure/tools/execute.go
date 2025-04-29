@@ -10,7 +10,7 @@ import (
 
 func ExecuteCommand(command string, args ...string) (string, error) {
 	output := fmt.Sprintf("command executed: '%s %s'", command, strings.Join(args, " "))
-	//fmt.Println(output)
+	fmt.Println(output)
 
 	var stdoutBuf, stderrBuf bytes.Buffer
 

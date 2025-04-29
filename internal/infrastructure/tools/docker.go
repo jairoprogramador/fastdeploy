@@ -14,7 +14,7 @@ func GetImageId(hashCommit string) (string, error){
 
 func GetContainersId(imageId string) ([]string, error){
 	ancestor := "ancestor=" + imageId
-	containerIds, err := ExecuteCommand("docker", "ps", "-aq", "--filter", ancestor)
+	containerIds, err := ExecuteCommand("docker", "ps", "-q", "--filter", ancestor)
 	if err != nil {
 		return []string{}, err
 	}
@@ -93,6 +93,31 @@ func GetComposeContent(param map[string]string, filePath string) (string, error)
 	}
 
 	tmpl, err := template.ParseFiles(filePath)
+	if err != nil {
+		return "", err
+	}
+
+	var result strings.Builder
+	err = tmpl.Execute(&result, params)
+	if err != nil {
+		return "", err
+	}
+
+	return result.String(), nil
+}
+
+func GetSonarqubeComposeContent(homeDir, templateData string) (string, error) {
+
+	type ComposeParams struct {
+		HomeDir string
+	}
+
+	params := ComposeParams{
+		HomeDir: homeDir,
+	}
+
+	//tmpl, err := template.ParseFiles(filePath)
+	tmpl, err := template.New("compose").Parse(templateData)
 	if err != nil {
 		return "", err
 	}
