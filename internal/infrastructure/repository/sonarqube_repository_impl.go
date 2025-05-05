@@ -2,7 +2,8 @@ package repository
 
 import (
 	"bytes"
-	"deploy/internal/domain"
+	"context"
+	constants "deploy/internal/domain"
 	"deploy/internal/domain/model"
 	"deploy/internal/domain/repository"
 	"deploy/internal/domain/template"
@@ -13,23 +14,25 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"path/filepath"
 	"sync"
 	"time"
-	"net/url"
-	"context"
 )
 
 const (
-	sonarURL   		  = "http://localhost:9000"
-	user  		  	  = "admin"
+	sonarURL          = "http://localhost:9000"
+	user              = "admin"
 	passwordDefault   = "admin"
 	password          = "F@stDeploy2025"
-	tokenName  		  = "fastdeploy"
-	statusAPI  		  = sonarURL + "/api/system/status"
+	tokenName         = "fastdeploy"
+	statusAPI         = sonarURL + "/api/system/status"
 	tokenGenerateAPI  = sonarURL + "/api/user_tokens/generate"
 	tokenRevokeAPI    = sonarURL + "/api/user_tokens/revoke"
 	changePasswordAPI = sonarURL + "/api/users/change_password"
+	createProjectAPI  = sonarURL + "/api/projects/create"
+	searchProjectAPI  = sonarURL + "/api/projects/search"
+	projectStatusAPI  = sonarURL + "/api/qualitygates/project_status"
 )
 
 type TokenResponse struct {
@@ -37,41 +40,46 @@ type TokenResponse struct {
 }
 
 type sonarqubeRepositoryImpl struct {
-	client          	*http.Client
-    user        	    string
-    passwordDefault     string
-    password         	string
-    tokenName       	string
-    changePasswordAPI 	string
-    tokenGenerateAPI  	string
-	tokenRevokeAPI      string
+	client            *http.Client
+	user              string
+	passwordDefault   string
+	password          string
+	tokenName         string
+	changePasswordAPI string
+	tokenGenerateAPI  string
+	tokenRevokeAPI    string
+	createProjectAPI  string
+	searchProjectAPI  string
+	projectStatusAPI  string
 }
 
 var (
-    instanceSonarqubeRepository   repository.SonarqubeRepository
-    instanceOnceSonarqubeRepository sync.Once
+	instanceSonarqubeRepository     repository.SonarqubeRepository
+	instanceOnceSonarqubeRepository sync.Once
 )
 
 func GetSonarqubeRepository() repository.SonarqubeRepository {
-    instanceOnceSonarqubeRepository .Do(func() {
-        instanceSonarqubeRepository  = &sonarqubeRepositoryImpl{
+	instanceOnceSonarqubeRepository.Do(func() {
+		instanceSonarqubeRepository = &sonarqubeRepositoryImpl{
 			client: &http.Client{
 				Timeout: 10 * time.Second,
 			},
-			user:		    	user,
-			passwordDefault:    passwordDefault,
-			tokenName:       	tokenName,
-			password:         	password,
-			changePasswordAPI: 	changePasswordAPI,
-			tokenGenerateAPI:  	tokenGenerateAPI,
-			tokenRevokeAPI:     tokenRevokeAPI,
+			user:              user,
+			passwordDefault:   passwordDefault,
+			tokenName:         tokenName,
+			password:          password,
+			changePasswordAPI: changePasswordAPI,
+			tokenGenerateAPI:  tokenGenerateAPI,
+			tokenRevokeAPI:    tokenRevokeAPI,
+			createProjectAPI:  createProjectAPI,
+			searchProjectAPI:  searchProjectAPI,
+			projectStatusAPI:  projectStatusAPI,
 		}
-    })
-    return instanceSonarqubeRepository 
+	})
+	return instanceSonarqubeRepository
 }
 
 func (s *sonarqubeRepositoryImpl) Add() *model.Response {
-	//pass sdkfjlas33K@Dw
 	homeDir, err := filesystem.GetHomeDirectory()
 	if err != nil {
 		return model.GetNewResponseError(err)
@@ -125,7 +133,7 @@ func (s *sonarqubeRepositoryImpl) Add() *model.Response {
 
 		if containerExists(containerIds) {
 			for _, containerId := range containerIds {
-				if err := tools.Restart(containerId); err != nil {
+				if err := tools.StartContainerIfStopped(containerId); err != nil {
 					return model.GetNewResponseError(err)
 				}
 			}
@@ -159,15 +167,35 @@ func (s *sonarqubeRepositoryImpl) validate() *model.Response {
 			return model.GetNewResponseError(err)
 		}
 
-		password, err := s.ChangePassword()
+		projectRepository := GetProjectRepository()
+		project, err := projectRepository.Load()
 		if err != nil {
 			return model.GetNewResponseError(err)
 		}
+		
+		exists, err := s.ProjectExists(project.ProjectId)
+		if err != nil {
+			return model.GetNewResponseError(err)
+		}
+		if !exists {
+			err = s.CreateProject(project.ProjectId, project.ProjectName)
+			if err != nil {
+				return model.GetNewResponseError(err)
+			}
+		}
+
+		if !s.CanLogin(s.user, s.password) {
+			_, err := s.ChangePassword()
+			if err != nil {
+				return model.GetNewResponseError(err)
+			}
+		}
+
 		presenter.ShowSuccess("Add sonarqube")
 
-		urlsContainers = urlsContainers + " user="+s.user+" password="+password
+		urlsContainers = urlsContainers + " user=" + s.user + " password=" + s.password
 		return model.GetNewResponseMessage(urlsContainers)
-	}else{
+	} else {
 		return model.GetNewResponseError(fmt.Errorf(constants.MessageErrorCreatingSonarqube))
 	}
 }
@@ -177,9 +205,9 @@ func (s *sonarqubeRepositoryImpl) WaitSonarqube(ctx context.Context, maxRetries 
 
 	for attempt := 1; attempt <= maxRetries; attempt++ {
 		select {
-			case <-ctx.Done():
-				return ctx.Err()
-			default:
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
 		}
 
 		resp, err := http.Get(statusAPI)
@@ -209,80 +237,163 @@ func (s *sonarqubeRepositoryImpl) WaitSonarqube(ctx context.Context, maxRetries 
 	return fmt.Errorf("sonarqube no estuvo listo después de %d intentos", maxRetries)
 }
 
-func (s *sonarqubeRepositoryImpl) CreateToken() (string, error) {
+func (s *sonarqubeRepositoryImpl) CreateToken(projectKey string) (string, error) {
 	data := url.Values{}
-    data.Set("name", s.tokenName)
+	data.Set("name", s.tokenName)
+	data.Set("type", "PROJECT_ANALYSIS_TOKEN")
+	data.Set("projectKey", projectKey)
 
-    body, status, err := s.sendRequest("POST", s.tokenGenerateAPI, data, s.user, s.password)
-    if err != nil {
-        return "", err
-    }
+	body, status, err := s.sendRequest("POST", s.tokenGenerateAPI, data, s.user, s.password)
+	if err != nil {
+		return "", err
+	}
 
-    if status != http.StatusOK {
-        return "", fmt.Errorf("error creando token: status %d, body: %s", status, string(body))
-    }
+	if status != http.StatusOK {
+		return "", fmt.Errorf("error creando token: status %d, body: %s", status, string(body))
+	}
 
-    var result TokenResponse
-    if err := json.Unmarshal(body, &result); err != nil {
-        return "", fmt.Errorf("error parseando respuesta: %w", err)
-    }
+	var result TokenResponse
+	if err := json.Unmarshal(body, &result); err != nil {
+		return "", fmt.Errorf("error parseando respuesta: %w", err)
+	}
 
-    return result.Token, nil
+	return result.Token, nil
 }
 
 func (s *sonarqubeRepositoryImpl) RevokeToken() error {
 	data := url.Values{}
-    data.Set("name", s.tokenName)
+	data.Set("name", s.tokenName)
 
 	body, status, err := s.sendRequest("POST", s.tokenRevokeAPI, data, s.user, s.password)
-    if err != nil {
-        return err
-    }
+	if err != nil {
+		return err
+	}
 
 	if status != http.StatusNoContent && status != http.StatusNotFound {
-        return fmt.Errorf("error eliminando token: status %d, body: %s", status, string(body))
-    }
+		return fmt.Errorf("error eliminando token: status %d, body: %s", status, string(body))
+	}
 
-    return nil
+	return nil
 }
 
 func (s *sonarqubeRepositoryImpl) ChangePassword() (string, error) {
 	data := url.Values{}
-    data.Set("login", s.user)
-    data.Set("previousPassword", s.passwordDefault)
-    data.Set("password", s.password)
+	data.Set("login", s.user)
+	data.Set("previousPassword", s.passwordDefault)
+	data.Set("password", s.password)
 
-    body, status, err := s.sendRequest("POST", s.changePasswordAPI, data, s.user, s.passwordDefault)
-    if err != nil {
-        return "", err
-    }
+	body, status, err := s.sendRequest("POST", s.changePasswordAPI, data, s.user, s.passwordDefault)
+	if err != nil {
+		return "", err
+	}
 
-    if status != http.StatusOK && status != http.StatusNoContent{
-        return "", fmt.Errorf("error cambiando contraseña: status %d, body: %s", status, string(body))
-    }
+	if status != http.StatusOK && status != http.StatusNoContent {
+		return "", fmt.Errorf("error cambiando contraseña: status %d, body: %s", status, string(body))
+	}
 
-    return s.password, nil
+	return s.password, nil
+}
+
+func (s *sonarqubeRepositoryImpl) CreateProject(projectKey, projectName string) error {
+	data := url.Values{}
+	data.Set("name", projectName)
+	data.Set("project", projectKey)
+	data.Set("mainBranch", "main")
+	//data.Set("newCodeDefinitionType", "PREVIOUS_VERSION")
+	
+	
+	body, status, err := s.sendRequest("POST", s.createProjectAPI, data, s.user, s.password)
+	if err != nil {
+		return err
+	}
+
+	if status != http.StatusOK {	
+		return fmt.Errorf("error creando proyecto: status %d, body: %s", status, string(body))
+	}
+
+	return nil
+}
+
+func (s *sonarqubeRepositoryImpl) CanLogin(user, pass string) bool {
+	_, status, err := s.sendRequest("GET", statusAPI, nil, s.user, s.password)
+	if err != nil {
+		return false
+	}
+	return status == http.StatusOK
+}
+
+func (s *sonarqubeRepositoryImpl) ProjectExists(projectKey string) (bool, error) {
+	apiURL := s.searchProjectAPI + "?projects=" + projectKey
+	body, status, err := s.sendRequest("GET", apiURL, nil, s.user, s.password)
+	if err != nil {
+		return false, err
+	}
+
+	if status != http.StatusOK {
+		return false, fmt.Errorf("error consultando proyecto: status %d", status)
+	}
+
+	var result struct {
+		Components []struct {
+			Key string `json:"key"`
+		} `json:"components"`
+	}
+	if err := json.Unmarshal(body, &result); err != nil {
+		return false, err
+	}
+
+	for _, c := range result.Components {
+		if c.Key == projectKey {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (s *sonarqubeRepositoryImpl) GetQualityGateStatus(projectKey string) (string, error) {
+	apiURL := s.projectStatusAPI + "?projectKey=" + projectKey
+
+	body, status, err := s.sendRequest("GET", apiURL, nil, s.user, s.password)
+	if err != nil {
+		return "", err
+	}
+
+	if status != http.StatusOK {
+		return "", fmt.Errorf("error consultando proyecto: status %d", status)
+	}
+
+	var result struct {
+		ProjectStatus struct {
+			Status string `json:"status"`
+		} `json:"projectStatus"`
+	}
+
+	if err := json.Unmarshal(body, &result); err != nil {
+		return "", err
+	}
+
+	return result.ProjectStatus.Status, nil
 }
 
 func (s *sonarqubeRepositoryImpl) sendRequest(method, url string, data url.Values, authUser, authPass string) ([]byte, int, error) {
-    req, err := http.NewRequest(method, url, bytes.NewBufferString(data.Encode()))
-    if err != nil {
-        return nil, 0, fmt.Errorf("error creando request: %w", err)
-    }
+	req, err := http.NewRequest(method, url, bytes.NewBufferString(data.Encode()))
+	if err != nil {
+		return nil, 0, fmt.Errorf("error creando request: %w", err)
+	}
 
-    req.SetBasicAuth(authUser, authPass)
-    req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	req.SetBasicAuth(authUser, authPass)
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
-    resp, err := s.client.Do(req)
-    if err != nil {
-        return nil, 0, fmt.Errorf("error enviando request: %w", err)
-    }
-    defer resp.Body.Close()
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return nil, 0, fmt.Errorf("error enviando request: %w", err)
+	}
+	defer resp.Body.Close()
 
-    body, err := io.ReadAll(resp.Body)
-    if err != nil {
-        return nil, resp.StatusCode, fmt.Errorf("error leyendo respuesta: %w", err)
-    }
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, resp.StatusCode, fmt.Errorf("error leyendo respuesta: %w", err)
+	}
 
-    return body, resp.StatusCode, nil
+	return body, resp.StatusCode, nil
 }

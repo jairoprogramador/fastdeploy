@@ -48,6 +48,10 @@ func (s *projectRepositoryImpl) GetProjectId() (string, error) {
 	return filesystem.GetParentDirectory()
 }
 
+func (s *projectRepositoryImpl) GetProjectName() (string, error) {
+	return filesystem.GetParentDirectory()
+}
+
 func (s *projectRepositoryImpl) GetTeamName() string {
     return ""
 }

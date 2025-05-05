@@ -44,6 +44,22 @@ func CreateDirectory(nameDirectory string) error {
 	return nil
 }
 
+func RecreateDirectory(nameDirectory string) error {
+	if _, err := os.Stat(nameDirectory); err == nil {
+		if err := os.RemoveAll(nameDirectory); err != nil {
+			return err
+		}
+	}
+	return CreateDirectory(nameDirectory)
+}
+
+func CompletePermits(nameDirectory string) error {
+	if err := os.Chmod(nameDirectory, 0777); err != nil {
+        return err
+    }
+	return nil
+}
+
 func CreateDirectoryFilePath(filePath string) error {
 	exists, err := DirectoryExists(filePath)
 	if !exists {
@@ -64,6 +80,10 @@ func GetParentDirectory() (string, error){
 	}
 	projectId := filepath.Base(currentDir)
 	return projectId, nil
+}
+
+func GetProjectDirectory() (string, error){
+	return os.Getwd()
 }
 
 func GetHomeDirectory() (string, error){

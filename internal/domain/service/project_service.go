@@ -55,10 +55,11 @@ func (s *ProjectService) Create() *model.Response {
 
 func (s *ProjectService) createProyect() *model.Response {
 	projectId, _ := s.projectRepo.GetProjectId()
+	projectName, _ := s.projectRepo.GetProjectName()
 	teamName := s.projectRepo.GetTeamName()
 	organizationName := s.projectRepo.GetOrganizationName()
 
-	project := model.GetNewProject(projectId, teamName, organizationName)
+	project := model.GetNewProject(projectId, projectName, teamName, organizationName)
 	project.Dependencies = s.getDependencies()
 	project.Support = s.getSupports()
 

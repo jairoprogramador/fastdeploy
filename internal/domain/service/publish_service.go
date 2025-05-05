@@ -1,8 +1,8 @@
 package service
 
 import (
+	"deploy/internal/domain/model"
 	"deploy/internal/domain/repository"
-    "deploy/internal/domain/model"
 	"sync"
 )
 

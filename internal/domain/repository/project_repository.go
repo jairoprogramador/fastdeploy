@@ -7,6 +7,7 @@ type ProjectRepository interface {
 	Save(project *model.Project) *model.Response
 	Load() (model.Project, error)
 	GetProjectId() (string, error)
+	GetProjectName() (string, error)
 	GetTeamName() string
 	GetOrganizationName() string
 	SaveDockerfileTemplate() *model.Response

@@ -1,31 +1,33 @@
 package repository
 
 import (
-	"sync"
-	"net"
-	"fmt"
-	"strings"
-	"unicode/utf8"
+	constants "deploy/internal/domain"
+	"deploy/internal/domain/model"
+	"deploy/internal/domain/repository"
 	"deploy/internal/infrastructure/filesystem"
 	"deploy/internal/infrastructure/tools"
 	"deploy/internal/interface/presenter"
-	"deploy/internal/domain/repository"
-	"deploy/internal/domain/model"
-	"deploy/internal/domain"
+	"fmt"
+	"net"
+	"path/filepath"
+	"strings"
+	"sync"
+	"time"
+	"unicode/utf8"
 )
 
-type publishRepositoryImpl struct {}
+type publishRepositoryImpl struct{}
 
 var (
-    instancePublishRepository     repository.PublishRepository
-    instanceOncePublishRepository sync.Once
+	instancePublishRepository     repository.PublishRepository
+	instanceOncePublishRepository sync.Once
 )
 
 func GetPublishRepository() repository.PublishRepository {
-    instanceOncePublishRepository.Do(func() {
-        instancePublishRepository = &publishRepositoryImpl{}
-    })
-    return instancePublishRepository
+	instanceOncePublishRepository.Do(func() {
+		instancePublishRepository = &publishRepositoryImpl{}
+	})
+	return instancePublishRepository
 }
 
 func (s *publishRepositoryImpl) Prepare() *model.Response {
@@ -74,7 +76,6 @@ func (s *publishRepositoryImpl) Package(response *model.Response) *model.Respons
 		if err := packageInImage(response); err != nil {
 			return model.GetNewResponseError(err)
 		}
-
 		imageId, err := tools.GetImageId(response.GetCommitHash())
 		if err != nil {
 			return model.GetNewResponseError(err)
@@ -93,7 +94,7 @@ func (s *publishRepositoryImpl) Deliver(response *model.Response) *model.Respons
 
 	if containerExists(containerIds) {
 		for _, containerId := range containerIds {
-			if err := tools.Restart(containerId); err != nil {
+			if err := tools.StartContainerIfStopped(containerId); err != nil {
 				return model.GetNewResponseError(err)
 			}
 		}
@@ -118,7 +119,7 @@ func (s *publishRepositoryImpl) Validate(response *model.Response) *model.Respon
 			return model.GetNewResponseError(err)
 		}
 		return model.GetNewResponseMessage(urlsContainers)
-	}else{
+	} else {
 		return model.GetNewResponseError(fmt.Errorf(constants.MessageErrorCreatingContainer))
 	}
 }
@@ -133,14 +134,14 @@ func getUrlsContainer(containerIDs []string) (string, error) {
 		url := fmt.Sprintf(constants.MessageSuccessPublish, port)
 		result.WriteString(url)
 	}
-	return result.String(), nil	
+	return result.String(), nil
 }
 
 func imageExists(imageId string) bool {
 	return utf8.RuneCountInString(imageId) > 0
 }
 
-func containerExists(containerIds []string) bool{
+func containerExists(containerIds []string) bool {
 	return len(containerIds) > 0
 }
 
@@ -149,18 +150,97 @@ func buildProyect() error {
 	if err != nil {
 		return err
 	}
+
+	err = SonarQube()
+	if err != nil {
+		return err
+	}
+
 	_, err = tools.SearchFile("target")
 	if err != nil {
-		return  err
+		return err
 	}
 	return nil
 }
 
-func packageInImage(response *model.Response) error {
-	commitHash := response.Data[constants.CommitHashKey]
+func SonarQube() error {
+	sonarqubeRepository := GetSonarqubeRepository()
+	error := sonarqubeRepository.RevokeToken()
+	if error != nil {
+		return error
+	}
 
+	projectRepository := GetProjectRepository()
+	project, err := projectRepository.Load()
+	if err != nil {
+		return err
+	}
+
+	token, err := sonarqubeRepository.CreateToken(project.ProjectId)
+	if err != nil {
+		return err
+	}
+
+	homeDir, err := filesystem.GetHomeDirectory()
+	if err != nil {
+		return err
+	}
+
+	cacheScannerDir := filepath.Join(homeDir, ".fastdeploy", "scanner", "cache")
+	err = filesystem.RecreateDirectory(cacheScannerDir)
+	if err != nil {
+		return err
+	}
+
+	tmpScannerDir := filepath.Join(homeDir, ".fastdeploy", "scanner", "tmp")
+	err = filesystem.RecreateDirectory(tmpScannerDir)
+	if err != nil {
+		return err
+	}
+
+	scannerWorkDir := filepath.Join(homeDir, ".fastdeploy", "scanner", "work")
+	err = filesystem.RecreateDirectory(scannerWorkDir)
+	if err != nil {
+		return err
+	}
+
+	projectDirectory, err := filesystem.GetProjectDirectory()
+	if err != nil {
+		return err
+	}
+
+	projectKey := project.ProjectId
+	projectName := project.ProjectId
+	projectPath := projectDirectory
+	sourcePath := "src/main"
+	testPath := "src/test"
+	binaryPath := "target/classes"
+	testBinaryPath := "target/test-classes"
+
+	err = tools.SonarScanner(token, projectKey, projectName, projectPath, cacheScannerDir, tmpScannerDir, scannerWorkDir, sourcePath, testPath, binaryPath, testBinaryPath)
+	if err != nil {
+		return err
+	}
+
+	time.Sleep(5 * time.Second)
+	status, err := sonarqubeRepository.GetQualityGateStatus(projectKey)
+	if err != nil {
+		return err
+	}
+
+	if status != "OK" && status != "PASSED" {
+		return fmt.Errorf("los Quality Gates no han superado los mínimos aceptables. Estado: %s", status)
+	}
+
+	return nil
+}
+
+func packageInImage(response *model.Response) error {
+	commitHash := response.GetCommitHash()
+	fmt.Println("c dd " + commitHash)
 	commitMessage, err := tools.GetCommitMessage(commitHash)
 	if err != nil {
+		fmt.Println("d")
 		return err
 	}
 
@@ -179,7 +259,7 @@ func packageInImage(response *model.Response) error {
 	if err != nil {
 		return err
 	}
-	
+
 	param := make(map[string]string, 6)
 	param[constants.FileNameKey] = archivosJar[0]
 	param[constants.CommitHashKey] = commitHash
@@ -211,7 +291,7 @@ func buildContainer(response *model.Response) error {
 	if err != nil {
 		return err
 	}
-	
+
 	param := make(map[string]string, 3)
 	param[constants.NameDeliveryKey] = project.ProjectId + commitHash[:5]
 	param[constants.CommitHashKey] = commitHash
@@ -229,7 +309,7 @@ func buildContainer(response *model.Response) error {
 	if err != nil {
 		return err
 	}
-	
+
 	return filesystem.Removefile(constants.DockercomposeFilePath)
 }
 
