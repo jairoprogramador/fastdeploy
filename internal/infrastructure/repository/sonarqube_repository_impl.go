@@ -51,6 +51,7 @@ type sonarqubeRepositoryImpl struct {
 	createProjectAPI  string
 	searchProjectAPI  string
 	projectStatusAPI  string
+	dockerRepo        repository.DockerRepository
 }
 
 var (
@@ -74,6 +75,7 @@ func GetSonarqubeRepository() repository.SonarqubeRepository {
 			createProjectAPI:  createProjectAPI,
 			searchProjectAPI:  searchProjectAPI,
 			projectStatusAPI:  projectStatusAPI,
+			dockerRepo:        tools.NewDockerService(),
 		}
 	})
 	return instanceSonarqubeRepository
@@ -112,7 +114,7 @@ func (s *sonarqubeRepositoryImpl) Add() *model.Response {
 			return model.GetNewResponseError(err)
 		}
 
-		composeContent, err := tools.GetSonarqubeComposeContent(homeDir, template.ComposeSonarqubeTemplate)
+		composeContent, err := s.dockerRepo.GetSonarqubeComposeContent(homeDir, template.ComposeSonarqubeTemplate)
 		if err != nil {
 			return model.GetNewResponseError(err)
 		}
@@ -121,24 +123,24 @@ func (s *sonarqubeRepositoryImpl) Add() *model.Response {
 			return model.GetNewResponseError(err)
 		}
 
-		err = tools.BuildContainer(sonarqubeComposePath)
+		err = s.dockerRepo.BuildContainer(sonarqubeComposePath)
 		if err != nil {
 			return model.GetNewResponseError(err)
 		}
 	} else {
-		containerIds, err := tools.GetContainersId("sonarqube:community")
+		containerIds, err := s.dockerRepo.GetContainersID("sonarqube:community")
 		if err != nil {
 			return model.GetNewResponseError(err)
 		}
 
 		if containerExists(containerIds) {
 			for _, containerId := range containerIds {
-				if err := tools.StartContainerIfStopped(containerId); err != nil {
+				if err := s.dockerRepo.StartContainerIfStopped(containerId); err != nil {
 					return model.GetNewResponseError(err)
 				}
 			}
 		} else {
-			err = tools.BuildContainer(sonarqubeComposePath)
+			err = s.dockerRepo.BuildContainer(sonarqubeComposePath)
 			if err != nil {
 				return model.GetNewResponseError(err)
 			}
@@ -148,13 +150,13 @@ func (s *sonarqubeRepositoryImpl) Add() *model.Response {
 }
 
 func (s *sonarqubeRepositoryImpl) validate() *model.Response {
-	containerIds, err := tools.GetContainersId("sonarqube:community")
+	containerIds, err := s.dockerRepo.GetContainersID("sonarqube:community")
 	if err != nil {
 		return model.GetNewResponseError(err)
 	}
 
 	if containerExists(containerIds) {
-		urlsContainers, err := getUrlsContainer(containerIds)
+		urlsContainers, err :=  s.dockerRepo.GetUrlsContainer(containerIds)
 		if err != nil {
 			return model.GetNewResponseError(err)
 		}
@@ -167,18 +169,18 @@ func (s *sonarqubeRepositoryImpl) validate() *model.Response {
 			return model.GetNewResponseError(err)
 		}
 
-		projectRepository := GetProjectRepository()
+		projectRepository := NewProjectRepository()
 		project, err := projectRepository.Load()
 		if err != nil {
 			return model.GetNewResponseError(err)
 		}
-		
-		exists, err := s.ProjectExists(project.ProjectId)
+
+		exists, err := s.ProjectExists(project.ProjectID)
 		if err != nil {
 			return model.GetNewResponseError(err)
 		}
 		if !exists {
-			err = s.CreateProject(project.ProjectId, project.ProjectName)
+			err = s.CreateProject(project.ProjectID, project.ProjectName)
 			if err != nil {
 				return model.GetNewResponseError(err)
 			}
@@ -300,14 +302,13 @@ func (s *sonarqubeRepositoryImpl) CreateProject(projectKey, projectName string) 
 	data.Set("project", projectKey)
 	data.Set("mainBranch", "main")
 	//data.Set("newCodeDefinitionType", "PREVIOUS_VERSION")
-	
-	
+
 	body, status, err := s.sendRequest("POST", s.createProjectAPI, data, s.user, s.password)
 	if err != nil {
 		return err
 	}
 
-	if status != http.StatusOK {	
+	if status != http.StatusOK {
 		return fmt.Errorf("error creando proyecto: status %d, body: %s", status, string(body))
 	}
 

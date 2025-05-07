@@ -1,19 +1,24 @@
 package model
 
+// Dependency representa una dependencia del proyecto, como bases de datos,
+// servicios externos o componentes requeridos para el funcionamiento.
 type Dependency struct {
-	Type     string            `yaml:"type"`
-	Name     string            `yaml:"name"`
-	Version  string            `yaml:"version"`
-	Required bool              `yaml:"required"`
-	Config   map[string]string `yaml:"config"`
+	Organization string   `yaml:"organization"`
+	ProjectID    string   `yaml:"projectId"`
+	ProjectName  string   `yaml:"projectName"`
+	Version      string   `yaml:"version"`
+	TeamName     string   `yaml:"teamName"`
+	Required 	 bool     `yaml:"required"`
 }
 
-func GetNewDependency(typeDependency, name, version string, required bool, config map[string]string) Dependency {
-	return Dependency {
-		Type: typeDependency,
-		Name: name,
-		Version: version,
-		Required: required,
-		Config: config,
+// NewDependency crea una nueva instancia de Dependency con los parámetros proporcionados.
+func NewDependency(organization, projectID, projectName, version, teamName string) *Dependency {
+	return &Dependency{
+		Organization: organization,
+		ProjectID:    projectID,
+		ProjectName:  projectName,
+		Version:      version,
+		TeamName:     teamName,
+		Required:     true,
 	}
 }

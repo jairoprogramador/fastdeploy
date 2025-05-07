@@ -1,7 +1,9 @@
 package filesystem
 
-import "path/filepath"
-import "os"
+import (
+	"os"
+	"path/filepath"
+)
 
 func FileExists(filePath string) bool {
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
@@ -9,9 +11,12 @@ func FileExists(filePath string) bool {
 	}
 	return true
 }
-func Removefile(filePath string) error { 
-	err := os.Remove(filePath)
-	return err
+
+func RemoveFile(filePath string) error {
+	if err := os.Remove(filePath); !os.IsNotExist(err) {
+		return err
+	}
+	return nil
 }
 
 func CreateFile(filePath string) (*os.File, error) {
@@ -55,8 +60,8 @@ func RecreateDirectory(nameDirectory string) error {
 
 func CompletePermits(nameDirectory string) error {
 	if err := os.Chmod(nameDirectory, 0777); err != nil {
-        return err
-    }
+		return err
+	}
 	return nil
 }
 
@@ -73,7 +78,7 @@ func GetDirectory(filePath string) string {
 	return filepath.Dir(filePath)
 }
 
-func GetParentDirectory() (string, error){
+func GetParentDirectory() (string, error) {
 	currentDir, err := os.Getwd()
 	if err != nil {
 		return "", err
@@ -82,14 +87,14 @@ func GetParentDirectory() (string, error){
 	return projectId, nil
 }
 
-func GetProjectDirectory() (string, error){
+func GetProjectDirectory() (string, error) {
 	return os.Getwd()
 }
 
-func GetHomeDirectory() (string, error){
+func GetHomeDirectory() (string, error) {
 	return os.UserHomeDir()
 }
 
-func GetPath(directory, file string) string {
-	return filepath.Join(directory, file)
+func GetPath(paths ...string) string {
+	return filepath.Join(paths...)
 }

@@ -1,29 +1,76 @@
+// Package repository implementa el patrón Repository para el manejo de proyectos
 package repository
 
 import (
-	"sync"
-	"deploy/internal/infrastructure/filesystem"
 	"deploy/internal/domain/repository"
-	"deploy/internal/domain/template"
+	"deploy/internal/infrastructure/filesystem"
+	"sync"
+
+	//"deploy/internal/domain/template"
 	"deploy/internal/domain/model"
-	"deploy/internal/domain"
+	//"deploy/internal/domain"
 )
 
-type projectRepositoryImpl struct {}
+// projectRepositoryImpl implementa la interfaz ProjectRepository
+type projectRepositoryImpl struct{}
 
 var (
-    instanceProjectRepository     repository.ProjectRepository
-    instanceOnceProjectRepository sync.Once
+	instanceProjectRepository     repository.ProjectRepository
+	instanceOnceProjectRepository sync.Once
 )
 
-func GetProjectRepository() repository.ProjectRepository {
-    instanceOnceProjectRepository.Do(func() {
-        instanceProjectRepository = &projectRepositoryImpl{}
-    })
-    return instanceProjectRepository
+// NewProjectRepository crea una nueva instancia del repositorio de proyectos
+// utilizando el patrón Singleton
+func NewProjectRepository() repository.ProjectRepository {
+	instanceOnceProjectRepository.Do(func() {
+		instanceProjectRepository = &projectRepositoryImpl{}
+	})
+	return instanceProjectRepository
 }
 
-func (s *projectRepositoryImpl) Exists() bool {
+// Load carga el proyecto desde el archivo YAML
+func (st *projectRepositoryImpl) Load() (model.Project, error) {
+	filePath := st.getPathProjectFile()
+	return filesystem.LoadFromYAML[model.Project](filePath)
+}
+
+// ExistsFile verifica si existe el archivo del proyecto
+func (st *projectRepositoryImpl) ExistsFile() bool {
+	filePath := st.getPathProjectFile()
+	return filesystem.FileExists(filePath)
+}
+
+// RemoveFile elimina el archivo del proyecto
+func (st *projectRepositoryImpl) RemoveFile() error {
+	filePath := st.getPathProjectFile()
+	return filesystem.RemoveFile(filePath)
+}
+
+// Create crea un nuevo proyecto y lo guarda en el archivo YAML
+func (st *projectRepositoryImpl) Create(project *model.Project) error {
+	if err := st.RemoveFile(); err != nil {
+		return err
+	}
+
+	filePath := st.getPathProjectFile()
+	err := filesystem.SaveToYAML(project, filePath)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// GetProjectName obtiene el nombre del proyecto desde el directorio actual
+func (s *projectRepositoryImpl) GetProjectName() (string, error) {
+	return filesystem.GetParentDirectory()
+}
+
+// getPathProjectFile obtiene la ruta del archivo del proyecto
+func (s *projectRepositoryImpl) getPathProjectFile() string {
+	return filesystem.GetPath(ProjectDirectory, ProjectFile)
+}
+
+/* func (s *projectRepositoryImpl) Exists() bool {
 	filePath := filesystem.GetPath(constants.RootDirectory, constants.NameProjectFile)
 	exists := filesystem.FileExists(filePath)
 	if !exists {
@@ -48,20 +95,11 @@ func (s *projectRepositoryImpl) GetProjectId() (string, error) {
 	return filesystem.GetParentDirectory()
 }
 
-func (s *projectRepositoryImpl) GetProjectName() (string, error) {
-	return filesystem.GetParentDirectory()
-}
-
 func (s *projectRepositoryImpl) GetTeamName() string {
     return ""
-}
+} */
 
-func (st *projectRepositoryImpl) Load() (model.Project, error) {
-	filePath := filesystem.GetPath(constants.RootDirectory, constants.NameProjectFile)
-	return filesystem.LoadFromYAML[model.Project](filePath)
-}
-
-func (s *projectRepositoryImpl) SaveDockercomposeTemplate() *model.Response {
+/* func (s *projectRepositoryImpl) SaveDockercomposeTemplate() *model.Response {
 	filePath := constants.DockercomposeTemplateFilePath
 	if err := filesystem.CreateDirectoryFilePath(filePath); err != nil {
 		return model.GetNewResponseError(err)
@@ -83,13 +121,13 @@ func (s *projectRepositoryImpl) SaveDockerfileTemplate() *model.Response {
 		return model.GetNewResponseError(err)
 	}
 	return model.GetNewResponse()
-}
+} */
 
-func (st projectRepositoryImpl) Save(project *model.Project) *model.Response {
+/* func (st projectRepositoryImpl) Save(project *model.Project) *model.Response {
 	filePath := filesystem.GetPath(constants.RootDirectory, constants.NameProjectFile)
 	err := filesystem.SaveToYAML(project, filePath)
 	if err != nil {
 		return model.GetNewResponseError(err)
 	}
 	return model.GetNewResponse()
-}
+} */

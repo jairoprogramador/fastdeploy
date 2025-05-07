@@ -1,8 +1,6 @@
 package filesystem
 
 import (
-	"errors"
-	"deploy/internal/domain"
 	"gopkg.in/yaml.v3"
 )
 
@@ -24,10 +22,6 @@ func SaveToYAML[T any](data T, filePath string) error {
 
 func LoadFromYAML[T any](filePath string) (T, error) {
 	var result T
-	
-	if exists := FileExists(filePath); !exists {
-		return result, errors.New(constants.MessageErrorFileNotFound + " "+ filePath)
-	}
 
 	file, err := OpenFile(filePath)
 	if err != nil {

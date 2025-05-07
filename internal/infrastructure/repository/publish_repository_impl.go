@@ -10,13 +10,14 @@ import (
 	"fmt"
 	"net"
 	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 	"unicode/utf8"
 )
 
-type publishRepositoryImpl struct{}
+type publishRepositoryImpl struct{
+	dockerRepo repository.DockerRepository
+}
 
 var (
 	instancePublishRepository     repository.PublishRepository
@@ -25,7 +26,9 @@ var (
 
 func GetPublishRepository() repository.PublishRepository {
 	instanceOncePublishRepository.Do(func() {
-		instancePublishRepository = &publishRepositoryImpl{}
+		instancePublishRepository = &publishRepositoryImpl{
+			dockerRepo: tools.NewDockerService(),
+		}
 	})
 	return instancePublishRepository
 }
@@ -51,13 +54,13 @@ func (s *publishRepositoryImpl) Build() *model.Response {
 		return model.GetNewResponseError(err)
 	}
 
-	imageId, err := tools.GetImageId(commitHash)
+	imageId, err := s.dockerRepo.GetImageID(commitHash)
 	if err != nil {
 		return model.GetNewResponseError(err)
 	}
 
 	if !imageExists(imageId) {
-		err := buildProyect()
+		err := s.buildProyect()
 		if err != nil {
 			return model.GetNewResponseError(err)
 		}
@@ -73,10 +76,10 @@ func (s *publishRepositoryImpl) Build() *model.Response {
 
 func (s *publishRepositoryImpl) Package(response *model.Response) *model.Response {
 	if !imageExists(response.GetImageId()) {
-		if err := packageInImage(response); err != nil {
+		if err := s.packageInImage(response); err != nil {
 			return model.GetNewResponseError(err)
 		}
-		imageId, err := tools.GetImageId(response.GetCommitHash())
+		imageId, err := s.dockerRepo.GetImageID(response.GetCommitHash())
 		if err != nil {
 			return model.GetNewResponseError(err)
 		}
@@ -87,19 +90,19 @@ func (s *publishRepositoryImpl) Package(response *model.Response) *model.Respons
 }
 
 func (s *publishRepositoryImpl) Deliver(response *model.Response) *model.Response {
-	containerIds, err := tools.GetContainersId(response.GetImageId())
+	containerIds, err := s.dockerRepo.GetContainersID(response.GetImageId())
 	if err != nil {
 		return model.GetNewResponseError(err)
 	}
 
 	if containerExists(containerIds) {
 		for _, containerId := range containerIds {
-			if err := tools.StartContainerIfStopped(containerId); err != nil {
+			if err := s.dockerRepo.StartContainerIfStopped(containerId); err != nil {
 				return model.GetNewResponseError(err)
 			}
 		}
 	} else {
-		if err = buildContainer(response); err != nil {
+		if err = s.buildContainer(response); err != nil {
 			return model.GetNewResponseError(err)
 		}
 	}
@@ -108,13 +111,13 @@ func (s *publishRepositoryImpl) Deliver(response *model.Response) *model.Respons
 }
 
 func (s *publishRepositoryImpl) Validate(response *model.Response) *model.Response {
-	containerIds, err := tools.GetContainersId(response.GetImageId())
+	containerIds, err := s.dockerRepo.GetContainersID(response.GetImageId())
 	if err != nil {
 		return model.GetNewResponseError(err)
 	}
 
 	if containerExists(containerIds) {
-		urlsContainers, err := getUrlsContainer(containerIds)
+		urlsContainers, err := s.dockerRepo.GetUrlsContainer(containerIds)
 		if err != nil {
 			return model.GetNewResponseError(err)
 		}
@@ -122,19 +125,6 @@ func (s *publishRepositoryImpl) Validate(response *model.Response) *model.Respon
 	} else {
 		return model.GetNewResponseError(fmt.Errorf(constants.MessageErrorCreatingContainer))
 	}
-}
-
-func getUrlsContainer(containerIDs []string) (string, error) {
-	var result strings.Builder
-	for _, id := range containerIDs {
-		port, err := getHostPort(id)
-		if err != nil {
-			return "", err
-		}
-		url := fmt.Sprintf(constants.MessageSuccessPublish, port)
-		result.WriteString(url)
-	}
-	return result.String(), nil
 }
 
 func imageExists(imageId string) bool {
@@ -145,13 +135,13 @@ func containerExists(containerIds []string) bool {
 	return len(containerIds) > 0
 }
 
-func buildProyect() error {
+func (s *publishRepositoryImpl) buildProyect() error {
 	_, err := tools.CleanAndPackage()
 	if err != nil {
 		return err
 	}
 
-	err = SonarQube()
+	err = s.SonarQube()
 	if err != nil {
 		return err
 	}
@@ -163,20 +153,20 @@ func buildProyect() error {
 	return nil
 }
 
-func SonarQube() error {
+func (s *publishRepositoryImpl) SonarQube() error {
 	sonarqubeRepository := GetSonarqubeRepository()
 	error := sonarqubeRepository.RevokeToken()
 	if error != nil {
 		return error
 	}
 
-	projectRepository := GetProjectRepository()
+	projectRepository := NewProjectRepository()
 	project, err := projectRepository.Load()
 	if err != nil {
 		return err
 	}
 
-	token, err := sonarqubeRepository.CreateToken(project.ProjectId)
+	token, err := sonarqubeRepository.CreateToken(project.ProjectID)
 	if err != nil {
 		return err
 	}
@@ -209,15 +199,15 @@ func SonarQube() error {
 		return err
 	}
 
-	projectKey := project.ProjectId
-	projectName := project.ProjectId
+	projectKey := project.ProjectID
+	projectName := project.ProjectID
 	projectPath := projectDirectory
 	sourcePath := "src/main"
 	testPath := "src/test"
 	binaryPath := "target/classes"
 	testBinaryPath := "target/test-classes"
 
-	err = tools.SonarScanner(token, projectKey, projectName, projectPath, cacheScannerDir, tmpScannerDir, scannerWorkDir, sourcePath, testPath, binaryPath, testBinaryPath)
+	err = s.dockerRepo.SonarScanner(token, projectKey, projectName, projectPath, cacheScannerDir, tmpScannerDir, scannerWorkDir, sourcePath, testPath, binaryPath, testBinaryPath)
 	if err != nil {
 		return err
 	}
@@ -235,7 +225,7 @@ func SonarQube() error {
 	return nil
 }
 
-func packageInImage(response *model.Response) error {
+func (s *publishRepositoryImpl) packageInImage(response *model.Response) error {
 	commitHash := response.GetCommitHash()
 	fmt.Println("c dd " + commitHash)
 	commitMessage, err := tools.GetCommitMessage(commitHash)
@@ -254,7 +244,7 @@ func packageInImage(response *model.Response) error {
 		return err
 	}
 
-	projectRepository := GetProjectRepository()
+	projectRepository := NewProjectRepository()
 	project, err := projectRepository.Load()
 	if err != nil {
 		return err
@@ -268,7 +258,7 @@ func packageInImage(response *model.Response) error {
 	param[constants.TeamKey] = project.TeamName
 	param[constants.OrganizationKey] = project.Organization
 
-	dockerfileContent, err := tools.GetDockerfileContent(param, constants.DockerfileTemplateFilePath)
+	dockerfileContent, err := s.dockerRepo.GetDockerfileContent(param, constants.DockerfileTemplateFilePath)
 	if err != nil {
 		return err
 	}
@@ -276,28 +266,28 @@ func packageInImage(response *model.Response) error {
 	if err != nil {
 		return err
 	}
-	err = tools.BuildImage(commitHash, constants.DockerfileFilePath)
+	err = s.dockerRepo.BuildImage(commitHash, constants.DockerfileFilePath)
 	if err != nil {
 		return err
 	}
-	return filesystem.Removefile(constants.DockerfileFilePath)
+	return filesystem.RemoveFile(constants.DockerfileFilePath)
 }
 
-func buildContainer(response *model.Response) error {
+func (s *publishRepositoryImpl) buildContainer(response *model.Response) error {
 	commitHash := response.Data[constants.CommitHashKey]
 
-	projectRepository := GetProjectRepository()
+	projectRepository := NewProjectRepository()
 	project, err := projectRepository.Load()
 	if err != nil {
 		return err
 	}
 
 	param := make(map[string]string, 3)
-	param[constants.NameDeliveryKey] = project.ProjectId + commitHash[:5]
+	param[constants.NameDeliveryKey] = project.ProjectID + commitHash[:5]
 	param[constants.CommitHashKey] = commitHash
 	param[constants.PortKey] = getPortForContainer()
 
-	composeContent, err := tools.GetComposeContent(param, constants.DockercomposeTemplateFilePath)
+	composeContent, err := s.dockerRepo.GetComposeContent(param, constants.DockercomposeTemplateFilePath)
 	if err != nil {
 		return err
 	}
@@ -305,12 +295,12 @@ func buildContainer(response *model.Response) error {
 	if err != nil {
 		return err
 	}
-	err = tools.BuildContainer(constants.DockercomposeFilePath)
+	err = s.dockerRepo.BuildContainer(constants.DockercomposeFilePath)
 	if err != nil {
 		return err
 	}
 
-	return filesystem.Removefile(constants.DockercomposeFilePath)
+	return filesystem.RemoveFile(constants.DockercomposeFilePath)
 }
 
 func getPortForContainer() string {
@@ -329,27 +319,4 @@ func getPortForContainer() string {
 		}
 	}
 	return fmt.Sprintf("%d", portFree)
-}
-
-func getHostPort(containerID string) (string, error) {
-	ports, err := tools.GetPortContainer(containerID)
-	if err != nil {
-		return "", err
-	}
-
-	lines := strings.Split(ports, "\n")
-	for _, line := range lines {
-		if strings.TrimSpace(line) == "" {
-			continue
-		}
-		parts := strings.Split(line, "->")
-		if len(parts) == 2 {
-			hostPart := strings.TrimSpace(parts[1])
-			if strings.Contains(hostPart, ":") {
-				hostPort := strings.Split(hostPart, ":")[1]
-				return hostPort, nil
-			}
-		}
-	}
-	return "", fmt.Errorf(constants.MessageErrorNoPortHost)
 }

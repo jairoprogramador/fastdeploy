@@ -1,34 +1,99 @@
 package tools
 
 import (
+	"context"
 	constants "deploy/internal/domain"
+	"deploy/internal/domain/repository"
+	"errors"
+	"fmt"
 	"strings"
 	"text/template"
+	"time"
 )
 
-func GetImageId(hashCommit string) (string, error) {
-	imageId, err := ExecuteCommand("docker", "images", "-q", hashCommit)
-	if err != nil {
-		return "", err
+const (
+	dockerCmd        = "docker"
+	dockerComposeCmd = "docker compose"
+)
+
+var (
+	ErrImageNotFound     = errors.New("imagen docker no encontrada")
+	ErrContainerNotFound = errors.New("contenedor no encontrado")
+	ErrInvalidID         = errors.New("ID inválido o vacío")
+)
+
+var (
+	dockerfileTemplate *template.Template
+	composeTemplate    *template.Template
+)
+
+type DockerfileParams struct {
+	FileName      string
+	CommitMessage string
+	CommitHash    string
+	CommitAuthor  string
+	Team          string
+	Organization  string
+}
+
+type DockerComposeParams struct {
+	NameDelivery string
+	CommitHash   string
+	Port         string
+}
+
+// DockerService implementa la interfaz repository.DockerRepository
+type DockerService struct{}
+
+// NewDockerService crea una nueva instancia de DockerService
+func NewDockerService() repository.DockerRepository {
+	return &DockerService{}
+}
+
+// GetImageID obtiene el ID de una imagen Docker basada en el hash del commit
+func (d *DockerService) GetImageID(hashCommit string) (string, error) {
+	if hashCommit == "" {
+		return "", ErrInvalidID
 	}
+
+	ctx, cancel := d.GetContext()
+	defer cancel()
+	imageId, err := ExecuteCommandWithContext(ctx, dockerCmd, "images", "-q", hashCommit)
+	if err != nil {
+		return "", ErrImageNotFound
+	}
+
+	imageId = strings.TrimSpace(imageId)
+	if imageId == "" {
+		return "", ErrImageNotFound
+	}
+
 	return strings.TrimSpace(imageId), nil
 }
 
-func GetContainersId(imageId string) ([]string, error) {
-	ancestor := "ancestor=" + imageId
-	containerIds, err := ExecuteCommand("docker", "ps", "-qa", "--filter", ancestor)
-	if err != nil {
-		return []string{}, err
+func (d *DockerService) GetContainersID(imageID string) ([]string, error) {
+	if imageID == "" {
+		return []string{}, ErrInvalidID
 	}
 
+	ctx, cancel := d.GetContext()
+	defer cancel()
+	ancestor := "ancestor=" + imageID
+	containerIds, err := ExecuteCommandWithContext(ctx, dockerCmd, "ps", "-qa", "--filter", ancestor)
+	if err != nil {
+		return []string{}, ErrContainerNotFound
+	}
+
+	containerIds = strings.TrimSpace(containerIds)
 	if containerIds == "" {
-		return []string{}, nil
+		return []string{}, ErrContainerNotFound
 	}
 
 	return getArray(containerIds), nil
 }
 
-func SonarScanner(token, projectKey, projectName, projectPath, cacheDir, tmpDir, scannerWorkDir, sourcePath, testPath, binaryPath, testBinaryPath string) error {
+// SonarScanner ejecuta el análisis de SonarQube en un contenedor Docker
+func (d *DockerService) SonarScanner(token, projectKey, projectName, projectPath, cacheDir, tmpDir, scannerWorkDir, sourcePath, testPath, binaryPath, testBinaryPath string) error {
 	args := []string{
 		"run",
 		"--rm",
@@ -56,73 +121,100 @@ func SonarScanner(token, projectKey, projectName, projectPath, cacheDir, tmpDir,
 	return err
 }
 
-func GetPortContainer(containerId string) (string, error) {
-	return ExecuteCommand("docker", "port", containerId)
+// GetPortContainer obtiene el puerto de un contenedor
+func (d *DockerService) GetPortContainer(containerId string) (string, error) {
+	return ExecuteCommand(dockerCmd, "port", containerId)
 }
 
-func BuildImage(hashCommit string, filePath string) error {
-	_, err := ExecuteCommand("docker", "build", "-t", hashCommit, "-f", filePath, ".")
+// BuildImage construye una imagen Docker
+func (d *DockerService) BuildImage(hashCommit string, filePath string) error {
+	_, err := ExecuteCommand(dockerCmd, "build", "-t", hashCommit, "-f", filePath, ".")
 	return err
 }
 
-func BuildContainer(filePath string) error {
-	_, err := ExecuteCommand("docker", "compose", "-f", filePath, "up", "-d")
+// BuildContainer construye un contenedor usando docker-compose
+func (d *DockerService) BuildContainer(filePath string) error {
+	_, err := ExecuteCommand(dockerComposeCmd, "-f", filePath, "up", "-d")
 	return err
 }
 
-func Start(containerId string) error {
-	_, err := ExecuteCommand("docker", "start", containerId)
+// StartContainer inicia un contenedor Docker
+func (d *DockerService) StartContainer(containerID string) error {
+	if containerID == "" {
+		return ErrInvalidID
+	}
+	ctx, cancel := d.GetContext()
+	defer cancel()
+	_, err := ExecuteCommandWithContext(ctx, dockerCmd, "start", containerID)
 	return err
 }
 
-func Restart(containerId string) error {
-	_, err := ExecuteCommand("docker", "restart", containerId)
+// RestartContainer reinicia un contenedor Docker
+func (d *DockerService) RestartContainer(containerID string) error {
+	if containerID == "" {
+		return ErrInvalidID
+	}
+	ctx, cancel := d.GetContext()
+	defer cancel()
+	_, err := ExecuteCommandWithContext(ctx, dockerCmd, "restart", containerID)
 	return err
 }
 
-func GetContainerStatus(containerId string) (string, error) {
-	status, err := ExecuteCommand("docker", "inspect", "--format", "{{.State.Status}}", containerId)
+// GetContainerStatus obtiene el estado de un contenedor Docker
+func (d *DockerService) GetContainerStatus(containerID string) (string, error) {
+	if containerID == "" {
+		return "", ErrInvalidID
+	}
+	ctx, cancel := d.GetContext()
+	defer cancel()
+	status, err := ExecuteCommandWithContext(ctx, dockerCmd, "inspect", "--format", "{{.State.Status}}", containerID)
 	if err != nil {
 		return "", err
 	}
-	return strings.TrimSpace(status), nil
+
+	status = strings.TrimSpace(status)
+	if status == "" {
+		return "", ErrContainerNotFound
+	}
+
+	return status, nil
 }
 
-func StartContainerIfStopped(containerId string) error {
-	status, err := GetContainerStatus(containerId)
+// StartContainerIfStopped inicia un contenedor Docker si está detenido
+func (d *DockerService) StartContainerIfStopped(containerID string) error {
+	if containerID == "" {
+		return ErrInvalidID
+	}
+
+	status, err := d.GetContainerStatus(containerID)
 	if err != nil {
 		return err
 	}
 	if status != "running" {
-		if err := Start(containerId); err != nil {
+		if err := d.StartContainer(containerID); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func GetDockerfileContent(param map[string]string, filePath string) (string, error) {
-	type DockerParams struct {
-		FileName      string
-		CommitMessage string
-		CommitHash    string
-		CommitAuthor  string
-		Team          string
-		Organization  string
+// GetDockerfileContent obtiene el contenido de un Dockerfile a partir de una plantilla
+func (d *DockerService) GetDockerfileContent(param map[string]string, filePath string) (string, error) {
+	var err error
+	if dockerfileTemplate == nil {
+		dockerfileTemplate, err = template.ParseFiles(filePath)
+		if err != nil {
+			return "", err
+		}
 	}
 
-	params := DockerParams{
+	params := DockerfileParams{
 		FileName:      param[constants.FileNameKey],
 		CommitMessage: param[constants.CommitMessageKey],
 		CommitHash:    param[constants.CommitHashKey],
 		CommitAuthor:  param[constants.CommitAuthorKey],
 		Team:          param[constants.TeamKey],
 		Organization:  param[constants.OrganizationKey],
-	}
-
-	dockerfileTemplate, err := template.ParseFiles(filePath)
-	if err != nil {
-		return "", err
 	}
 
 	var result strings.Builder
@@ -134,27 +226,24 @@ func GetDockerfileContent(param map[string]string, filePath string) (string, err
 	return result.String(), nil
 }
 
-func GetComposeContent(param map[string]string, filePath string) (string, error) {
-
-	type DockerParams struct {
-		NameDelivery string
-		CommitHash   string
-		Port         string
+// GetComposeContent obtiene el contenido de un archivo docker-compose a partir de una plantilla
+func (d *DockerService) GetComposeContent(param map[string]string, filePath string) (string, error) {
+	var err error
+	if composeTemplate == nil {
+		composeTemplate, err = template.ParseFiles(filePath)
+		if err != nil {
+			return "", err
+		}
 	}
 
-	params := DockerParams{
+	params := DockerComposeParams{
 		NameDelivery: param[constants.NameDeliveryKey],
 		CommitHash:   param[constants.CommitHashKey],
 		Port:         param[constants.PortKey],
 	}
 
-	tmpl, err := template.ParseFiles(filePath)
-	if err != nil {
-		return "", err
-	}
-
 	var result strings.Builder
-	err = tmpl.Execute(&result, params)
+	err = composeTemplate.Execute(&result, params)
 	if err != nil {
 		return "", err
 	}
@@ -162,8 +251,8 @@ func GetComposeContent(param map[string]string, filePath string) (string, error)
 	return result.String(), nil
 }
 
-func GetSonarqubeComposeContent(homeDir, templateData string) (string, error) {
-
+// GetSonarqubeComposeContent obtiene el contenido de un archivo docker-compose para SonarQube
+func (d *DockerService) GetSonarqubeComposeContent(homeDir, templateData string) (string, error) {
 	type ComposeParams struct {
 		HomeDir string
 	}
@@ -172,7 +261,6 @@ func GetSonarqubeComposeContent(homeDir, templateData string) (string, error) {
 		HomeDir: homeDir,
 	}
 
-	//tmpl, err := template.ParseFiles(filePath)
 	tmpl, err := template.New("compose").Parse(templateData)
 	if err != nil {
 		return "", err
@@ -185,6 +273,47 @@ func GetSonarqubeComposeContent(homeDir, templateData string) (string, error) {
 	}
 
 	return result.String(), nil
+}
+
+// GetContext obtiene un contexto con tiempo de espera
+func (d *DockerService) GetContext() (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.Background(), 2*time.Minute)
+}
+
+func (s *DockerService) GetUrlsContainer(containerIDs []string) (string, error) {
+	var result strings.Builder
+	for _, id := range containerIDs {
+		port, err := s.GetHostPort(id)
+		if err != nil {
+			return "", err
+		}
+		url := fmt.Sprintf(constants.MessageSuccessPublish, port)
+		result.WriteString(url)
+	}
+	return result.String(), nil
+}
+
+func (s *DockerService) GetHostPort(containerID string) (string, error) {
+	ports, err := s.GetPortContainer(containerID)
+	if err != nil {
+		return "", err
+	}
+
+	lines := strings.Split(ports, "\n")
+	for _, line := range lines {
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		parts := strings.Split(line, "->")
+		if len(parts) == 2 {
+			hostPart := strings.TrimSpace(parts[1])
+			if strings.Contains(hostPart, ":") {
+				hostPort := strings.Split(hostPart, ":")[1]
+				return hostPort, nil
+			}
+		}
+	}
+	return "", fmt.Errorf(constants.MessageErrorNoPortHost)
 }
 
 func getArray(data string) []string {
