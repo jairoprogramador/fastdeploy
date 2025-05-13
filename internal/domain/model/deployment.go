@@ -28,17 +28,10 @@ type Step struct {
 	Then      string       `yaml:"then,omitempty"`
 	Skip      []string     `yaml:"skip,omitempty"`
 	Parallel  []Step       `yaml:"parallel,omitempty"`
-	//DependsOn []string     `yaml:"depends_on,omitempty"`
 	Variables []Variable   `yaml:"variables,omitempty"`
-	//Metrics   []Metric     `yaml:"metrics,omitempty"`
 }
 
 type RetryConfig struct {
 	Attempts int    `yaml:"attempts"`
 	Delay    string `yaml:"delay"`
 }
-
-/* type Metric struct {
-	Name  string `yaml:"name"`
-	Value string `yaml:"value"`
-} */

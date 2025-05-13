@@ -7,7 +7,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
 	"github.com/go-playground/locales/es"
 	translator "github.com/go-playground/universal-translator"
 	"github.com/go-playground/validator/v10"
@@ -15,10 +14,8 @@ import (
 )
 
 const (
-	//TypeCheck   = "check"
 	TypeCommand   = "command"
 	TypeContainer = "container"
-	//TypeHttp    = "http"
 )
 
 type DeploymentValidator struct {
@@ -82,11 +79,6 @@ func (v *DeploymentValidator) validateSteps(steps []model.Step) error {
 			return fmt.Errorf("tipo inválido: %s en paso %s", step.Type, step.Name)
 		}
 
-		// Validar dependencias
-		/* if err := v.validateDependencies(step, stepNames); err != nil {
-			return err
-		} */
-
 		if err := v.validateConditions(step, allStepNames); err != nil {
 			return err
 		}
@@ -114,21 +106,10 @@ func (v *DeploymentValidator) isValidStepType(stepType string) bool {
 	validTypes := map[string]bool{
 		TypeContainer: true,
 		TypeCommand: true,
-		//TypeHttp:    true,
 	}
 	return validTypes[stepType]
 }
 
-/*
-	 func (v *DeploymentValidator) validateDependencies(step model.Step, existingSteps map[string]bool) error {
-		for _, dep := range step.DependsOn {
-			if !existingSteps[dep] {
-				return fmt.Errorf("dependencia no encontrada en paso %s: %s", step.Name, dep)
-			}
-		}
-		return nil
-	}
-*/
 func (v *DeploymentValidator) validateConditions(step model.Step, stepNames map[string]bool) error {
 	if step.If == "" {
 		return nil

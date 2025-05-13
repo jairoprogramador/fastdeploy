@@ -17,9 +17,7 @@ type CommandExecutor struct {
 
 func GetCommandExecutor(variables *variable.VariableStore) *CommandExecutor {
 	return &CommandExecutor {
-		BaseExecutor: BaseExecutor {
-			//variables: *variables,
-		},
+		BaseExecutor: BaseExecutor {},
 		variables: variables,
 		commandRunner:    GetCommandRunner(),
 		conditionFactory: condition.GetConditionFactory(),

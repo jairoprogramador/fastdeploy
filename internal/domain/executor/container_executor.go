@@ -25,9 +25,7 @@ type ContainerExecutor struct {
 func GetContainerExecutor(variables *variable.VariableStore) *ContainerExecutor {
 
 	return &ContainerExecutor {
-		BaseExecutor: BaseExecutor {
-			//variables: *variables,
-		},
+		BaseExecutor: BaseExecutor {},
 		variables: variables,
 		commandRunner:    GetCommandRunner(),
 		conditionFactory: condition.GetConditionFactory(),

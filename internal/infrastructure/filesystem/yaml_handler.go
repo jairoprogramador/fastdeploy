@@ -5,10 +5,6 @@ import (
 )
 
 func SaveToYAML[T any](data T, filePath string) error {
-	/* if err := CreateDirectoryFilePath(filePath); err != nil {
-		return err
-	} */
-
 	file, err := CreateFile(filePath)
 	if err != nil {
 		return err

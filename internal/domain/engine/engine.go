@@ -2,11 +2,9 @@ package engine
 
 import (
 	"context"
-	"deploy/internal/domain/executor"
 	"fmt"
 	"sync"
-
-	//"deploy/internal/domain/metrics"
+	"deploy/internal/domain/executor"
 	"deploy/internal/domain/model"
 	"deploy/internal/domain/validator"
 	"deploy/internal/domain/variable"
@@ -17,7 +15,6 @@ import (
 type Engine struct {
 	validator *validator.DeploymentValidator
 	executors map[string]executor.StepExecutor
-	//metrics       *metrics.MetricsCollector
 	variableStore *variable.VariableStore
 	variableService service.VariableServiceInterface
 	muEngine      sync.RWMutex
@@ -39,7 +36,6 @@ func NewEngine() *Engine {
 		variableService: variableService,
 	}
 
-	//e.RegisterExecutor(validator.TypeCheck, executor.GetCheckExecutor(e.variableStore))
 	e.RegisterExecutor(validator.TypeCommand, executor.GetCommandExecutor(e.variableStore))
 	e.RegisterExecutor(validator.TypeContainer, executor.GetContainerExecutor(e.variableStore))
 	return e
@@ -65,11 +61,6 @@ func (e *Engine) Execute(ctx context.Context, deployment *model.Deployment) erro
 }
 
 func (e *Engine) executeStep(ctx context.Context, step model.Step) error {
-	// Verificar dependencias
-	/* if err := e.checkDependencies(step); err != nil {
-		return err
-	} */
-
 	// Ejecutar pasos paralelos si existen
 	if len(step.Parallel) > 0 {
 		return e.executeParallelSteps(ctx, step.Parallel)
@@ -88,17 +79,6 @@ func (e *Engine) executeStep(ctx context.Context, step model.Step) error {
 	// Ejecutar paso
 	return executor.Execute(ctx, step)
 }
-
-// checkDependencies verifica que todas las dependencias del paso estén satisfechas
-/* func (e *Engine) checkDependencies(step model.Step) error {
-	for _, dep := range step.DependsOn {
-		// Verificar si la dependencia existe en el mapa de pasos ejecutados
-		if !e.isStepExecuted(dep) {
-			return fmt.Errorf("dependencia no satisfecha: %s", dep)
-		}
-	}
-	return nil
-} */
 
 func (e *Engine) executeParallelSteps(ctx context.Context, steps []model.Step) error {
 	var wg sync.WaitGroup
@@ -131,13 +111,6 @@ func (e *Engine) executeParallelSteps(ctx context.Context, steps []model.Step) e
 	return nil
 }
 
-// isStepExecuted verifica si un paso ya fue ejecutado
-/* func (e *Engine) isStepExecuted(stepName string) bool {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	return e.metrics.IsStepExecuted(stepName)
-} */
-
 // RegisterExecutor registra un nuevo ejecutor para un tipo de paso
 func (e *Engine) RegisterExecutor(stepType string, executor executor.StepExecutor) {
 	e.muEngine.Lock()
@@ -154,13 +127,3 @@ func (e *Engine) GetExecutor(stepType string) (executor.StepExecutor, bool) {
 	}
 	return executorRegistered, exists
 }
-
-// GetMetrics retorna las métricas del despliegue
-/* func (e *Engine) GetMetrics() *metrics.DeploymentMetrics {
-	return e.metrics.GetMetrics()
-} */
-
-/* func (e *Engine) GetVariableStore() *variable.VariableStore {
-	return e.variableStore
-} */
-

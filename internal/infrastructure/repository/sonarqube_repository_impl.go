@@ -110,10 +110,6 @@ func (s *sonarqubeRepositoryImpl) Add() *model.Response {
 	existsDockerfile, _ := filesystem.ExistsFile(sonarqubeComposePath)
 
 	if !existsDockerfile {
-		/* if err := filesystem.CreateDirectoryFilePath(sonarqubeComposePath); err != nil {
-			return model.GetNewResponseError(err)
-		}
- */
 		composeContent, err := s.dockerRepo.GetSonarqubeComposeContent(homeDir, template.ComposeSonarqubeTemplate)
 		if err != nil {
 			return model.GetNewResponseError(err)

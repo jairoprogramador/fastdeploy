@@ -40,13 +40,5 @@ func (r *DefaultCommandRunner) Run(ctx context.Context, command string) (string,
 	cmd := parts[0]
 	args := parts[1:]
 
-	/* if cmd == "docker" && len(args) > 2 {
-		if parts[1] == "compose" {
-			cmd = "docker compose"
-			args = args[1:]
-		}
-	} */
-
-	// Ejecutar el comando usando tools.ExecuteCommandWithContext
 	return tools.ExecuteCommandWithContext(ctx, cmd, args...)
 }

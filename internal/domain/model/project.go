@@ -36,12 +36,6 @@ func NewProject(organization, projectID, name, teamName string) *Project {
 	}
 }
 
-/* func (p *Project) AddDependency(key string, dependency Dependency) {
-	if p.Dependencies != nil {
-		p.Dependencies[key] = dependency
-	}
-} */
-
 func (p *Project) IsComplete() bool {
 	return p.Organization != "" && p.ProjectID != "" &&
 		p.Name != "" && p.Version != ""

@@ -244,7 +244,3 @@ func (c *DefaultDockerClient) StartContainerIfStopped(ctx context.Context, conta
 
 	return nil
 }
-
-func getArrays(data string) []string {
-	return strings.Split(strings.TrimSpace(data), "\n")
-}

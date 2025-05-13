@@ -17,10 +17,4 @@ func AddSupportSonarQube() {
 
 func AddSupportFortify() {
 	presenter.ShowStart("add support fortify")
-	/* message := command.PublishProject()
-	if message.Error != nil {
-		presenter.ShowError(message.Error)
-		return
-    }
-	presenter.ShowSuccess(message.Message) */
 }

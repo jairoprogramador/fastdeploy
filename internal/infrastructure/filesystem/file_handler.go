@@ -93,15 +93,6 @@ func CompletePermits(nameDirectory string) error {
 	return nil
 }
 
-/* func CreateDirectoryFilePath(filePath string) error {
-	exists, err := ExistsDirectory(filePath)
-	if !exists {
-		directory := GetDirectory(filePath)
-		return CreateDirectory(directory)
-	}
-	return err
-} */
-
 func GetDirectory(pathFile string) string {
 	return filepath.Dir(pathFile)
 }
