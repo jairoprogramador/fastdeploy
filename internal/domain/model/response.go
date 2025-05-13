@@ -1,7 +1,5 @@
 package model
 
-import "deploy/internal/domain/constant"
-
 type Response struct {
     Message string
     Error   error
@@ -32,19 +30,4 @@ func GetNewResponse() *Response {
 	}
 }
 
-func (s *Response) SetCommitHash(commitHash string) {
-	s.Data[constant.CommitHashKey] = commitHash
-}
-
-func (s *Response) SetImageId(imageId string) {
-	s.Data[constant.ImageKey] = imageId
-}
-
-func (s *Response) GetCommitHash() string {
-	return s.Data[constant.CommitHashKey]
-}
-
-func (s *Response) GetImageId() string {
-	return s.Data[constant.ImageKey]
-}
 

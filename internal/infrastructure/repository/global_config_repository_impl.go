@@ -3,13 +3,17 @@ package repository
 import (
 	"deploy/internal/domain/model"
 	"deploy/internal/domain/repository"
+	"deploy/internal/domain/constant"
+	"deploy/internal/domain/variable"
 	"deploy/internal/infrastructure/filesystem"
 	"sync"
 )
 
 // globalConfigRepositoryImpl implementa la interfaz GlobalConfigRepository
 // utilizando el patrón Singleton para asegurar una única instancia.
-type globalConfigRepositoryImpl struct{}
+type globalConfigRepositoryImpl struct{
+	fileRepository    repository.FileRepository
+}
 
 var (
 	instanceGlobalConfigRepository     repository.GlobalConfigRepository
@@ -20,7 +24,9 @@ var (
 // Implementa el patrón Singleton para asegurar una única instancia.
 func GetGlobalConfigRepository() repository.GlobalConfigRepository {
 	instanceOnceGlobalConfigRepository.Do(func() {
-		instanceGlobalConfigRepository = &globalConfigRepositoryImpl{}
+		instanceGlobalConfigRepository = &globalConfigRepositoryImpl {
+			fileRepository:    GetFileRepository(),
+		}
 	})
 	return instanceGlobalConfigRepository
 }
@@ -72,9 +78,12 @@ func (st *globalConfigRepositoryImpl) Create(globalConfig *model.GlobalConfig) e
 
 // getPathGlobalConfigFile obtiene la ruta completa del archivo de configuración global.
 func (st *globalConfigRepositoryImpl) getPathGlobalConfigFile() (string, error) {
-	homeDir, err := filesystem.GetHomeDirectory()
-	if err != nil {
-		return "", err
-	}
-	return filesystem.GetPath(homeDir, UserDirectory, GlobalConfigFile), nil
+	
+	store := variable.GetVariableStore()
+	store.AddVariableGlobal(constant.VAR_FASTDEPLOY_ROOT_DIRECTORY, constant.FastdeployRootDirectory)
+	store.AddVariableGlobal(constant.VAR_GLOBAL_CONFIG_FILE_NAME, constant.GlobalConfigFileName)
+
+	pathProjectFile := st.fileRepository.GetFullPathProjectFile(store)
+
+	return pathProjectFile, nil
 }

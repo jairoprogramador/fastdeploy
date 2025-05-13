@@ -5,6 +5,7 @@ import (
 	"deploy/internal/domain/constant"
 	"deploy/internal/domain/model"
 	"deploy/internal/domain/repository"
+	"deploy/internal/domain/variable"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -15,6 +16,7 @@ import (
 // Errores personalizados del servicio de proyecto
 var (
 	ErrProjectNotFound      = errors.New(constant.MsgProjectNotFound)
+	ErrProjectLoad          = errors.New(constant.MsgProjectLoad)
 	ErrProjectNotComplete   = errors.New(constant.MsgProjectNotComplete)
 	ErrProjectName          = errors.New(constant.MsgProjectName)
 	ErrProjectCreating      = errors.New(constant.MsgProjectCreating)
@@ -32,7 +34,9 @@ type ProjectServiceInterface interface {
 // ProjectService maneja la lógica de negocio relacionada con los proyectos
 type ProjectService struct {
 	projectRepo         repository.ProjectRepository
+	fileRepository      repository.FileRepository
 	globalConfigService GlobalConfigServiceInterface
+	store               *variable.VariableStore
 	muProjectService    sync.RWMutex
 }
 
@@ -43,14 +47,24 @@ var (
 
 // GetInstance retorna la instancia única del ProjectService
 func GetProjectService(projectRepo repository.ProjectRepository,
+	fileRepository repository.FileRepository,
 	globalConfigService GlobalConfigServiceInterface) ProjectServiceInterface {
 	instanceOnceProjectService.Do(func() {
 		instanceProjectService = &ProjectService{
 			projectRepo:         projectRepo,
+			fileRepository:      fileRepository,
+			store:               getStoreProject(),
 			globalConfigService: globalConfigService,
 		}
 	})
 	return instanceProjectService
+}
+
+func getStoreProject() *variable.VariableStore{
+	store := variable.GetVariableStore()
+	store.AddVariableGlobal(constant.VAR_PROJECT_ROOT_DIRECTORY, constant.ProjectRootDirectory)
+	store.AddVariableGlobal(constant.VAR_PROJECT_FILE_NAME, constant.ProjectFileName)
+	return store
 }
 
 // SetProjectRepository establece el repositorio de proyectos
@@ -81,13 +95,19 @@ func (s *ProjectService) Initialize() *model.Response {
 
 // Load carga el proyecto desde el repositorio
 func (s *ProjectService) Load() (model.Project, error) {
-	project, err := s.projectRepo.Load()
-	if err != nil {
+	pathProjectFile := s.fileRepository.GetFullPathProjectFile(s.store)
+	exists := s.fileRepository.ExistsFile(pathProjectFile)
+	if !exists {
 		return model.Project{}, ErrProjectNotFound
 	}
 
-	if err := s.validateProject(&project); err != nil {
-		return model.Project{}, err
+	project, err := s.projectRepo.Load(pathProjectFile)
+	if err != nil {
+		return model.Project{}, ErrProjectLoad
+	}
+
+	if !project.IsComplete() {
+		return model.Project{}, ErrProjectNotComplete
 	}
 
 	return project, nil
@@ -101,11 +121,7 @@ func (s *ProjectService) Create() (model.Project, error) {
 	}
 
 	projectName, err := s.projectRepo.GetProjectName()
-	if err != nil {
-		return model.Project{}, ErrProjectName
-	}
-
-	if projectName == "" {
+	if err != nil || projectName == "" {
 		return model.Project{}, ErrProjectName
 	}
 
@@ -113,26 +129,19 @@ func (s *ProjectService) Create() (model.Project, error) {
 
 	project := model.NewProject(globalConfig.Organization, projectId, projectName, globalConfig.TeamName)
 
-	if err := s.validateProject(project); err != nil {
-		return model.Project{}, err
+	if !project.IsComplete(){
+		return model.Project{}, ErrProjectNotComplete
 	}
 
-	if err := s.projectRepo.Create(project); err != nil {
+	pathProjectFile := s.fileRepository.GetFullPathProjectFile(s.store)
+	if err := s.fileRepository.DeleteFile(pathProjectFile); err != nil {
+		return model.Project{},err
+	}
+	if err := s.projectRepo.Create(pathProjectFile, project); err != nil {
 		return model.Project{}, ErrProjectCreating
 	}
 
 	return *project, nil
-}
-
-// validateProject valida que el proyecto tenga todos los campos requeridos
-func (s *ProjectService) validateProject(project *model.Project) error {
-	if project == nil {
-		return ErrInvalidProjectData
-	}
-	if !project.IsComplete() {
-		return ErrInvalidProjectData
-	}
-	return nil
 }
 
 // loadOrCreateGlobalConfig carga o crea la configuración global

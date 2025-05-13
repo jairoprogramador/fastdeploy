@@ -7,6 +7,7 @@ import (
 	"deploy/internal/domain/model"
 	"deploy/internal/domain/repository"
 	"deploy/internal/domain/template"
+	"deploy/internal/domain/variable"
 	"deploy/internal/infrastructure/filesystem"
 	"deploy/internal/infrastructure/tools"
 	"deploy/internal/interface/presenter"
@@ -52,6 +53,7 @@ type sonarqubeRepositoryImpl struct {
 	searchProjectAPI  string
 	projectStatusAPI  string
 	dockerRepo        repository.DockerRepository
+	fileRepository    repository.FileRepository
 }
 
 var (
@@ -76,6 +78,7 @@ func GetSonarqubeRepository() repository.SonarqubeRepository {
 			searchProjectAPI:  searchProjectAPI,
 			projectStatusAPI:  projectStatusAPI,
 			dockerRepo:        tools.NewDockerService(),
+			fileRepository:    GetFileRepository(),
 		}
 	})
 	return instanceSonarqubeRepository
@@ -129,7 +132,7 @@ func (s *sonarqubeRepositoryImpl) Add() *model.Response {
 			return model.GetNewResponseError(err)
 		}
 
-		if containerExists(containerIds) {
+		if len(containerIds) > 0 {
 			for _, containerId := range containerIds {
 				if err := s.dockerRepo.StartContainerIfStopped(containerId); err != nil {
 					return model.GetNewResponseError(err)
@@ -151,7 +154,7 @@ func (s *sonarqubeRepositoryImpl) validate() *model.Response {
 		return model.GetNewResponseError(err)
 	}
 
-	if containerExists(containerIds) {
+	if len(containerIds) > 0 {
 		urlsContainers, err :=  s.dockerRepo.GetUrlsContainer(containerIds)
 		if err != nil {
 			return model.GetNewResponseError(err)
@@ -166,7 +169,12 @@ func (s *sonarqubeRepositoryImpl) validate() *model.Response {
 		}
 
 		projectRepository := GetProjectRepository()
-		project, err := projectRepository.Load()
+		store := variable.GetVariableStore()
+		store.AddVariableGlobal(constant.VAR_PROJECT_ROOT_DIRECTORY, constant.ProjectRootDirectory)
+		store.AddVariableGlobal(constant.VAR_PROJECT_FILE_NAME, constant.ProjectFileName)
+
+		pathProjectFile := s.fileRepository.GetFullPathProjectFile(store)
+		project, err := projectRepository.Load(pathProjectFile)
 		if err != nil {
 			return model.GetNewResponseError(err)
 		}

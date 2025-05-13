@@ -68,6 +68,19 @@ func (st *fileRepositoryImpl) GetFullPathDockerfile(store *variable.VariableStor
 		projectName, dockerRootDirectory, dockerfileFileName)
 }
 
+func (st *fileRepositoryImpl) GetFullPathProjectFile(store *variable.VariableStore) string {
+	projectRootDirectory := store.Get(constant.VAR_PROJECT_ROOT_DIRECTORY)
+	projectFileName := store.Get(constant.VAR_PROJECT_FILE_NAME)
+
+	return filesystem.GetPath(projectRootDirectory, projectFileName)
+}
+
+func (st *fileRepositoryImpl) GetFullPathGlobalConfigFile(store *variable.VariableStore) string {
+	fastdeployRootDirectory := store.Get(constant.VAR_FASTDEPLOY_ROOT_DIRECTORY)
+	globalConfigFileName := store.Get(constant.VAR_GLOBAL_CONFIG_FILE_NAME)
+	return filesystem.GetPath(st.homeDirectory, fastdeployRootDirectory, globalConfigFileName)
+}
+
 func (st *fileRepositoryImpl) ExistsFile(path string) bool {
 	exists, _ := filesystem.ExistsFile(path)
 	return exists

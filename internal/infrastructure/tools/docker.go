@@ -198,59 +198,6 @@ func (d *DockerService) StartContainerIfStopped(containerID string) error {
 	return nil
 }
 
-// GetDockerfileContent obtiene el contenido de un Dockerfile a partir de una plantilla
-func (d *DockerService) GetDockerfileContent(param map[string]string, filePath string) (string, error) {
-	var err error
-	if dockerfileTemplate == nil {
-		dockerfileTemplate, err = template.ParseFiles(filePath)
-		if err != nil {
-			return "", err
-		}
-	}
-
-	params := DockerfileParams{
-		FileName:      param[constant.FileNameKey],
-		CommitMessage: param[constant.CommitMessageKey],
-		CommitHash:    param[constant.CommitHashKey],
-		CommitAuthor:  param[constant.CommitAuthorKey],
-		Team:          param[constant.TeamKey],
-		Organization:  param[constant.OrganizationKey],
-	}
-
-	var result strings.Builder
-	err = dockerfileTemplate.Execute(&result, params)
-	if err != nil {
-		return "", err
-	}
-
-	return result.String(), nil
-}
-
-// GetComposeContent obtiene el contenido de un archivo docker-compose a partir de una plantilla
-func (d *DockerService) GetComposeContent(param map[string]string, filePath string) (string, error) {
-	var err error
-	if composeTemplate == nil {
-		composeTemplate, err = template.ParseFiles(filePath)
-		if err != nil {
-			return "", err
-		}
-	}
-
-	params := DockerComposeParams{
-		NameDelivery: param[constant.NameDeliveryKey],
-		CommitHash:   param[constant.CommitHashKey],
-		Port:         param[constant.PortKey],
-	}
-
-	var result strings.Builder
-	err = composeTemplate.Execute(&result, params)
-	if err != nil {
-		return "", err
-	}
-
-	return result.String(), nil
-}
-
 // GetSonarqubeComposeContent obtiene el contenido de un archivo docker-compose para SonarQube
 func (d *DockerService) GetSonarqubeComposeContent(homeDir, templateData string) (string, error) {
 	type ComposeParams struct {

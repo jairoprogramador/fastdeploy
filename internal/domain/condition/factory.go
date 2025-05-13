@@ -14,7 +14,6 @@ var (
 	once     sync.Once
 )
 
-// GetConditionFactory retorna la instancia única del factory
 func GetConditionFactory() *ConditionFactory {
 	once.Do(func() {
 		instance = &ConditionFactory{}

@@ -14,6 +14,7 @@ const VAR_PROJECT_FILE_NAME = "projectFileName"
 
 const VAR_FASTDEPLOY_ROOT_DIRECTORY = "fastdeployRootDirectory"
 const VAR_DOCKER_ROOT_DIRECTORY = "dockerRootDirectory"
+const VAR_GLOBAL_CONFIG_FILE_NAME = "globalConfigFileName"
 
 const VAR_DOCKERFILE_FILE_NAME = "dockerfileFileName"
 const VAR_DOCKERFILE_TEMPLATE_FILE_NAME = "dockerfileTemplateFileName"

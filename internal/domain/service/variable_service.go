@@ -24,8 +24,7 @@ var (
 )
 
 func GetVariableService(projectService ProjectServiceInterface,
-	variableRepository repository.VariableRepository,
-	) VariableServiceInterface {
+	variableRepository repository.VariableRepository) VariableServiceInterface {
 	instanceOnceVariableService.Do(func() {
 		instanceVariableService = &VariableService {
 			projectService: projectService,

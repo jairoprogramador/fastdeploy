@@ -9,6 +9,8 @@ type FileRepository interface {
 	GetFullPathDockerCompose(store *variable.VariableStore) string
 	GetFullPathDockerfileTemplate(store *variable.VariableStore) string
 	GetFullPathDockerfile(store *variable.VariableStore) string
+	GetFullPathProjectFile(store *variable.VariableStore) string
+	GetFullPathGlobalConfigFile(store *variable.VariableStore) string
 	ExistsFile(path string) bool
 	DeleteFile(path string) error
 }

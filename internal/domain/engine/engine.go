@@ -24,7 +24,8 @@ func NewEngine() *Engine {
 	globalConfigService := service.GetGlobalConfigService(globalRepo)
 
 	projectRepo := repository.GetProjectRepository()
-	projectService := service.GetProjectService(projectRepo, globalConfigService)
+	fileRepository := repository.GetFileRepository()
+	projectService := service.GetProjectService(projectRepo, fileRepository, globalConfigService)
 
 	variableRepository := repository.GetVariableRepository()
 	variableService := service.GetVariableService(projectService, variableRepository)

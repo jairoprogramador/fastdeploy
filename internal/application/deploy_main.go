@@ -11,7 +11,8 @@ func IsInitialized() *dto.ResponseDto {
 	projectRepository := repository.GetProjectRepository()
 
 	globalConfigService := service.GetGlobalConfigService(globalConfigRepository)
-	projectService := service.GetProjectService(projectRepository, globalConfigService)
+	fileRepository := repository.GetFileRepository()
+	projectService := service.GetProjectService(projectRepository, fileRepository, globalConfigService)
 	
 	_, err := projectService.Load()
 	return dto.GetDtoWithError(err)

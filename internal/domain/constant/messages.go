@@ -3,6 +3,7 @@ package constant
 const MsgInitializeExists = "the project is already initialized"
 const MsgInitializeSuccess = "project initialized successfully"
 
+const MsgProjectLoad = "error load project"
 const MsgProjectNotFound = "error file project not found"
 const MsgProjectNotComplete = "project not complete"
 const MsgProjectName = "error getting project name"

@@ -11,7 +11,8 @@ func InitializeProject() *dto.ResponseDto {
 	projectRepository := repository.GetProjectRepository()
 
 	globalConfigService := service.GetGlobalConfigService(globalConfigRepository)
-	projectService := service.GetProjectService(projectRepository, globalConfigService)
+	fileRepository := repository.GetFileRepository()
+	projectService := service.GetProjectService(projectRepository, fileRepository, globalConfigService)
 
 	return dto.GetDtoWithModel(projectService.Initialize())
 }

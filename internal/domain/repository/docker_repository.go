@@ -13,8 +13,6 @@ type DockerRepository interface {
 	RestartContainer(containerID string) error
 	GetContainerStatus(containerID string) (string, error)
 	StartContainerIfStopped(containerID string) error
-	GetDockerfileContent(param map[string]string, filePath string) (string, error)
-	GetComposeContent(param map[string]string, filePath string) (string, error)
 	GetSonarqubeComposeContent(homeDir, templateData string) (string, error)
 	GetUrlsContainer(containerIDs []string) (string, error)
 	GetHostPort(containerID string) (string, error)
