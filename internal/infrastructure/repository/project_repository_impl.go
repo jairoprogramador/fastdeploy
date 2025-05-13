@@ -21,7 +21,7 @@ var (
 
 // NewProjectRepository crea una nueva instancia del repositorio de proyectos
 // utilizando el patrón Singleton
-func NewProjectRepository() repository.ProjectRepository {
+func GetProjectRepository() repository.ProjectRepository {
 	instanceOnceProjectRepository.Do(func() {
 		instanceProjectRepository = &projectRepositoryImpl{}
 	})
@@ -31,13 +31,11 @@ func NewProjectRepository() repository.ProjectRepository {
 // Load carga el proyecto desde el archivo YAML
 func (st *projectRepositoryImpl) Load() (model.Project, error) {
 	filePath := st.getPathProjectFile()
+	exists, err := filesystem.ExistsFile(filePath)
+	if !exists {
+		return model.Project{}, err
+	}
 	return filesystem.LoadFromYAML[model.Project](filePath)
-}
-
-// ExistsFile verifica si existe el archivo del proyecto
-func (st *projectRepositoryImpl) ExistsFile() bool {
-	filePath := st.getPathProjectFile()
-	return filesystem.FileExists(filePath)
 }
 
 // RemoveFile elimina el archivo del proyecto

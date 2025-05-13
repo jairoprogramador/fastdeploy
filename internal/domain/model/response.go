@@ -1,6 +1,6 @@
 package model
 
-import "deploy/internal/domain"
+import "deploy/internal/domain/constant"
 
 type Response struct {
     Message string
@@ -33,18 +33,18 @@ func GetNewResponse() *Response {
 }
 
 func (s *Response) SetCommitHash(commitHash string) {
-	s.Data[constants.CommitHashKey] = commitHash
+	s.Data[constant.CommitHashKey] = commitHash
 }
 
 func (s *Response) SetImageId(imageId string) {
-	s.Data[constants.ImageKey] = imageId
+	s.Data[constant.ImageKey] = imageId
 }
 
 func (s *Response) GetCommitHash() string {
-	return s.Data[constants.CommitHashKey]
+	return s.Data[constant.CommitHashKey]
 }
 
 func (s *Response) GetImageId() string {
-	return s.Data[constants.ImageKey]
+	return s.Data[constant.ImageKey]
 }
 

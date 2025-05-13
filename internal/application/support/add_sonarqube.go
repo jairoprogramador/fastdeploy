@@ -11,5 +11,5 @@ func AddSonarQube() *dto.ResponseDto {
 	sonarqubeService := service.GetSonarqubeService(sonarqubeRepository)
 
 	resp := sonarqubeService.Add()
-	return dto.GetNewResponseDtoFromModel(resp)
+	return dto.GetDtoWithModel(resp)
 }

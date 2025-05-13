@@ -48,7 +48,7 @@ func ExecuteCommand(command string, args ...string) (string, error) {
 }
 
 func ExecuteCommandWithContext(ctx context.Context, command string, args ...string) (string, error) {
-	output := fmt.Sprintf("command executed with context: '%s %s'", command, strings.Join(args, " "))
+	output := fmt.Sprintf("command executed: '%s %s'", command, strings.Join(args, " "))
 	fmt.Println(output)
 
 	var stdoutBuf, stderrBuf bytes.Buffer

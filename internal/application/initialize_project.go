@@ -7,11 +7,11 @@ import (
 )
 
 func InitializeProject() *dto.ResponseDto {
-	globalConfigRepository := repository.NewGlobalConfigRepository()
-	projectRepository := repository.NewProjectRepository()
+	globalConfigRepository := repository.GetGlobalConfigRepository()
+	projectRepository := repository.GetProjectRepository()
 
-	globalConfigService := service.NewGlobalConfigService(globalConfigRepository)
-	projectService := service.NewProjectService(projectRepository, globalConfigService)
+	globalConfigService := service.GetGlobalConfigService(globalConfigRepository)
+	projectService := service.GetProjectService(projectRepository, globalConfigService)
 
-	return dto.GetNewResponseDtoFromModel(projectService.Initialize())
+	return dto.GetDtoWithModel(projectService.Initialize())
 }

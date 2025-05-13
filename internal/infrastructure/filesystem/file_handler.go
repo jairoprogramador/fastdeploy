@@ -5,21 +5,41 @@ import (
 	"path/filepath"
 )
 
-func FileExists(filePath string) bool {
-	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		return false
+func ExistsFile(filePath string) (bool, error) {
+	fileInfo, err := os.Stat(filePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, err
 	}
-	return true
+	return !fileInfo.IsDir(), nil
 }
 
 func RemoveFile(filePath string) error {
-	if err := os.Remove(filePath); !os.IsNotExist(err) {
+	exists, err := ExistsFile(filePath)
+	if err != nil {
+		return err
+	}
+
+	if !exists {
+		return nil
+	}
+
+	if err := os.Remove(filePath); err != nil {
 		return err
 	}
 	return nil
 }
 
 func CreateFile(filePath string) (*os.File, error) {
+	dir := GetDirectory(filePath)
+	exists, _ := ExistsDirectory(dir)
+	if !exists {
+		if err := CreateDirectory(dir); err != nil {
+			return nil, err
+		}
+	}
 	return os.Create(filePath)
 }
 
@@ -34,12 +54,15 @@ func OpenFile(filePath string) (*os.File, error) {
 	return os.Open(filePath)
 }
 
-func DirectoryExists(filePath string) (bool, error) {
-	dir := filepath.Dir(filePath)
-	if _, err := os.Stat(dir); os.IsNotExist(err) {
+func ExistsDirectory(dirPath string) (bool, error) {
+	fileInfo, err := os.Stat(dirPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
 		return false, err
 	}
-	return true, nil
+	return fileInfo.IsDir(), nil
 }
 
 func CreateDirectory(nameDirectory string) error {
@@ -65,17 +88,17 @@ func CompletePermits(nameDirectory string) error {
 	return nil
 }
 
-func CreateDirectoryFilePath(filePath string) error {
-	exists, err := DirectoryExists(filePath)
+/* func CreateDirectoryFilePath(filePath string) error {
+	exists, err := ExistsDirectory(filePath)
 	if !exists {
 		directory := GetDirectory(filePath)
 		return CreateDirectory(directory)
 	}
 	return err
-}
+} */
 
-func GetDirectory(filePath string) string {
-	return filepath.Dir(filePath)
+func GetDirectory(pathFile string) string {
+	return filepath.Dir(pathFile)
 }
 
 func GetParentDirectory() (string, error) {

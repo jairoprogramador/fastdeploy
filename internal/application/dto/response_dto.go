@@ -7,16 +7,23 @@ type ResponseDto struct {
     Error   error
 }
 
-func GetNewResponseDtoFromModel(response *model.Response) *ResponseDto {
+func GetDtoWithModel(response *model.Response) *ResponseDto {
 	return &ResponseDto {
 		Message: response.Message,
 		Error: response.Error,
 	}
 }
 
-func GetNewResponseDto(message string) *ResponseDto {
+func GetDtoWithMessage(message string) *ResponseDto {
 	return &ResponseDto {
 		Message: message,
 		Error: nil,
+	}
+}
+
+func GetDtoWithError(err error) *ResponseDto {
+	return &ResponseDto {
+		Message: "",
+		Error: err,
 	}
 }

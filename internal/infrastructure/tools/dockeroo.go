@@ -2,7 +2,7 @@ package tools
 
 import (
 	"context"
-	constants "deploy/internal/domain"
+	"deploy/internal/domain/constant"
 	"strings"
 	"text/template"
 )
@@ -29,12 +29,12 @@ func GetDockerfileContents(param map[string]string, filePath string) (string, er
 	}
 
 	params := DockerfileParams{
-		FileName:      param[constants.FileNameKey],
-		CommitMessage: param[constants.CommitMessageKey],
-		CommitHash:    param[constants.CommitHashKey],
-		CommitAuthor:  param[constants.CommitAuthorKey],
-		Team:          param[constants.TeamKey],
-		Organization:  param[constants.OrganizationKey],
+		FileName:      param[constant.FileNameKey],
+		CommitMessage: param[constant.CommitMessageKey],
+		CommitHash:    param[constant.CommitHashKey],
+		CommitAuthor:  param[constant.CommitAuthorKey],
+		Team:          param[constant.TeamKey],
+		Organization:  param[constant.OrganizationKey],
 	}
 
 	var result strings.Builder
@@ -56,9 +56,9 @@ func GetComposeContents(param map[string]string, filePath string) (string, error
 	}
 
 	params := DockerParams{
-		NameDelivery: param[constants.NameDeliveryKey],
-		CommitHash:   param[constants.CommitHashKey],
-		Port:         param[constants.PortKey],
+		NameDelivery: param[constant.NameDeliveryKey],
+		CommitHash:   param[constant.CommitHashKey],
+		Port:         param[constant.PortKey],
 	}
 
 	tmpl, err := template.ParseFiles(filePath)

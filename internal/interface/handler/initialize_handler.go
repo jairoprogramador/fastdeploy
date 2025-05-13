@@ -7,11 +7,11 @@ import (
 
 func Initialize() {
 	presenter.ShowBanner()
-	message := command.InitializeProject()
+	dto := command.InitializeProject()
 
-	if message.Error != nil {
-		presenter.ShowError(message.Error)
+	if dto.Error != nil {
+		presenter.ShowError(dto.Error)
 		return
     }
-	presenter.ShowSuccess(message.Message)
+	presenter.ShowSuccess(dto.Message)
 }

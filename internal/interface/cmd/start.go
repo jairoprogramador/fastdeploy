@@ -11,7 +11,7 @@ func StartCmd() *cobra.Command {
 		Use:   "start",
 		Short: "Publicar aplicación",
 		Run:  func(cmd *cobra.Command, args []string) {
-			handler.Publish()
+			handler.StartPublish()
 		},
 	}
 }

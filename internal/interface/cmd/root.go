@@ -10,7 +10,7 @@ var rootCmd *cobra.Command
 
 func Execute() {
 	AddCommand(InitCmd())
-	AddCommand(PublishCmd())
+	AddCommand(StartCmd())
 	AddCommand(AddCmd())
 
 	if err := RootCmd().Execute(); err != nil {

@@ -1,12 +1,16 @@
 package model
 
+import (
+	"deploy/internal/domain/constant"
+)
+
 // Project representa la estructura de un proyecto dentro del sistema.
 // Contiene información relevante para la identificación y configuración
 // del proyecto así como sus dependencias.
 type Project struct {
 	Organization string                `yaml:"organization"`
 	ProjectID    string                `yaml:"projectId"`
-	ProjectName  string                `yaml:"projectName"`
+	Name         string                `yaml:"name"`
 	Version      string                `yaml:"version"`
 	TeamName     string                `yaml:"teamName"`
 	//Dependencies map[string]Dependency `yaml:"dependencies"`
@@ -14,19 +18,19 @@ type Project struct {
 
 // NewProject crea una nueva instancia de Project con valores predeterminados.
 // Si organization o teamName están vacíos, se utilizan valores por defecto.
-func NewProject(organization, projectID, projectName, teamName string) *Project {
+func NewProject(organization, projectID, name, teamName string) *Project {
 	if organization == "" {
-		organization = DefaultOrganization
+		organization = constant.DefaultOrganization
 	}
 	if teamName == "" {
-		teamName = DefaultTeamName
+		teamName = constant.DefaultTeamName
 	}
 
 	return &Project{
 		Organization: organization,
 		ProjectID:    projectID,
-		ProjectName:  projectName,
-		Version:      DefaultVersion,
+		Name:  		  name,
+		Version:      constant.DefaultVersion,
 		TeamName:     teamName,
 		//Dependencies: make(map[string]Dependency),
 	}
@@ -40,5 +44,5 @@ func NewProject(organization, projectID, projectName, teamName string) *Project 
 
 func (p *Project) IsComplete() bool {
 	return p.Organization != "" && p.ProjectID != "" &&
-		p.ProjectName != "" && p.Version != ""
+		p.Name != "" && p.Version != ""
 }

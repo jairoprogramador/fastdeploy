@@ -1,5 +1,9 @@
 package model
 
+import (
+	"deploy/internal/domain/constant"
+)
+
 type GlobalConfig struct {
 	Organization string `yaml:"organization"`
 	TeamName     string `yaml:"teamName"`
@@ -7,10 +11,10 @@ type GlobalConfig struct {
 
 func NewGlobalConfig(organization, teamName string) *GlobalConfig {
 	if organization == "" {
-		organization = DefaultOrganization
+		organization = constant.DefaultOrganization
 	}
 	if teamName == "" {
-		teamName = DefaultTeamName
+		teamName = constant.DefaultTeamName
 	}
 	return &GlobalConfig{
 		Organization: organization,
@@ -20,8 +24,8 @@ func NewGlobalConfig(organization, teamName string) *GlobalConfig {
 
 func NewGlobalConfigDefault() *GlobalConfig {
 	return &GlobalConfig{
-		Organization: DefaultOrganization,
-		TeamName:     DefaultTeamName,
+		Organization: constant.DefaultOrganization,
+		TeamName:     constant.DefaultTeamName,
 	}
 }
 

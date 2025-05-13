@@ -3,7 +3,7 @@ package repository
 import (
 	"bytes"
 	"context"
-	constants "deploy/internal/domain"
+	"deploy/internal/domain/constant"
 	"deploy/internal/domain/model"
 	"deploy/internal/domain/repository"
 	"deploy/internal/domain/template"
@@ -107,13 +107,13 @@ func (s *sonarqubeRepositoryImpl) Add() *model.Response {
 	}
 
 	sonarqubeComposePath := filepath.Join(homeDir, ".fastdeploy", "sonarqube", "compose.yaml")
-	existsDockerfile := filesystem.FileExists(sonarqubeComposePath)
+	existsDockerfile, _ := filesystem.ExistsFile(sonarqubeComposePath)
 
 	if !existsDockerfile {
-		if err := filesystem.CreateDirectoryFilePath(sonarqubeComposePath); err != nil {
+		/* if err := filesystem.CreateDirectoryFilePath(sonarqubeComposePath); err != nil {
 			return model.GetNewResponseError(err)
 		}
-
+ */
 		composeContent, err := s.dockerRepo.GetSonarqubeComposeContent(homeDir, template.ComposeSonarqubeTemplate)
 		if err != nil {
 			return model.GetNewResponseError(err)
@@ -169,7 +169,7 @@ func (s *sonarqubeRepositoryImpl) validate() *model.Response {
 			return model.GetNewResponseError(err)
 		}
 
-		projectRepository := NewProjectRepository()
+		projectRepository := GetProjectRepository()
 		project, err := projectRepository.Load()
 		if err != nil {
 			return model.GetNewResponseError(err)
@@ -180,7 +180,7 @@ func (s *sonarqubeRepositoryImpl) validate() *model.Response {
 			return model.GetNewResponseError(err)
 		}
 		if !exists {
-			err = s.CreateProject(project.ProjectID, project.ProjectName)
+			err = s.CreateProject(project.ProjectID, project.Name)
 			if err != nil {
 				return model.GetNewResponseError(err)
 			}
@@ -198,7 +198,7 @@ func (s *sonarqubeRepositoryImpl) validate() *model.Response {
 		urlsContainers = urlsContainers + " user=" + s.user + " password=" + s.password
 		return model.GetNewResponseMessage(urlsContainers)
 	} else {
-		return model.GetNewResponseError(fmt.Errorf(constants.MessageErrorCreatingSonarqube))
+		return model.GetNewResponseError(fmt.Errorf(constant.MessageErrorCreatingSonarqube))
 	}
 }
 

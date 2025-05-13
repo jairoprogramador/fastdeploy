@@ -2,7 +2,7 @@ package service
 
 import (
 	"crypto/sha256"
-	constants "deploy/internal/domain"
+	"deploy/internal/domain/constant"
 	"deploy/internal/domain/model"
 	"deploy/internal/domain/repository"
 	"encoding/hex"
@@ -14,12 +14,12 @@ import (
 
 // Errores personalizados del servicio de proyecto
 var (
-	ErrProjectNotFound      = errors.New(constants.MsgProjectNotFound)
-	ErrProjectNotComplete   = errors.New(constants.MsgProjectNotComplete)
-	ErrProjectName          = errors.New(constants.MsgProjectName)
-	ErrProjectCreating      = errors.New(constants.MsgProjectCreating)
-	ErrInvalidProjectData   = errors.New(constants.MsgProjectInvalidData)
-	ErrGlobalConfigCreating = errors.New(constants.MsgGlobalConfigCreating)
+	ErrProjectNotFound      = errors.New(constant.MsgProjectNotFound)
+	ErrProjectNotComplete   = errors.New(constant.MsgProjectNotComplete)
+	ErrProjectName          = errors.New(constant.MsgProjectName)
+	ErrProjectCreating      = errors.New(constant.MsgProjectCreating)
+	ErrInvalidProjectData   = errors.New(constant.MsgProjectInvalidData)
+	ErrGlobalConfigCreating = errors.New(constant.MsgGlobalConfigCreating)
 )
 
 type ProjectServiceInterface interface {
@@ -33,8 +33,7 @@ type ProjectServiceInterface interface {
 type ProjectService struct {
 	projectRepo         repository.ProjectRepository
 	globalConfigService GlobalConfigServiceInterface
-	mu                  sync.RWMutex
-	project             *model.Project
+	muProjectService    sync.RWMutex
 }
 
 var (
@@ -43,7 +42,7 @@ var (
 )
 
 // GetInstance retorna la instancia única del ProjectService
-func NewProjectService(projectRepo repository.ProjectRepository,
+func GetProjectService(projectRepo repository.ProjectRepository,
 	globalConfigService GlobalConfigServiceInterface) ProjectServiceInterface {
 	instanceOnceProjectService.Do(func() {
 		instanceProjectService = &ProjectService{
@@ -56,8 +55,8 @@ func NewProjectService(projectRepo repository.ProjectRepository,
 
 // SetProjectRepository establece el repositorio de proyectos
 func (s *ProjectService) SetProjectRepository(projectRepo repository.ProjectRepository) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	s.muProjectService.Lock()
+	defer s.muProjectService.Unlock()
 	s.projectRepo = projectRepo
 }
 
@@ -71,28 +70,17 @@ func (s *ProjectService) Initialize() *model.Response {
 				return model.GetNewResponseError(err)
 			}
 			if !project.IsComplete() {
-				return model.GetNewResponseMessage(constants.MsgProjectNotComplete)
+				return model.GetNewResponseMessage(constant.MsgProjectNotComplete)
 			}
-			return model.GetNewResponseMessage(constants.MsgInitializeSuccess)
+			return model.GetNewResponseMessage(constant.MsgInitializeSuccess)
 		}
 		return model.GetNewResponseError(err)
 	}
-	return model.GetNewResponseMessage(constants.MsgInitializeExists)
+	return model.GetNewResponseMessage(constant.MsgInitializeExists)
 }
 
 // Load carga el proyecto desde el repositorio
 func (s *ProjectService) Load() (model.Project, error) {
-	s.mu.RLock()
-	if s.project != nil {
-		defer s.mu.RUnlock()
-		return *s.project, nil
-	}
-	s.mu.RUnlock()
-
-	if !s.projectRepo.ExistsFile() {
-		return model.Project{}, ErrProjectNotFound
-	}
-
 	project, err := s.projectRepo.Load()
 	if err != nil {
 		return model.Project{}, ErrProjectNotFound
@@ -101,10 +89,6 @@ func (s *ProjectService) Load() (model.Project, error) {
 	if err := s.validateProject(&project); err != nil {
 		return model.Project{}, err
 	}
-
-	s.mu.Lock()
-	s.project = &project
-	s.mu.Unlock()
 
 	return project, nil
 }
@@ -136,10 +120,6 @@ func (s *ProjectService) Create() (model.Project, error) {
 	if err := s.projectRepo.Create(project); err != nil {
 		return model.Project{}, ErrProjectCreating
 	}
-
-	s.mu.Lock()
-	s.project = project
-	s.mu.Unlock()
 
 	return *project, nil
 }
