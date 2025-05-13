@@ -40,11 +40,16 @@ func CreateFile(filePath string) (*os.File, error) {
 			return nil, err
 		}
 	}
-	return os.Create(filePath)
+	return os.OpenFile(filePath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
 }
 
 func WriteFile(filePath, content string) error {
-	if err := os.WriteFile(filePath, []byte(content), 0644); err != nil {
+	file, err := CreateFile(filePath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	if _, err := file.WriteString(content); err != nil {
 		return err
 	}
 	return nil
@@ -65,8 +70,8 @@ func ExistsDirectory(dirPath string) (bool, error) {
 	return fileInfo.IsDir(), nil
 }
 
-func CreateDirectory(nameDirectory string) error {
-	if err := os.MkdirAll(nameDirectory, 0755); err != nil {
+func CreateDirectory(dirPath string) error {
+	if err := os.MkdirAll(dirPath, 0755); err != nil {
 		return err
 	}
 	return nil

@@ -61,7 +61,6 @@ func (e *Engine) Execute(ctx context.Context, deployment *model.Deployment) erro
 			return fmt.Errorf("error en paso %s: %v", step.Name, err)
 		}
 	}
-
 	return nil
 }
 

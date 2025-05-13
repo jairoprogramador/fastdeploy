@@ -26,6 +26,7 @@ type DockerComposeData struct {
 	NameDelivery string
 	CommitHash   string
 	Port         string
+	Version      string
 }
 
 type containerRepositoryImpl struct{}
@@ -50,7 +51,7 @@ func (st *containerRepositoryImpl) CreateFile(pathFile string, content string) e
 	return nil
 }
 
-func (st *containerRepositoryImpl) CreateDockerfile(pathFile, pathTemplate string, store variable.VariableStore) error {
+func (st *containerRepositoryImpl) CreateDockerfile(pathFile, pathTemplate string, store *variable.VariableStore) error {
 	directoryTarget := "target"
 	exists, err := filesystem.ExistsDirectory(directoryTarget)
 	if err != nil {
@@ -88,7 +89,7 @@ func (st *containerRepositoryImpl) CreateDockerfile(pathFile, pathTemplate strin
 	return st.CreateFile(pathFile, result.String())
 }
 
-func (st *containerRepositoryImpl) CreateDockerCompose(pathFile, pathTemplate string, store variable.VariableStore) error { 
+func (st *containerRepositoryImpl) CreateDockerCompose(pathFile, pathTemplate string, store *variable.VariableStore) error { 
 	dockerComposeTemplate, err := template.ParseFiles(pathTemplate)
 	if err != nil {
 		return err
@@ -97,6 +98,7 @@ func (st *containerRepositoryImpl) CreateDockerCompose(pathFile, pathTemplate st
 	params := DockerComposeData{
 		NameDelivery: store.Get(constant.VAR_PROJECT_NAME),
 		CommitHash:   store.Get(constant.VAR_COMMIT_HASH),
+		Version:      store.Get(constant.VAR_PROJECT_VERSION),
 		Port:         st.getPort(),
 	}
 

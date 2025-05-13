@@ -3,7 +3,7 @@ package executor
 import (
 	"context"
 	"deploy/internal/domain/model"
-	"deploy/internal/domain/variable"
+	//"deploy/internal/domain/variable"
 	"time"
 )
 
@@ -14,7 +14,7 @@ type StepExecutor interface {
 type BaseExecutor struct {
 	//commandRunner CommandRunner
 	//metrics       MetricsCollector
-	variables     variable.VariableStore
+	//variables     variable.VariableStore
 }
 
 func (e *BaseExecutor) prepareContext(ctx context.Context, step model.Step) (context.Context, context.CancelFunc) {

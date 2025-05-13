@@ -112,7 +112,7 @@ func (v *DeploymentValidator) validateSteps(steps []model.Step) error {
 
 func (v *DeploymentValidator) isValidStepType(stepType string) bool {
 	validTypes := map[string]bool{
-		//TypeCheck:   true,
+		TypeContainer: true,
 		TypeCommand: true,
 		//TypeHttp:    true,
 	}

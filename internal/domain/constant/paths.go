@@ -1,6 +1,8 @@
 package constant
 
 const DockerRootDirectory = "docker"
+const FastdeployRootDirectory = ".fastdeploy"
+
 const ProjectRootDirectory = ".deploy"
 const ProjectFileName = "deploy.yml"
 

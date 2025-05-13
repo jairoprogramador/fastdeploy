@@ -14,6 +14,7 @@ import (
 
 type ContainerExecutor struct {
 	BaseExecutor
+	variables *variable.VariableStore
 	commandRunner    CommandRunner
 	conditionFactory *condition.ConditionFactory
 	containerRepository irepository.ContainerRepository
@@ -22,10 +23,12 @@ type ContainerExecutor struct {
 }
 
 func GetContainerExecutor(variables *variable.VariableStore) *ContainerExecutor {
+
 	return &ContainerExecutor {
 		BaseExecutor: BaseExecutor {
-			variables: *variables,
+			//variables: *variables,
 		},
+		variables: variables,
 		commandRunner:    GetCommandRunner(),
 		conditionFactory: condition.GetConditionFactory(),
 		containerRepository: repository.GetContainerRepository(),
@@ -59,10 +62,10 @@ func (e *ContainerExecutor) Execute(ctx context.Context, step model.Step) error 
 	})
 }
 
-func (e *ContainerExecutor) Delete(ctx context.Context) error{
+func (e *ContainerExecutor) Delete(ctx context.Context) error {
 	pathDockerCompose := e.fileRepository.GetFullPathDockerCompose(e.variables)
     if e.fileRepository.ExistsFile(pathDockerCompose) {
-		command := fmt.Sprintf("docker compose -f %s down -rmi local --remove-orphans -v", pathDockerCompose)
+		command := fmt.Sprintf("docker compose -f %s down --rmi local --remove-orphans -v", pathDockerCompose)
         _, err := e.commandRunner.Run(ctx, command)
 		if err != nil {
 			return err
@@ -90,7 +93,6 @@ func (e *ContainerExecutor) CreateImage(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	
 	return e.createImagenFromDockerfile(ctx, pathDockerfile)
 }
 

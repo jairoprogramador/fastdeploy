@@ -2,7 +2,7 @@ package template
 
 const ComposeTemplate = `services:
   {{.NameDelivery}}:
-    image: {{.CommitHash}}
+    image: {{.CommitHash}}:{{.Version}}
     container_name: {{.NameDelivery}}
     ports:
       - "{{.Port}}:8080"

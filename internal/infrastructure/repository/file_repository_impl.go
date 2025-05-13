@@ -28,40 +28,44 @@ func GetFileRepository() repository.FileRepository {
 	return instanceFileRepository
 }
 
-func (st *fileRepositoryImpl) GetFullPathDockerComposeTemplate(store variable.VariableStore) string {
-	projectName := store.Get(constant.VAR_PROJECT_NAME)
-	projectName = strings.ReplaceAll(projectName, " ", "")
+func (st *fileRepositoryImpl) GetFullPathDockerComposeTemplate(store *variable.VariableStore) string {
+	projectName := st.GetProjectName(store)
+	fastdeployRootDirectory := store.Get(constant.VAR_FASTDEPLOY_ROOT_DIRECTORY)
 	dockerRootDirectory := store.Get(constant.VAR_DOCKER_ROOT_DIRECTORY)
 	dockerComposeTemplateFileName := store.Get(constant.VAR_DOCKERCOMPOSE_TEMPLATE_FILE_NAME)
 
-	return filesystem.GetPath(st.homeDirectory, projectName, dockerRootDirectory, dockerComposeTemplateFileName)
+	return filesystem.GetPath(st.homeDirectory, fastdeployRootDirectory,
+		projectName, dockerRootDirectory, dockerComposeTemplateFileName)
 }
 
-func (st *fileRepositoryImpl) GetFullPathDockerCompose(store variable.VariableStore) string {
-	projectName := store.Get(constant.VAR_PROJECT_NAME)
-	projectName = strings.ReplaceAll(projectName, " ", "")
+func (st *fileRepositoryImpl) GetFullPathDockerCompose(store *variable.VariableStore) string {
+	projectName := st.GetProjectName(store)
+	fastdeployRootDirectory := store.Get(constant.VAR_FASTDEPLOY_ROOT_DIRECTORY)
 	dockerRootDirectory := store.Get(constant.VAR_DOCKER_ROOT_DIRECTORY)
 	dockerComposeFileName := store.Get(constant.VAR_DOCKERCOMPOSE_FILE_NAME)
 
-	return filesystem.GetPath(st.homeDirectory, projectName, dockerRootDirectory, dockerComposeFileName)
+	return filesystem.GetPath(st.homeDirectory, fastdeployRootDirectory,
+		projectName, dockerRootDirectory, dockerComposeFileName)
 }
 
-func (st *fileRepositoryImpl) GetFullPathDockerfileTemplate(store variable.VariableStore) string {
-	projectName := store.Get(constant.VAR_PROJECT_NAME)
-	projectName = strings.ReplaceAll(projectName, " ", "")
+func (st *fileRepositoryImpl) GetFullPathDockerfileTemplate(store *variable.VariableStore) string {
+	projectName := st.GetProjectName(store)
+	fastdeployRootDirectory := store.Get(constant.VAR_FASTDEPLOY_ROOT_DIRECTORY)
 	dockerRootDirectory := store.Get(constant.VAR_DOCKER_ROOT_DIRECTORY)
 	dockerfileTemplateFileName := store.Get(constant.VAR_DOCKERFILE_TEMPLATE_FILE_NAME)
-
-	return filesystem.GetPath(st.homeDirectory, projectName, dockerRootDirectory, dockerfileTemplateFileName)
+	
+	return filesystem.GetPath(st.homeDirectory, fastdeployRootDirectory, 
+		projectName, dockerRootDirectory, dockerfileTemplateFileName)
 }
 
-func (st *fileRepositoryImpl) GetFullPathDockerfile(store variable.VariableStore) string {
-	projectName := store.Get(constant.VAR_PROJECT_NAME)
-	projectName = strings.ReplaceAll(projectName, " ", "")
+func (st *fileRepositoryImpl) GetFullPathDockerfile(store *variable.VariableStore) string {
+	projectName := st.GetProjectName(store)
+	fastdeployRootDirectory := store.Get(constant.VAR_FASTDEPLOY_ROOT_DIRECTORY)
 	dockerRootDirectory := store.Get(constant.VAR_DOCKER_ROOT_DIRECTORY)
 	dockerfileFileName := store.Get(constant.VAR_DOCKERFILE_FILE_NAME)
 
-	return filesystem.GetPath(st.homeDirectory, projectName, dockerRootDirectory, dockerfileFileName)
+	return filesystem.GetPath(st.homeDirectory, fastdeployRootDirectory,
+		projectName, dockerRootDirectory, dockerfileFileName)
 }
 
 func (st *fileRepositoryImpl) ExistsFile(path string) bool {
@@ -71,6 +75,11 @@ func (st *fileRepositoryImpl) ExistsFile(path string) bool {
 
 func (st *fileRepositoryImpl) DeleteFile(path string) error {
 	return filesystem.RemoveFile(path)
+}
+
+func (st *fileRepositoryImpl) GetProjectName(store *variable.VariableStore) string {
+	projectName := store.Get(constant.VAR_PROJECT_NAME)
+	return strings.ReplaceAll(projectName, " ", "")
 }
 
 

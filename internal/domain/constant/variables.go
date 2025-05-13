@@ -12,6 +12,7 @@ const VAR_PROJECT_TEAM = "projectTeam"
 const VAR_PROJECT_ROOT_DIRECTORY = "projectRootDirectory"
 const VAR_PROJECT_FILE_NAME = "projectFileName"
 
+const VAR_FASTDEPLOY_ROOT_DIRECTORY = "fastdeployRootDirectory"
 const VAR_DOCKER_ROOT_DIRECTORY = "dockerRootDirectory"
 
 const VAR_DOCKERFILE_FILE_NAME = "dockerfileFileName"

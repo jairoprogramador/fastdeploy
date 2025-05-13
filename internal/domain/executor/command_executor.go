@@ -12,13 +12,15 @@ type CommandExecutor struct {
 	BaseExecutor
 	commandRunner    CommandRunner
 	conditionFactory *condition.ConditionFactory
+	variables *variable.VariableStore
 }
 
 func GetCommandExecutor(variables *variable.VariableStore) *CommandExecutor {
 	return &CommandExecutor {
 		BaseExecutor: BaseExecutor {
-			variables: *variables,
+			//variables: *variables,
 		},
+		variables: variables,
 		commandRunner:    GetCommandRunner(),
 		conditionFactory: condition.GetConditionFactory(),
 	}
