@@ -68,7 +68,7 @@ func (e *Engine) executeStep(ctx context.Context, step model.Step) error {
 	}
 
 	// Obtener ejecutor para el tipo de paso
-	executor, exists := e.GetExecutor(step.Type)
+	executor, exists := e.getExecutor(step.Type)
 	if !exists {
 		return fmt.Errorf("tipo de paso no soportado: %s", step.Type)
 	}
@@ -119,7 +119,7 @@ func (e *Engine) RegisterExecutor(stepType string, executor executor.StepExecuto
 	e.executors[stepType] = executor
 }
 
-func (e *Engine) GetExecutor(stepType string) (executor.StepExecutor, bool) {
+func (e *Engine) getExecutor(stepType string) (executor.StepExecutor, bool) {
 	e.muEngine.RLock() // Bloqueo compartido para lectura
 	defer e.muEngine.RUnlock()
 	executorRegistered, exists := e.executors[stepType]

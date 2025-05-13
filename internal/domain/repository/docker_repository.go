@@ -6,7 +6,6 @@ type DockerRepository interface {
 	GetImageID(hashCommit string) (string, error)
 	GetContainersID(imageID string) ([]string, error)
 	SonarScanner(token, projectKey, projectName, projectPath, cacheDir, tmpDir, scannerWorkDir, sourcePath, testPath, binaryPath, testBinaryPath string) error
-	GetPortContainer(containerId string) (string, error)
 	BuildImage(hashCommit string, filePath string) error
 	BuildContainer(filePath string) error
 	StartContainer(containerID string) error

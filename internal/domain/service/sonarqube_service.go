@@ -13,7 +13,6 @@ type SonarqubeService struct {
 var (
     instanceSonarqubeService     *SonarqubeService
     instanceOnceSonarqubeService sync.Once
-    mutexSonarqubeService        sync.Mutex
 )
 
 func GetSonarqubeService(sonarqubeRepo repository.SonarqubeRepository) *SonarqubeService {
@@ -23,13 +22,6 @@ func GetSonarqubeService(sonarqubeRepo repository.SonarqubeRepository) *Sonarqub
         }
     })
     return instanceSonarqubeService
-}
-
-func (s *SonarqubeService) SetSonarqubeService(sonarqubeRepo repository.SonarqubeRepository) {
-    mutexSonarqubeService.Lock()
-    defer mutexSonarqubeService.Unlock()
-    
-    s.sonarqubeRepo = sonarqubeRepo
 }
 
 func (s *SonarqubeService) Add() *model.Response {

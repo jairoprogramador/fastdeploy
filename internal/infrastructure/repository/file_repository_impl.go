@@ -75,11 +75,11 @@ func (st *fileRepositoryImpl) GetFullPathProjectFile(store *variable.VariableSto
 	return filesystem.GetPath(projectRootDirectory, projectFileName)
 }
 
-func (st *fileRepositoryImpl) GetFullPathGlobalConfigFile(store *variable.VariableStore) string {
+/* func (st *fileRepositoryImpl) GetFullPathGlobalConfigFile(store *variable.VariableStore) string {
 	fastdeployRootDirectory := store.Get(constant.VAR_FASTDEPLOY_ROOT_DIRECTORY)
 	globalConfigFileName := store.Get(constant.VAR_GLOBAL_CONFIG_FILE_NAME)
 	return filesystem.GetPath(st.homeDirectory, fastdeployRootDirectory, globalConfigFileName)
-}
+} */
 
 func (st *fileRepositoryImpl) ExistsFile(path string) bool {
 	exists, _ := filesystem.ExistsFile(path)
