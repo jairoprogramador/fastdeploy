@@ -126,7 +126,7 @@ func (e *ContainerExecutor) CreateContainer(ctx context.Context) error {
 		return err
 	}
 	
-	return e.createImagenFromDockerfile(ctx, pathDockerCompose)
+	return e.createContainerFromDockerCompose(ctx, pathDockerCompose)
 }
 
 func (e *ContainerExecutor) createContainerFromDockerCompose(ctx context.Context, pathDockerCompose string) error {
