@@ -1,5 +1,5 @@
 package repository
-
+/* 
 import (
 	"bytes"
 	"context"
@@ -402,3 +402,4 @@ func (s *sonarqubeRepositoryImpl) sendRequest(method, url string, data url.Value
 
 	return body, resp.StatusCode, nil
 }
+ */

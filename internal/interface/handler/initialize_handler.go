@@ -7,7 +7,7 @@ import (
 
 func Initialize() {
 	presenter.ShowBanner()
-	dto := command.InitializeProject()
+	dto := application.Initialize()
 
 	if dto.Error != nil {
 		presenter.ShowError(dto.Error)

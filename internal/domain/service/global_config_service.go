@@ -4,74 +4,83 @@ import (
     "deploy/internal/domain/constant"
 	"deploy/internal/domain/model"
 	"deploy/internal/domain/repository"
+	"deploy/internal/domain/router"
 	"errors"
 	"sync"
 )
 
-// Errores personalizados del servicio de proyecto
 var (
 	ErrGlobalConfigNotFound    = errors.New(constant.MsgGlobalConfigNotFound)
-    ErrGlobalConfigCannoBeNull = errors.New(constant.MsgGlobalConfigCannoBeNull)
+    ErrGlobalConfigCanNotBeNull = errors.New(constant.MsgGlobalConfigCannoBeNull)
 )
 
-// GlobalConfigServiceInterface define la interfaz para el servicio de configuración global
 type GlobalConfigServiceInterface interface {
 	Load() (model.GlobalConfig, error)
-	Create(globalConfig *model.GlobalConfig) (model.GlobalConfig, error)
-	SetGlobalConfigRepository(globalConfigRepo repository.GlobalConfigRepository)
+	Create(globalConfig *model.GlobalConfig) error
 }
 
-// GlobalConfigService maneja la lógica de negocio para la configuración global
-type GlobalConfigService struct {
-	globalConfigRepo 			repository.GlobalConfigRepository
+type globalConfigService struct {
+	yamlRepository 			repository.YamlRepository
+	fileRepository      repository.FileRepository
+	router 						*router.Router
     mutexGlobalConfigService 	sync.RWMutex
 }
 
 var (
-	instanceGlobalConfigService     *GlobalConfigService
+	instanceGlobalConfigService     *globalConfigService
 	instanceOnceGlobalConfigService sync.Once
 )
 
-// NewGlobalConfigService crea una nueva instancia del servicio de configuración global
-func GetGlobalConfigService(globalConfigRepo repository.GlobalConfigRepository) GlobalConfigServiceInterface {
+func GetGlobalConfigService(
+	yamlRepository repository.YamlRepository,
+	fileRepository repository.FileRepository) GlobalConfigServiceInterface {
+	
 	instanceOnceGlobalConfigService.Do(func() {
-		instanceGlobalConfigService = &GlobalConfigService{
-			globalConfigRepo: globalConfigRepo,
+		instanceGlobalConfigService = &globalConfigService{
+			yamlRepository: yamlRepository,
+			fileRepository: fileRepository,
+			router: router.GetRouter(),
 		}
 	})
 	return instanceGlobalConfigService
 }
 
-// SetGlobalConfigRepository establece el repositorio de configuración global
-func (s *GlobalConfigService) SetGlobalConfigRepository(globalConfigRepo repository.GlobalConfigRepository) {
+func (s *globalConfigService) SetYamlRepository(yamlRepository repository.YamlRepository) {
 	s.mutexGlobalConfigService.Lock()
 	defer s.mutexGlobalConfigService.Unlock()
-	s.globalConfigRepo = globalConfigRepo
+	s.yamlRepository = yamlRepository
 }
 
-// Load carga la configuración global desde el repositorio
-func (s *GlobalConfigService) Load() (model.GlobalConfig, error) {
-	if exists := s.globalConfigRepo.ExistsFile(); !exists {
+func (s *globalConfigService) Load() (model.GlobalConfig, error) {
+	path := s.router.GetFullPathGlobalConfigFile()
+
+	if exists := s.fileRepository.ExistsFile(path); !exists {
 		return model.GlobalConfig{}, ErrGlobalConfigNotFound
 	}
 
-	globalConfig, err := s.globalConfigRepo.Load()
+	var globalConfig model.GlobalConfig
+	err := s.yamlRepository.Load(path, &globalConfig)
 	if err != nil {
-		return model.GlobalConfig{}, ErrGlobalConfigNotFound
+		return model.GlobalConfig{}, err
 	}
 
 	return globalConfig, nil
 }
 
-// Create crea una nueva configuración global
-func (s *GlobalConfigService) Create(globalConfig *model.GlobalConfig) (model.GlobalConfig, error) {
+func (s *globalConfigService) Create(globalConfig *model.GlobalConfig) error{
 	if globalConfig == nil {
-		return model.GlobalConfig{}, ErrGlobalConfigCannoBeNull
+		return ErrGlobalConfigCanNotBeNull
 	}
 
-	if err := s.globalConfigRepo.Create(globalConfig); err != nil {
-		return model.GlobalConfig{}, err
+	path := s.router.GetFullPathGlobalConfigFile()
+
+	if err := s.fileRepository.DeleteFile(path); err != nil {
+		return err
 	}
 
-	return *globalConfig, nil
+	if err := s.yamlRepository.Save(path, globalConfig); err != nil {
+		return err
+	}
+
+	return nil
 }

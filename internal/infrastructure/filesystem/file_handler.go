@@ -32,15 +32,15 @@ func RemoveFile(filePath string) error {
 	return nil
 }
 
-func CreateFile(filePath string) (*os.File, error) {
-	dir := GetDirectory(filePath)
+func CreateFile(pathFile string) (*os.File, error) {
+	dir := filepath.Dir(pathFile)
 	exists, _ := ExistsDirectory(dir)
 	if !exists {
-		if err := CreateDirectory(dir); err != nil {
+		if err := os.MkdirAll(dir, 0755); err != nil {
 			return nil, err
 		}
 	}
-	return os.OpenFile(filePath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+	return os.OpenFile(pathFile, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
 }
 
 func WriteFile(filePath, content string) error {
@@ -68,50 +68,6 @@ func ExistsDirectory(dirPath string) (bool, error) {
 		return false, err
 	}
 	return fileInfo.IsDir(), nil
-}
-
-func CreateDirectory(dirPath string) error {
-	if err := os.MkdirAll(dirPath, 0755); err != nil {
-		return err
-	}
-	return nil
-}
-
-func RecreateDirectory(nameDirectory string) error {
-	if _, err := os.Stat(nameDirectory); err == nil {
-		if err := os.RemoveAll(nameDirectory); err != nil {
-			return err
-		}
-	}
-	return CreateDirectory(nameDirectory)
-}
-
-func CompletePermits(nameDirectory string) error {
-	if err := os.Chmod(nameDirectory, 0777); err != nil {
-		return err
-	}
-	return nil
-}
-
-func GetDirectory(pathFile string) string {
-	return filepath.Dir(pathFile)
-}
-
-func GetParentDirectory() (string, error) {
-	currentDir, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-	projectId := filepath.Base(currentDir)
-	return projectId, nil
-}
-
-func GetProjectDirectory() (string, error) {
-	return os.Getwd()
-}
-
-func GetHomeDirectory() (string, error) {
-	return os.UserHomeDir()
 }
 
 func GetPath(paths ...string) string {

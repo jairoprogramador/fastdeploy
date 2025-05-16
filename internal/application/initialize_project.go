@@ -1,18 +1,20 @@
-package command
+package application
 
 import (
-	"deploy/internal/infrastructure/repository"
 	"deploy/internal/application/dto"
-	"deploy/internal/domain/service"
+	"deploy/internal/domain/model"
 )
 
-func InitializeProject() *dto.ResponseDto {
-	globalConfigRepository := repository.GetGlobalConfigRepository()
-	projectRepository := repository.GetProjectRepository()
+var (
+	projectModel *model.Project
+)
 
-	globalConfigService := service.GetGlobalConfigService(globalConfigRepository)
-	fileRepository := repository.GetFileRepository()
-	projectService := service.GetProjectService(projectRepository, fileRepository, globalConfigService)
+func Initialize() *dto.ResponseDto {
+	return dto.GetDtoWithModel(getProjectService().Initialize())
+}
 
-	return dto.GetDtoWithModel(projectService.Initialize())
+func IsInitialize() *dto.ResponseDto {
+	var err error
+	projectModel, err = getProjectService().Load()
+	return dto.GetDtoWithError(err)
 }

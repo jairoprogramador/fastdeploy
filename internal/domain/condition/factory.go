@@ -10,15 +10,15 @@ import (
 type ConditionFactory struct{}
 
 var (
-	instance *ConditionFactory
-	once     sync.Once
+	instanceConditionFactory *ConditionFactory
+	onceConditionFactory     sync.Once
 )
 
 func GetConditionFactory() *ConditionFactory {
-	once.Do(func() {
-		instance = &ConditionFactory{}
+	onceConditionFactory.Do(func() {
+		instanceConditionFactory = &ConditionFactory{}
 	})
-	return instance
+	return instanceConditionFactory
 }
 
 func (f *ConditionFactory) CreateEvaluator(conditionStr string, output string) (ConditionEvaluator, error) {

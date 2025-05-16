@@ -9,41 +9,9 @@ import (
 	"time"
 )
 
-func ExecuteCommand(command string, args ...string) (string, error) {
-	output := fmt.Sprintf("command executed: '%s %s'", command, strings.Join(args, " "))
-	fmt.Println(output)
-
-	var stdoutBuf, stderrBuf bytes.Buffer
-
-	cmd := exec.Command(command, args...)
-	cmd.Stdout = &stdoutBuf
-    cmd.Stderr = &stderrBuf
-
-	err := cmd.Run()
-
-	if err != nil {
-		if stdoutBuf.Len() > 0 {
-			fmt.Println("Standard Output:")
-			fmt.Println(stdoutBuf.String())
-		}
-		if stderrBuf.Len() > 0 {
-			fmt.Println("Standard Error:")
-			fmt.Println(stderrBuf.String())
-		}
-		stdoutBuf.Reset()
-    	stderrBuf.Reset()
-
-		fmt.Println(output)
-		return "", err
-	}
-
-	stderrBuf.Reset()
-	return stdoutBuf.String(), nil
-}
-
 func ExecuteCommandWithContext(ctx context.Context, command string, args ...string) (string, error) {
 	output := fmt.Sprintf("command executed: '%s %s'", command, strings.Join(args, " "))
-	fmt.Println(output)
+	//fmt.Println(output)
 
 	var stdoutBuf, stderrBuf bytes.Buffer
 

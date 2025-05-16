@@ -1,16 +1,14 @@
 package repository
 
 import (
-	"deploy/internal/domain/variable"
+	"os"
 )
 
 type FileRepository interface {
-	GetFullPathDockerComposeTemplate(store *variable.VariableStore) string
-	GetFullPathDockerCompose(store *variable.VariableStore) string
-	GetFullPathDockerfileTemplate(store *variable.VariableStore) string
-	GetFullPathDockerfile(store *variable.VariableStore) string
-	GetFullPathProjectFile(store *variable.VariableStore) string
-	//GetFullPathGlobalConfigFile(store *variable.VariableStore) string
-	ExistsFile(path string) bool
-	DeleteFile(path string) error
+	ExistsFile(pathFile string) bool
+	ExistsDirectory(pathDirectory string) bool
+	DeleteFile(pathFile string) error
+	WriteFile(pathFile string, content string) error
+	OpenFile(filePath string) (*os.File, error)
+	CreateFile(filePath string) (*os.File, error) 
 }

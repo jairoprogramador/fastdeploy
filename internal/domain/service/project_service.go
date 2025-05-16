@@ -5,7 +5,7 @@ import (
 	"deploy/internal/domain/constant"
 	"deploy/internal/domain/model"
 	"deploy/internal/domain/repository"
-	"deploy/internal/domain/variable"
+	"deploy/internal/domain/router"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -13,79 +13,70 @@ import (
 	"time"
 )
 
-// Errores personalizados del servicio de proyecto
 var (
 	ErrProjectNotFound      = errors.New(constant.MsgProjectNotFound)
+	ErrProjectCanNotBeNull  = errors.New(constant.MsgProjectCanNotBeNull)
 	ErrProjectLoad          = errors.New(constant.MsgProjectLoad)
 	ErrProjectNotComplete   = errors.New(constant.MsgProjectNotComplete)
 	ErrProjectName          = errors.New(constant.MsgProjectName)
-	ErrProjectCreating      = errors.New(constant.MsgProjectCreating)
 	ErrInvalidProjectData   = errors.New(constant.MsgProjectInvalidData)
 	ErrGlobalConfigCreating = errors.New(constant.MsgGlobalConfigCreating)
 )
 
 type ProjectServiceInterface interface {
 	Initialize() *model.Response
-	Load() (model.Project, error)
-	Create() (model.Project, error)
-	SetProjectRepository(projectRepo repository.ProjectRepository)
+	Load() (*model.Project, error)
+	Save(project *model.Project) error
 }
 
-// ProjectService maneja la lógica de negocio relacionada con los proyectos
-type ProjectService struct {
-	projectRepo         repository.ProjectRepository
-	fileRepository      repository.FileRepository
+type projectService struct {
+	yamlRepository      repository.YamlRepository
 	globalConfigService GlobalConfigServiceInterface
-	store               *variable.VariableStore
+	fileRepository      repository.FileRepository
+	router              *router.Router
 	muProjectService    sync.RWMutex
 }
 
 var (
-	instanceProjectService     *ProjectService
+	instanceProjectService     *projectService
 	instanceOnceProjectService sync.Once
 )
 
-// GetInstance retorna la instancia única del ProjectService
-func GetProjectService(projectRepo repository.ProjectRepository,
-	fileRepository repository.FileRepository,
-	globalConfigService GlobalConfigServiceInterface) ProjectServiceInterface {
+func GetProjectService(
+	yamlRepository repository.YamlRepository,
+	globalConfigService GlobalConfigServiceInterface,
+	fileRepository repository.FileRepository) ProjectServiceInterface {
+
 	instanceOnceProjectService.Do(func() {
-		instanceProjectService = &ProjectService{
-			projectRepo:         projectRepo,
-			fileRepository:      fileRepository,
-			store:               getStoreProject(),
+		instanceProjectService = &projectService{
+			yamlRepository:      yamlRepository,
 			globalConfigService: globalConfigService,
+			router:              router.GetRouter(),
+			fileRepository:      fileRepository,
 		}
 	})
 	return instanceProjectService
 }
 
-func getStoreProject() *variable.VariableStore{
-	store := variable.GetVariableStore()
-	store.AddVariableGlobal(constant.VAR_PROJECT_ROOT_DIRECTORY, constant.ProjectRootDirectory)
-	store.AddVariableGlobal(constant.VAR_PROJECT_FILE_NAME, constant.ProjectFileName)
-	return store
-}
-
-// SetProjectRepository establece el repositorio de proyectos
-func (s *ProjectService) SetProjectRepository(projectRepo repository.ProjectRepository) {
+func (s *projectService) SetYamlRepository(yamlRepository repository.YamlRepository) {
 	s.muProjectService.Lock()
 	defer s.muProjectService.Unlock()
-	s.projectRepo = projectRepo
+	s.yamlRepository = yamlRepository
 }
 
-// Initialize inicializa el proyecto, creándolo si no existe
-func (s *ProjectService) Initialize() *model.Response {
-	project, err := s.Load()
-	if err != nil {
+func (s *projectService) Initialize() *model.Response {
+	if _, err := s.Load(); err != nil {
 		if errors.Is(err, ErrProjectNotFound) || errors.Is(err, ErrProjectNotComplete) {
-			project, err = s.Create()
+
+			project, err := s.createModelProject()
 			if err != nil {
 				return model.GetNewResponseError(err)
 			}
-			if !project.IsComplete() {
-				return model.GetNewResponseMessage(constant.MsgProjectNotComplete)
+
+			if err = s.Save(project); err != nil {
+				return model.GetNewResponseError(err)
 			}
+			
 			return model.GetNewResponseMessage(constant.MsgInitializeSuccess)
 		}
 		return model.GetNewResponseError(err)
@@ -93,71 +84,79 @@ func (s *ProjectService) Initialize() *model.Response {
 	return model.GetNewResponseMessage(constant.MsgInitializeExists)
 }
 
-// Load carga el proyecto desde el repositorio
-func (s *ProjectService) Load() (model.Project, error) {
-	pathProjectFile := s.fileRepository.GetFullPathProjectFile(s.store)
-	exists := s.fileRepository.ExistsFile(pathProjectFile)
+func (s *projectService) Load() (*model.Project, error) {
+	path := s.router.GetPathProjectFile()
+
+	exists := s.fileRepository.ExistsFile(path)
 	if !exists {
-		return model.Project{}, ErrProjectNotFound
+		return &model.Project{}, ErrProjectNotFound
 	}
 
-	project, err := s.projectRepo.Load(pathProjectFile)
+	var project model.Project
+	err := s.yamlRepository.Load(path, &project)
 	if err != nil {
-		return model.Project{}, ErrProjectLoad
+		return &model.Project{}, err
 	}
 
 	if !project.IsComplete() {
-		return model.Project{}, ErrProjectNotComplete
+		return &model.Project{}, ErrProjectNotComplete
 	}
 
-	return project, nil
+	return &project, nil
 }
 
-// Create crea un nuevo proyecto
-func (s *ProjectService) Create() (model.Project, error) {
-	globalConfig, err := s.loadOrCreateGlobalConfig()
-	if err != nil {
-		return model.Project{}, err
+func (s *projectService) Save(project *model.Project) error {
+	if project == nil {
+		return ErrProjectCanNotBeNull
 	}
 
-	projectName, err := s.projectRepo.GetProjectName()
+	if !project.IsComplete(){
+		return ErrProjectNotComplete
+	}
+
+	path := s.router.GetPathProjectFile()
+
+	if err := s.fileRepository.DeleteFile(path); err != nil {
+		return err
+	}
+
+	if err := s.yamlRepository.Save(path, project); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *projectService) createModelProject() (*model.Project, error) {
+	projectName, err := s.router.GetProjectName()
 	if err != nil || projectName == "" {
-		return model.Project{}, ErrProjectName
+		return &model.Project{}, ErrProjectName
 	}
 
 	projectId := s.generateProjectId(projectName)
 
-	project := model.NewProject(globalConfig.Organization, projectId, projectName, globalConfig.TeamName)
-
-	if !project.IsComplete(){
-		return model.Project{}, ErrProjectNotComplete
+	globalConfig, err := s.getGlobalConfig()
+	if err != nil {
+		return &model.Project{}, err
 	}
 
-	pathProjectFile := s.fileRepository.GetFullPathProjectFile(s.store)
-	if err := s.fileRepository.DeleteFile(pathProjectFile); err != nil {
-		return model.Project{},err
-	}
-	if err := s.projectRepo.Create(pathProjectFile, project); err != nil {
-		return model.Project{}, ErrProjectCreating
-	}
-
-	return *project, nil
+	return model.NewProject(globalConfig.Organization, projectId, projectName, globalConfig.TeamName), nil
 }
 
-// loadOrCreateGlobalConfig carga o crea la configuración global
-func (s *ProjectService) loadOrCreateGlobalConfig() (model.GlobalConfig, error) {
+func (s *projectService) getGlobalConfig() (model.GlobalConfig, error) {
 	globalConfig, err := s.globalConfigService.Load()
+
 	if err != nil {
 		globalConfig = *model.NewGlobalConfigDefault()
-		if _, err = s.globalConfigService.Create(&globalConfig); err != nil {
+		if err = s.globalConfigService.Create(&globalConfig); err != nil {
 			return model.GlobalConfig{}, ErrGlobalConfigCreating
 		}
 	}
+	
 	return globalConfig, nil
 }
 
-// generateProjectId genera un ID único para el proyecto
-func (s *ProjectService) generateProjectId(prefix string) string {
+func (s *projectService) generateProjectId(prefix string) string {
 	timestamp := time.Now().UnixNano()
 	data := []byte(fmt.Sprintf("%s-%d", prefix, timestamp))
 	hash := sha256.Sum256(data)

@@ -7,7 +7,7 @@ import (
 
 func StartPublish() {
 	presenter.ShowStart("Start Deploy")
-	dto := command.StartDeploy()
+	dto := application.StartDeploy()
 	if dto.Error != nil {
 		presenter.ShowError(dto.Error)
 		return

@@ -7,7 +7,7 @@ import (
 
 func AddSupportSonarQube() {
 	presenter.ShowStart("add support sonarQube")
-	message := command.AddSonarQube()
+	message := application.AddSonarQube()
 	if message.Error != nil {
 		presenter.ShowError(message.Error)
 		return

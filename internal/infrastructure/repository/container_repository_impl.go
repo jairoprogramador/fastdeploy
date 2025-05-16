@@ -3,33 +3,16 @@ package repository
 import (
 	"deploy/internal/domain/repository"
 	"deploy/internal/infrastructure/filesystem"
-	"deploy/internal/infrastructure/tools"
-	"deploy/internal/domain/constant"
-	"deploy/internal/domain/variable"
 	"text/template"
 	"fmt"
-	"net"
-	"sync"
 	"strings"
+	"os"
+	"sync"
 )
 
-type DockerfileData struct {
-	FileName      string
-	CommitMessage string
-	CommitHash    string
-	CommitAuthor  string
-	Team          string
-	Organization  string
+type containerRepositoryImpl struct {
+	fileRepository repository.FileRepository
 }
-
-type DockerComposeData struct {
-	NameDelivery string
-	CommitHash   string
-	Port         string
-	Version      string
-}
-
-type containerRepositoryImpl struct{}
 
 var (
 	instanceContainerRepository     repository.ContainerRepository
@@ -38,93 +21,60 @@ var (
 
 func GetContainerRepository() repository.ContainerRepository {
 	instanceOnceContainerRepository.Do(func() {
-		instanceContainerRepository = &containerRepositoryImpl{}
+		instanceContainerRepository = &containerRepositoryImpl {
+			fileRepository: GetFileRepository(),
+		}
 	})
 	return instanceContainerRepository
 }
 
-func (st *containerRepositoryImpl) CreateFile(pathFile string, content string) error {
-	err := filesystem.WriteFile(pathFile, content)
-	if err != nil {
-		return err
+func (st *containerRepositoryImpl) GetFullPathResource() (string, error) {
+	directoryTarget := "target"
+	exists := st.fileRepository.ExistsDirectory(directoryTarget)
+	if !exists {
+		return "", fmt.Errorf("no se encontró el directorio target")
 	}
-	return nil
+
+	fullPathJarFiles, err := getFullPathResources(directoryTarget)
+	if err != nil {
+		return "", err
+	}
+	return fullPathJarFiles[0], nil
 }
 
-func (st *containerRepositoryImpl) CreateDockerfile(pathFile, pathTemplate string, store *variable.VariableStore) error {
-	directoryTarget := "target"
-	exists, err := filesystem.ExistsDirectory(directoryTarget)
-	if err != nil {
-		return err
-	}
-	if !exists {
-		return fmt.Errorf("no se encontró el directorio target")
-	}
-
-	fullPathJarFiles, err := tools.GetFullPathFiles(directoryTarget)
-	if err != nil {
-		return err
-	}
-
+func (st *containerRepositoryImpl) GetContentTemplate(pathTemplate string, params any) (string, error) {
 	dockerfileTemplate, err := template.ParseFiles(pathTemplate)
 	if err != nil {
-		return err
+		return "", err
 	}
-
-	params := DockerfileData{
-		FileName:      fullPathJarFiles[0],
-		CommitMessage: store.Get(constant.VAR_COMMIT_MESSAGE),
-		CommitHash:    store.Get(constant.VAR_COMMIT_HASH),
-		CommitAuthor:  store.Get(constant.VAR_COMMIT_AUTHOR),
-		Team:          store.Get(constant.VAR_PROJECT_TEAM),
-		Organization:  store.Get(constant.VAR_PROJECT_ORGANIZATION),
-	}
-
 	var result strings.Builder
 	err = dockerfileTemplate.Execute(&result, params)
 	if err != nil {
-		return err
+		return "", err
 	}
-	
-	return st.CreateFile(pathFile, result.String())
+	return result.String(), nil
 }
 
-func (st *containerRepositoryImpl) CreateDockerCompose(pathFile, pathTemplate string, store *variable.VariableStore) error { 
-	dockerComposeTemplate, err := template.ParseFiles(pathTemplate)
+func getFullPathResources(directory string) ([]string, error) {
+	var pathFiles []string
+
+	files, err := os.ReadDir(directory)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	params := DockerComposeData{
-		NameDelivery: store.Get(constant.VAR_PROJECT_NAME),
-		CommitHash:   store.Get(constant.VAR_COMMIT_HASH),
-		Version:      store.Get(constant.VAR_PROJECT_VERSION),
-		Port:         st.getPort(),
-	}
-
-	var result strings.Builder
-	err = dockerComposeTemplate.Execute(&result, params)
-	if err != nil {
-		return err
-	}
-
-	return st.CreateFile(pathFile, result.String())
-}
-
-func (st *containerRepositoryImpl) getPort() string {
-	startPort := 2000
-	endPort := 3000
-
-	portFree := 2000
-
-	for port := startPort; port <= endPort; port++ {
-		address := fmt.Sprintf(":%d", port)
-		ln, err := net.Listen("tcp", address)
-		if err == nil {
-			portFree = port
-			ln.Close()
-			break
+	for _, archivo := range files {
+		if !archivo.IsDir() && strings.HasSuffix(archivo.Name(), ".jar") &&
+			!strings.Contains(archivo.Name(), "sources") &&
+			!strings.Contains(archivo.Name(), "original") {
+			path := filesystem.GetPath(directory,archivo.Name())	
+			pathFiles = append(pathFiles, path)
 		}
 	}
-	return fmt.Sprintf("%d", portFree)
+
+	if len(pathFiles) <= 0 {
+		return nil, fmt.Errorf("no se encontró el archivo jar")
+	}
+
+	return pathFiles, nil
 }

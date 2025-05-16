@@ -1,44 +1,63 @@
 package executor
 
 import (
-	irepository "deploy/internal/domain/repository"
-	"deploy/internal/infrastructure/repository"
-	"deploy/internal/domain/condition"
-	"deploy/internal/domain/model"
-	"deploy/internal/domain/variable"
-	"deploy/internal/domain/constant"
-	"deploy/internal/domain/template"
-	"fmt"
 	"context"
+	"deploy/internal/domain/constant"
+	"deploy/internal/domain/model"
+	"deploy/internal/domain/repository"
+	"deploy/internal/domain/router"
+	"deploy/internal/domain/service"
+	"deploy/internal/domain/template"
+	"deploy/internal/domain/variable"
+	"fmt"
+	"net"
 )
 
-type ContainerExecutor struct {
-	BaseExecutor
-	variables *variable.VariableStore
-	commandRunner    CommandRunner
-	conditionFactory *condition.ConditionFactory
-	containerRepository irepository.ContainerRepository
-	fileRepository irepository.FileRepository
-
+type DockerfileData struct {
+	FileName      string
+	CommitMessage string
+	CommitHash    string
+	CommitAuthor  string
+	Team          string
+	Organization  string
 }
 
-func GetContainerExecutor(variables *variable.VariableStore) *ContainerExecutor {
+type DockerComposeData struct {
+	NameDelivery string
+	CommitHash   string
+	Port         string
+	Version      string
+}
 
-	return &ContainerExecutor {
-		BaseExecutor: BaseExecutor {},
-		variables: variables,
-		commandRunner:    GetCommandRunner(),
-		conditionFactory: condition.GetConditionFactory(),
-		containerRepository: repository.GetContainerRepository(),
-		fileRepository: repository.GetFileRepository(),
+type ContainerExecutor struct {
+	baseExecutor        *BaseExecutor
+	variables           *variable.VariableStore
+	dockerService       service.DockerServiceInterface
+	containerRepository repository.ContainerRepository
+	fileRepository      repository.FileRepository
+	router              *router.Router
+}
+
+func GetContainerExecutor(
+	containerRepository repository.ContainerRepository,
+	fileRepository repository.FileRepository,
+	variables *variable.VariableStore) *ContainerExecutor {
+	return &ContainerExecutor{
+		baseExecutor:        GetBaseExecutor(),
+		variables:           variables,
+		dockerService:       service.GetDockerService(),
+		containerRepository: containerRepository,
+		fileRepository:      fileRepository,
+		router:              router.GetRouter(),
 	}
 }
 
 func (e *ContainerExecutor) Execute(ctx context.Context, step model.Step) error {
-	ctx, cancel := e.prepareContext(ctx, step)
+
+	ctx, cancel := e.baseExecutor.prepareContext(ctx, step)
 	defer cancel()
 
-	return e.handleRetry(step, func() error {
+	return e.baseExecutor.handleRetry(step, func() error {
 		// Preparar variables locales
 		e.variables.PushScope(step.Variables)
 		defer e.variables.PopScope()
@@ -46,95 +65,131 @@ func (e *ContainerExecutor) Execute(ctx context.Context, step model.Step) error 
 		// Ejecutar comando
 		fmt.Printf("---------------%s-----------------\n", step.Name)
 
-		err := e.Delete(ctx)
+		err := e.delete(ctx)
 		if err != nil {
 			return err
 		}
 
-		err = e.CreateImage(ctx)
+		err = e.createImage(ctx)
 		if err != nil {
 			return err
 		}
 
-		return e.CreateContainer(ctx)
+		return e.createContainer(ctx)
 	})
 }
 
-func (e *ContainerExecutor) Delete(ctx context.Context) error {
-	pathDockerCompose := e.fileRepository.GetFullPathDockerCompose(e.variables)
-    if e.fileRepository.ExistsFile(pathDockerCompose) {
-		command := fmt.Sprintf("docker compose -f %s down --rmi local --remove-orphans -v", pathDockerCompose)
-        _, err := e.commandRunner.Run(ctx, command)
-		if err != nil {
+func (e *ContainerExecutor) delete(ctx context.Context) error {
+	pathDockerCompose := e.router.GetFullPathDockerCompose()
+	if e.fileRepository.ExistsFile(pathDockerCompose) {
+		if err := e.dockerService.DockerComposeDownLocal(ctx, pathDockerCompose); err != nil {
 			return err
 		}
-    }
-    return nil
+	}
+	return nil
 }
 
-func (e *ContainerExecutor) CreateImage(ctx context.Context) error {
-	pathDockerfileTemplate := e.fileRepository.GetFullPathDockerfileTemplate(e.variables)
+func (e *ContainerExecutor) createImage(ctx context.Context) error {
+	pathDockerfileTemplate := e.router.GetFullPathDockerfileTemplate()
 	if !e.fileRepository.ExistsFile(pathDockerfileTemplate) {
-		err := e.containerRepository.CreateFile(pathDockerfileTemplate, template.DockerfileTemplate)
+		err := e.fileRepository.WriteFile(
+			pathDockerfileTemplate, template.DockerfileTemplate)
 		if err != nil {
 			return err
 		}
 	}
-	pathDockerfile := e.fileRepository.GetFullPathDockerfile(e.variables)
+	pathDockerfile := e.router.GetFullPathDockerfile()
 	if e.fileRepository.ExistsFile(pathDockerfile) {
 		err := e.fileRepository.DeleteFile(pathDockerfile)
 		if err != nil {
 			return err
 		}
 	}
-	err := e.containerRepository.CreateDockerfile(pathDockerfile, pathDockerfileTemplate, e.variables)
+
+	err := e.createDockerfile(pathDockerfile, pathDockerfileTemplate)
 	if err != nil {
 		return err
 	}
-	return e.createImagenFromDockerfile(ctx, pathDockerfile)
+	return e.dockerService.DockerBuild(ctx, e.variables, pathDockerfile)
 }
 
-func (e *ContainerExecutor) createImagenFromDockerfile(ctx context.Context, pathDockerfile string) error {
-	commitHash := e.variables.Get(constant.VAR_COMMIT_HASH)
-	projectVersion := e.variables.Get(constant.VAR_PROJECT_VERSION)
-
-	command := fmt.Sprintf("docker build -t %s:%s -f %s .", commitHash, projectVersion, pathDockerfile)
-    _, err := e.commandRunner.Run(ctx, command)
+func (e *ContainerExecutor) createDockerfile(pathDockerfile, pathDockerfileTemplate string) error {
+	nameResource, err := e.containerRepository.GetFullPathResource()
 	if err != nil {
 		return err
 	}
-	return nil
+
+	params := DockerfileData{
+		FileName:      nameResource,
+		CommitMessage: e.variables.Get(constant.VAR_COMMIT_MESSAGE),
+		CommitHash:    e.variables.Get(constant.VAR_COMMIT_HASH),
+		CommitAuthor:  e.variables.Get(constant.VAR_COMMIT_AUTHOR),
+		Team:          e.variables.Get(constant.VAR_PROJECT_TEAM),
+		Organization:  e.variables.Get(constant.VAR_PROJECT_ORGANIZATION),
+	}
+
+	contentDockerfile, err := e.containerRepository.GetContentTemplate(pathDockerfileTemplate, params)
+	if err != nil {
+		return err
+	}
+
+	return e.fileRepository.WriteFile(pathDockerfile, contentDockerfile)
 }
 
-func (e *ContainerExecutor) CreateContainer(ctx context.Context) error {
-	pathDockerComposeTemplate := e.fileRepository.GetFullPathDockerComposeTemplate(e.variables)
+func (e *ContainerExecutor) createContainer(ctx context.Context) error {
+	pathDockerComposeTemplate := e.router.GetFullPathDockerComposeTemplate()
 	if !e.fileRepository.ExistsFile(pathDockerComposeTemplate) {
-		err := e.containerRepository.CreateFile(pathDockerComposeTemplate, template.ComposeTemplate)
+		err := e.fileRepository.WriteFile(pathDockerComposeTemplate, template.ComposeTemplate)
 		if err != nil {
 			return err
 		}
-	}		 
-	pathDockerCompose := e.fileRepository.GetFullPathDockerCompose(e.variables)
+	}
+	pathDockerCompose := e.router.GetFullPathDockerCompose()
 	if e.fileRepository.ExistsFile(pathDockerCompose) {
 		err := e.fileRepository.DeleteFile(pathDockerCompose)
 		if err != nil {
 			return err
 		}
 	}
-	err := e.containerRepository.CreateDockerCompose(pathDockerCompose, pathDockerComposeTemplate, e.variables)
+
+	err := e.createDockerCompose(pathDockerCompose, pathDockerComposeTemplate)
 	if err != nil {
 		return err
 	}
-	
-	return e.createContainerFromDockerCompose(ctx, pathDockerCompose)
+
+	return e.dockerService.DockerComposeUp(ctx, pathDockerCompose)
 }
 
-func (e *ContainerExecutor) createContainerFromDockerCompose(ctx context.Context, pathDockerCompose string) error {
-	command := fmt.Sprintf("docker compose -f %s up -d", pathDockerCompose)
-    _, err := e.commandRunner.Run(ctx, command)
+func (e *ContainerExecutor) createDockerCompose(pathDockerCompose, pathDockerComposeTemplate string) error {
+	params := DockerComposeData{
+		NameDelivery: e.variables.Get(constant.VAR_PROJECT_NAME),
+		CommitHash:   e.variables.Get(constant.VAR_COMMIT_HASH),
+		Version:      e.variables.Get(constant.VAR_PROJECT_VERSION),
+		Port:         e.getPort(),
+	}
+
+	contentDockerCompose, err := e.containerRepository.GetContentTemplate(pathDockerComposeTemplate, params)
 	if err != nil {
 		return err
 	}
-	return nil
+
+	return e.fileRepository.WriteFile(pathDockerCompose, contentDockerCompose)
 }
 
+func (e *ContainerExecutor) getPort() string {
+	startPort := 2000
+	endPort := 3000
+
+	portFree := 2000
+
+	for port := startPort; port <= endPort; port++ {
+		address := fmt.Sprintf(":%d", port)
+		ln, err := net.Listen("tcp", address)
+		if err == nil {
+			portFree = port
+			ln.Close()
+			break
+		}
+	}
+	return fmt.Sprintf("%d", portFree)
+}

@@ -9,7 +9,7 @@ import (
 
 func Deploy(cmd *cobra.Command, args []string) {
 	if cmd.Use != "init" {
-		dto := command.IsInitialized()
+		dto := application.IsInitialize()
 		if dto.Error != nil {
 			presenter.ShowError(dto.Error)
 			os.Exit(1)

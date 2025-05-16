@@ -5,35 +5,34 @@ import (
 	"deploy/internal/domain/condition"
 	"deploy/internal/domain/model"
 	"deploy/internal/domain/variable"
+	"deploy/internal/domain/service"
 	"fmt"
 )
 
 type CommandExecutor struct {
-	BaseExecutor
-	commandRunner    CommandRunner
+	baseExecutor *BaseExecutor
+	commandRunner service.ExecutorServiceInterface
 	conditionFactory *condition.ConditionFactory
 	variables *variable.VariableStore
 }
 
 func GetCommandExecutor(variables *variable.VariableStore) *CommandExecutor {
 	return &CommandExecutor {
-		BaseExecutor: BaseExecutor {},
+		baseExecutor: GetBaseExecutor(),
 		variables: variables,
-		commandRunner:    GetCommandRunner(),
+		commandRunner: service.GetExecutorService(),
 		conditionFactory: condition.GetConditionFactory(),
 	}
 }
 
 func (e *CommandExecutor) Execute(ctx context.Context, step model.Step) error {
-	ctx, cancel := e.prepareContext(ctx, step)
+	ctx, cancel := e.baseExecutor.prepareContext(ctx, step)
 	defer cancel()
 
-	return e.handleRetry(step, func() error {
-		// Preparar variables locales
+	return e.baseExecutor.handleRetry(step, func() error {
 		e.variables.PushScope(step.Variables)
 		defer e.variables.PopScope()
 
-		// Ejecutar comando
 		fmt.Printf("---------------%s-----------------\n", step.Name)
 		output, err := e.commandRunner.Run(ctx, step.Command)
 		if err != nil {
@@ -45,13 +44,11 @@ func (e *CommandExecutor) Execute(ctx context.Context, step model.Step) error {
 				return err
 			}
 		}
-		// Registrar la salida del comando
 		fmt.Printf("Salida del comando: \n%s", output)
 		return nil
 	})
 }
 
-// evaluateCondition evalúa una condición sobre la salida de un comando
 func (e *CommandExecutor) evaluateCondition(conditionStr string, output string) error {
 	fmt.Println("condition =", conditionStr)
 	//fmt.Println(output)

@@ -35,3 +35,12 @@ type RetryConfig struct {
 	Attempts int    `yaml:"attempts"`
 	Delay    string `yaml:"delay"`
 }
+
+func (d *Deployment) HasType(typeDeployment string) bool {
+	for _, step := range d.Steps {
+		if step.Type == typeDeployment {
+			return true
+		}
+	}
+	return false
+}
