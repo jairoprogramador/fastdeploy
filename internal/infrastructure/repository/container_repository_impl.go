@@ -67,7 +67,9 @@ func getFullPathResources(directory string) ([]string, error) {
 		if !archivo.IsDir() && strings.HasSuffix(archivo.Name(), ".jar") &&
 			!strings.Contains(archivo.Name(), "sources") &&
 			!strings.Contains(archivo.Name(), "original") {
-			path := filesystem.GetPath(directory,archivo.Name())	
+				
+			path := filesystem.GetPath(directory, archivo.Name())
+			path = filesystem.GetAbsolutePath(path)
 			pathFiles = append(pathFiles, path)
 		}
 	}

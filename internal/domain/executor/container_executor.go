@@ -23,10 +23,12 @@ type DockerfileData struct {
 }
 
 type DockerComposeData struct {
-	NameDelivery string
-	CommitHash   string
-	Port         string
-	Version      string
+	NameDelivery 		string
+	CommitHash   		string
+	Port                string
+	Version             string
+	PathDockerDirectory string
+	PathHomeDirectory   string
 }
 
 type ContainerExecutor struct {
@@ -58,11 +60,9 @@ func (e *ContainerExecutor) Execute(ctx context.Context, step model.Step) error 
 	defer cancel()
 
 	return e.baseExecutor.handleRetry(step, func() error {
-		// Preparar variables locales
 		e.variables.PushScope(step.Variables)
 		defer e.variables.PopScope()
 
-		// Ejecutar comando
 		fmt.Printf("---------------%s-----------------\n", step.Name)
 
 		err := e.delete(ctx)
@@ -70,7 +70,7 @@ func (e *ContainerExecutor) Execute(ctx context.Context, step model.Step) error 
 			return err
 		}
 
-		err = e.createImage(ctx)
+		err = e.buildDockerfile()
 		if err != nil {
 			return err
 		}
@@ -89,7 +89,7 @@ func (e *ContainerExecutor) delete(ctx context.Context) error {
 	return nil
 }
 
-func (e *ContainerExecutor) createImage(ctx context.Context) error {
+func (e *ContainerExecutor) buildDockerfile() error {
 	pathDockerfileTemplate := e.router.GetFullPathDockerfileTemplate()
 	if !e.fileRepository.ExistsFile(pathDockerfileTemplate) {
 		err := e.fileRepository.WriteFile(
@@ -106,11 +106,7 @@ func (e *ContainerExecutor) createImage(ctx context.Context) error {
 		}
 	}
 
-	err := e.createDockerfile(pathDockerfile, pathDockerfileTemplate)
-	if err != nil {
-		return err
-	}
-	return e.dockerService.DockerBuild(ctx, e.variables, pathDockerfile)
+	return e.createDockerfile(pathDockerfile, pathDockerfileTemplate)
 }
 
 func (e *ContainerExecutor) createDockerfile(pathDockerfile, pathDockerfileTemplate string) error {
@@ -118,6 +114,8 @@ func (e *ContainerExecutor) createDockerfile(pathDockerfile, pathDockerfileTempl
 	if err != nil {
 		return err
 	}
+
+	nameResource = e.router.GetRelativePathFromHome(nameResource)
 
 	params := DockerfileData{
 		FileName:      nameResource,
@@ -157,7 +155,7 @@ func (e *ContainerExecutor) createContainer(ctx context.Context) error {
 		return err
 	}
 
-	return e.dockerService.DockerComposeUp(ctx, pathDockerCompose)
+	return e.dockerService.DockerComposeUp(ctx, pathDockerCompose, e.variables)
 }
 
 func (e *ContainerExecutor) createDockerCompose(pathDockerCompose, pathDockerComposeTemplate string) error {
@@ -165,6 +163,8 @@ func (e *ContainerExecutor) createDockerCompose(pathDockerCompose, pathDockerCom
 		NameDelivery: e.variables.Get(constant.VAR_PROJECT_NAME),
 		CommitHash:   e.variables.Get(constant.VAR_COMMIT_HASH),
 		Version:      e.variables.Get(constant.VAR_PROJECT_VERSION),
+		PathDockerDirectory: e.variables.Get(constant.VAR_PATH_DOCKER_DIRECTORY),
+		PathHomeDirectory:   e.variables.Get(constant.VAR_PATH_HOME_DIRECTORY),
 		Port:         e.getPort(),
 	}
 

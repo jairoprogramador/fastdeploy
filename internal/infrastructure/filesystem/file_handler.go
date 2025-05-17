@@ -73,3 +73,12 @@ func ExistsDirectory(dirPath string) (bool, error) {
 func GetPath(paths ...string) string {
 	return filepath.Join(paths...)
 }
+
+func GetAbsolutePath(relativePath string) string {
+	absolutePath, err := filepath.Abs(relativePath)
+	if err != nil {
+		return ""
+	}
+	return absolutePath
+}
+

@@ -4,6 +4,7 @@ import (
 	"deploy/internal/domain/model"
 	"deploy/internal/domain/constant"
 	"deploy/internal/domain/repository"
+	"deploy/internal/domain/router"
 	"sync"
 	"context"
 )
@@ -96,6 +97,16 @@ func (s *StoreService) GetVariablesGlobal(ctx context.Context, deployment *model
 	variables = append(variables, model.Variable{
 		Name:  constant.VAR_COMMIT_MESSAGE,
 		Value: commitMessage,
+	})
+
+	variables = append(variables, model.Variable{
+		Name:  constant.VAR_PATH_HOME_DIRECTORY,
+		Value: router.GetRouter().GetHomeDirectory(),
+	})
+
+	variables = append(variables, model.Variable{
+		Name:  constant.VAR_PATH_DOCKER_DIRECTORY,
+		Value: router.GetRouter().GetPathDockerDirectory(),
 	})
 
 	for _, variable := range deployment.Variables.Global {

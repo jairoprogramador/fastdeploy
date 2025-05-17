@@ -46,7 +46,6 @@ func (e *Engine) Execute(ctx context.Context, deployment *model.Deployment) erro
 
 	if deployment.HasType(validator.TypeContainer) {
 		if e.tryContainerUp(ctx, e.variableStore) {
-			e.showContainerURL(ctx, e.variableStore)
 			return nil
 		}
 	}
@@ -57,19 +56,7 @@ func (e *Engine) Execute(ctx context.Context, deployment *model.Deployment) erro
 		}
 	}
 
-	if deployment.HasType(validator.TypeContainer) {
-		e.showContainerURL(ctx, e.variableStore)
-	}
 	return nil
-}
-
-func (e *Engine) showContainerURL(ctx context.Context, variableStore *variable.VariableStore) {
-	dockerService := service.GetDockerService()
-	urls, err := dockerService.GetContainerURLs(ctx, variableStore)
-	if err != nil {
-		return
-	}
-	fmt.Println(urls)
 }
 
 func (e *Engine) tryContainerUp(ctx context.Context, variableStore *variable.VariableStore) bool {
@@ -77,7 +64,7 @@ func (e *Engine) tryContainerUp(ctx context.Context, variableStore *variable.Var
 	exists, _ := dockerService.ExistsContainer(ctx, variableStore)
 	if exists {
 		pathDockerCompose := router.GetRouter().GetFullPathDockerCompose()
-		err := dockerService.DockerComposeUp(ctx, pathDockerCompose)
+		err := dockerService.DockerComposeUp(ctx, pathDockerCompose, variableStore)
 		return err == nil
 	}
 	return false

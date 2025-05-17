@@ -10,7 +10,7 @@ LABEL organization='{{.Organization}}'
 
 WORKDIR /app
 
-COPY ../{{.FileName}} app.jar
+COPY {{.FileName}} app.jar
 
 EXPOSE 8080
 

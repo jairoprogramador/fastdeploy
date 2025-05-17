@@ -1,13 +1,13 @@
 package router
 
 import (
-	"sync"
+	"deploy/internal/domain/constant"
 	"os"
 	"path/filepath"
-	"deploy/internal/domain/constant"
+	"sync"
 )
 
-type Router struct {}
+type Router struct{}
 
 var (
 	instanceRouter     *Router
@@ -16,7 +16,7 @@ var (
 
 func GetRouter() *Router {
 	instanceOnceRouter.Do(func() {
-		instanceRouter = &Router {}
+		instanceRouter = &Router{}
 	})
 	return instanceRouter
 }
@@ -35,7 +35,7 @@ func (st *Router) GetFullPathDockerCompose() string {
 
 func (st *Router) GetFullPathDockerfileTemplate() string {
 	projectName := st.getProjectName()
-	return filepath.Join(st.GetHomeDirectory(), constant.FastdeployRootDirectory, 
+	return filepath.Join(st.GetHomeDirectory(), constant.FastdeployRootDirectory,
 		projectName, constant.DockerRootDirectory, constant.DockerfileTemplateFileName)
 }
 
@@ -45,18 +45,24 @@ func (st *Router) GetFullPathDockerfile() string {
 		projectName, constant.DockerRootDirectory, constant.DockerfileFileName)
 }
 
+func (st *Router) GetPathDockerDirectory() string {
+	projectName := st.getProjectName()
+	return filepath.Join(constant.FastdeployRootDirectory,
+		projectName, constant.DockerRootDirectory)
+}
+
 func (st *Router) GetPathProjectFile() string {
 	return filepath.Join(constant.ProjectRootDirectory, constant.ProjectFileName)
 }
 
 func (st *Router) GetFullPathGlobalConfigFile() string {
-	return filepath.Join(st.GetHomeDirectory(), 
-	constant.FastdeployRootDirectory, constant.GlobalConfigFileName)
+	return filepath.Join(st.GetHomeDirectory(),
+		constant.FastdeployRootDirectory, constant.GlobalConfigFileName)
 }
 
 func (st *Router) GetFullPathDeploymentFile() string {
-	return filepath.Join(st.GetHomeDirectory(), 
-	constant.FastdeployRootDirectory, constant.DeploymentFileName)
+	return filepath.Join(st.GetHomeDirectory(),
+		constant.FastdeployRootDirectory, constant.DeploymentFileName)
 }
 
 func (st *Router) getProjectName() string {
@@ -66,7 +72,6 @@ func (st *Router) getProjectName() string {
 	}
 	return currentDir
 }
-
 
 func (st *Router) GetProjectName() (string, error) {
 	currentDir, err := os.Getwd()
@@ -82,4 +87,18 @@ func (st *Router) GetHomeDirectory() string {
 		return ""
 	}
 	return homeDirectory
+}
+
+func (st *Router) GetRelativePathFromHome(absolutePath string) string {
+	homeDir := st.GetHomeDirectory()
+	if homeDir == "" {
+		return absolutePath
+	}
+
+	relativePath, err := filepath.Rel(homeDir, absolutePath)
+	if err != nil {
+		return absolutePath
+	}
+
+	return relativePath
 }

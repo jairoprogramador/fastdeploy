@@ -11,10 +11,8 @@ import (
 
 type DockerServiceInterface interface {
 	ExistsContainer(ctx context.Context, variableStore *variable.VariableStore) (bool, error)
-	DockerComposeUp(ctx context.Context, pathDockerCompose string) error
+	DockerComposeUp(ctx context.Context, pathDockerCompose string, variableStore *variable.VariableStore) error
 	DockerComposeDownLocal(ctx context.Context, pathDockerCompose string) error
-	DockerBuild(ctx context.Context, variableStore *variable.VariableStore, pathDockerfile string) error
-	GetContainerURLs(ctx context.Context, variableStore *variable.VariableStore) (string, error)
 }
 
 type DockerService struct {
@@ -47,10 +45,17 @@ func (d *DockerService) ExistsContainer(ctx context.Context, variableStore *vari
 	return len(containerId) > 0, nil
 }
 
-func (d *DockerService) DockerComposeUp(ctx context.Context, pathDockerCompose string) error {
-	command := fmt.Sprintf("docker compose -f %s up -d", pathDockerCompose)
+func (d *DockerService) DockerComposeUp(ctx context.Context, pathDockerCompose string, variableStore *variable.VariableStore) error {
+	command := fmt.Sprintf("docker compose -f %s up -d --build", pathDockerCompose)
 	_, err := d.executorService.Run(ctx, command)
-
+	if err == nil {
+		urls, err := d.getContainerURLs(ctx, variableStore)
+		if err != nil {
+			fmt.Println(err)
+		}else{
+			fmt.Println(urls)
+		}
+	}
 	return err
 }
 
@@ -60,16 +65,7 @@ func (d *DockerService) DockerComposeDownLocal(ctx context.Context, pathDockerCo
 	return err
 }
 
-func (d *DockerService) DockerBuild(ctx context.Context, variableStore *variable.VariableStore, pathDockerfile string) error {
-	commitHash := variableStore.Get(constant.VAR_COMMIT_HASH)
-	projectVersion := variableStore.Get(constant.VAR_PROJECT_VERSION)
-
-	command := fmt.Sprintf("docker build -t %s:%s -f %s .", commitHash, projectVersion, pathDockerfile)
-	_, err := d.executorService.Run(ctx, command)
-	return err
-}
-
-func (d *DockerService) GetContainerURLs(ctx context.Context, variableStore *variable.VariableStore) (string, error) {
+func (d *DockerService) getContainerURLs(ctx context.Context, variableStore *variable.VariableStore) (string, error) {
 	containerIDs, err := d.getIdsContainerUp(ctx, variableStore)
 	if err != nil {
 		return "", err
