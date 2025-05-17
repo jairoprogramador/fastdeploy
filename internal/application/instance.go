@@ -34,7 +34,6 @@ func getContainerExecutor(variableStore *variable.VariableStore) *executor.Conta
 }
 
 func getStoreService() service.StoreServiceInterface {
-	gitRepository := repository.GetGitRepository()
-	return service.GetStoreService(projectModel, gitRepository)
+	return service.GetStoreService(projectModel)
 }
 

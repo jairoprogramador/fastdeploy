@@ -3,7 +3,6 @@ package service
 import (
 	"deploy/internal/domain/model"
 	"deploy/internal/domain/constant"
-	"deploy/internal/domain/repository"
 	"deploy/internal/domain/router"
 	"sync"
 	"context"
@@ -15,7 +14,7 @@ type StoreServiceInterface interface {
 
 type StoreService struct {
 	project *model.Project
-	gitRepository repository.GitRepository
+	gitService GitServiceInterface
 	muVariableService    sync.RWMutex
 }
 
@@ -24,12 +23,11 @@ var (
 	instanceOnceStoreService sync.Once
 )
 
-func GetStoreService(project *model.Project,
-	gitRepository repository.GitRepository) StoreServiceInterface {
+func GetStoreService(project *model.Project) StoreServiceInterface {
 	instanceOnceStoreService.Do(func() {
 		instanceStoreService = &StoreService {
 			project: project,
-			gitRepository: gitRepository,
+			gitService: GetGitService(),
 		}
 	})
 	return instanceStoreService
@@ -42,17 +40,17 @@ func (s *StoreService) SetProjectModel(project *model.Project) {
 }
 
 func (s *StoreService) GetVariablesGlobal(ctx context.Context, deployment *model.Deployment) ([]model.Variable, error) {
-	commitHash, err := s.gitRepository.GetCommitHash(ctx)
+	commitHash, err := s.gitService.GetCommitHash(ctx)
 	if err != nil {
 		return []model.Variable{}, err
 	}
 
-	commitAuthor, err := s.gitRepository.GetCommitAuthor(ctx, commitHash)
+	commitAuthor, err := s.gitService.GetCommitAuthor(ctx, commitHash)
 	if err != nil {
 		return []model.Variable{}, err
 	}
 
-	commitMessage, err := s.gitRepository.GetCommitMessage(ctx, commitHash)
+	commitMessage, err := s.gitService.GetCommitMessage(ctx, commitHash)
 	if err != nil {
 		return []model.Variable{}, err
 	}
