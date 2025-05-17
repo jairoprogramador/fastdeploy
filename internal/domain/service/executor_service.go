@@ -44,6 +44,8 @@ func (r *DefaultExecutorService) Run(ctx context.Context, cmdExec string) (strin
 	command := parts[0]
 	args := parts[1:]
 
+	//println(fmt.Sprintf("Error ejecutando comando '%s %s'", command, strings.Join(args, " ")))
+
 	var stdoutBuf, stderrBuf bytes.Buffer
 
 	cmd := exec.CommandContext(ctx, command, args...)
