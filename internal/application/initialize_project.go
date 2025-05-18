@@ -1,7 +1,6 @@
 package application
 
 import (
-	"deploy/internal/application/dto"
 	"deploy/internal/domain/model"
 )
 
@@ -9,12 +8,20 @@ var (
 	projectModel *model.Project
 )
 
-func Initialize() *dto.ResponseDto {
-	return dto.GetDtoWithModel(getProjectService().Initialize())
+func Initialize() *model.LogStore {
+	logStore := model.NewLogStore("initialize project")
+	message, err := getProjectService().Initialize()
+	if err != nil {
+		logStore.AddError(err)
+	} else {
+		logStore.AddMessage(message)
+	}
+	logStore.FinishSteps()
+	return logStore
 }
 
-func IsInitialize() *dto.ResponseDto {
+func IsInitialize() error {
 	var err error
 	projectModel, err = getProjectService().Load()
-	return dto.GetDtoWithError(err)
+	return err
 }

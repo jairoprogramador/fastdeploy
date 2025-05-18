@@ -28,7 +28,7 @@ func AddCmd() *cobra.Command {
 			_, result, err := prompt.Run()
 
 			if err != nil {
-				presenter.ShowErrorAndMessage("Error al seleccionar opción", err)
+				presenter.ShowError("Add Support", err)
 				os.Exit(1)
 			}
 			

@@ -3,15 +3,15 @@ package service
 import (
 	"context"
 	"deploy/internal/domain/constant"
-	"deploy/internal/domain/variable"
+	"deploy/internal/domain/model"
 	"fmt"
 	"strings"
 	"sync"
 )
 
 type DockerServiceInterface interface {
-	ExistsContainer(ctx context.Context, variableStore *variable.VariableStore) (bool, error)
-	DockerComposeUp(ctx context.Context, pathDockerCompose string, variableStore *variable.VariableStore) error
+	ExistsContainer(ctx context.Context, variableStore *model.VariableStore) (bool, error)
+	DockerComposeUp(ctx context.Context, pathDockerCompose string, variableStore *model.VariableStore) (string, error)
 	DockerComposeDownLocal(ctx context.Context, pathDockerCompose string) error
 }
 
@@ -33,7 +33,7 @@ func GetDockerService() DockerServiceInterface {
 	return instanceDockerService
 }
 
-func (d *DockerService) ExistsContainer(ctx context.Context, variableStore *variable.VariableStore) (bool, error) {
+func (d *DockerService) ExistsContainer(ctx context.Context, variableStore *model.VariableStore) (bool, error) {
 	commitHash := variableStore.Get(constant.VAR_COMMIT_HASH)
 	version := variableStore.Get(constant.VAR_PROJECT_VERSION)
 
@@ -45,18 +45,13 @@ func (d *DockerService) ExistsContainer(ctx context.Context, variableStore *vari
 	return len(containerId) > 0, nil
 }
 
-func (d *DockerService) DockerComposeUp(ctx context.Context, pathDockerCompose string, variableStore *variable.VariableStore) error {
+func (d *DockerService) DockerComposeUp(ctx context.Context, pathDockerCompose string, variableStore *model.VariableStore)  (string, error) {
 	command := fmt.Sprintf("docker compose -f %s up -d --build", pathDockerCompose)
 	_, err := d.executorService.Run(ctx, command)
 	if err == nil {
-		urls, err := d.getContainerURLs(ctx, variableStore)
-		if err != nil {
-			fmt.Println(err)
-		}else{
-			fmt.Println(urls)
-		}
+		return d.getContainerURLs(ctx, variableStore)
 	}
-	return err
+	return "", err
 }
 
 func (d *DockerService) DockerComposeDownLocal(ctx context.Context, pathDockerCompose string) error {
@@ -65,7 +60,7 @@ func (d *DockerService) DockerComposeDownLocal(ctx context.Context, pathDockerCo
 	return err
 }
 
-func (d *DockerService) getContainerURLs(ctx context.Context, variableStore *variable.VariableStore) (string, error) {
+func (d *DockerService) getContainerURLs(ctx context.Context, variableStore *model.VariableStore) (string, error) {
 	containerIDs, err := d.getIdsContainerUp(ctx, variableStore)
 	if err != nil {
 		return "", err
@@ -109,7 +104,7 @@ func (d *DockerService) getPortHostContainer(ctx context.Context, containerID st
 	return "", fmt.Errorf(constant.MsgErrorNoPortHost)
 }
 
-func (d *DockerService) getIdsContainerUp(ctx context.Context, variableStore *variable.VariableStore) ([]string, error) {
+func (d *DockerService) getIdsContainerUp(ctx context.Context, variableStore *model.VariableStore) ([]string, error) {
 	commitHash := variableStore.Get(constant.VAR_COMMIT_HASH)
 	version := variableStore.Get(constant.VAR_PROJECT_VERSION)
 

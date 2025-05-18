@@ -1,17 +1,18 @@
 package handler
 
 import (
-	"os"
 	"deploy/internal/application"
 	"deploy/internal/interface/presenter"
+	"os"
+
 	"github.com/spf13/cobra"
 )
 
 func Deploy(cmd *cobra.Command, args []string) {
 	if cmd.Use != "init" {
-		dto := application.IsInitialize()
-		if dto.Error != nil {
-			presenter.ShowError(dto.Error)
+		err := application.IsInitialize()
+		if err != nil {
+			presenter.ShowError("Deploy", err)
 			os.Exit(1)
 		}
     }

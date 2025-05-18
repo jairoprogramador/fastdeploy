@@ -1,8 +1,4 @@
-package variable
-
-import (
-	"deploy/internal/domain/model"
-)
+package model
 
 type VariableStore struct {
 	global map[string]string
@@ -16,7 +12,7 @@ func GetVariableStore() *VariableStore {
 	}
 }
 
-func (s *VariableStore) Initialize(variables []model.Variable) {
+func (s *VariableStore) Initialize(variables []Variable) {
 	s.global = make(map[string]string)
 
 	for _, v := range variables {
@@ -32,7 +28,7 @@ func (s *VariableStore) AddVariableGlobal(name, value string) {
 	s.global[name] = value
 }
 
-func (s *VariableStore) PushScope(variables []model.Variable) {
+func (s *VariableStore) PushScope(variables []Variable) {
 	scope := make(map[string]string)
 	for _, v := range variables {
 		scope[v.Name] = v.Value

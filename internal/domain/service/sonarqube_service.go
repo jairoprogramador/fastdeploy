@@ -24,6 +24,6 @@ func GetSonarqubeService(sonarqubeRepo repository.SonarqubeRepository) *Sonarqub
     return instanceSonarqubeService
 }
 
-func (s *SonarqubeService) Add() *model.Response {
+func (s *SonarqubeService) Add() *model.LogStore {
     return s.sonarqubeRepo.Add()
 }

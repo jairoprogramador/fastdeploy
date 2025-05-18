@@ -18,5 +18,3 @@ const MsgGlobalConfigCannoBeNull = "error model global config cannot be null"
 const MsgGlobalConfigCreating = "error creating global config"
 
 const MsgErrorNoPortHost = "error no host port found"
-
-

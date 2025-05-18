@@ -2,17 +2,17 @@ package handler
 
 import (
 	"deploy/internal/interface/presenter"
-	"deploy/internal/application/support"
+	//"deploy/internal/application/support"
 )
 
 func AddSupportSonarQube() {
 	presenter.ShowStart("add support sonarQube")
-	message := application.AddSonarQube()
-	if message.Error != nil {
+	//message := application.AddSonarQube()
+	/* if message.Error != nil {
 		presenter.ShowError(message.Error)
 		return
     }
-	presenter.ShowSuccess(message.Message)
+	presenter.ShowSuccess(message.Message) */
 }
 
 func AddSupportFortify() {

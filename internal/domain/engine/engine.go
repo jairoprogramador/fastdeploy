@@ -7,7 +7,6 @@ import (
 	"deploy/internal/domain/executor"
 	"deploy/internal/domain/model"
 	"deploy/internal/domain/validator"
-	"deploy/internal/domain/variable"
 	"deploy/internal/domain/service"
 	"deploy/internal/domain/router"
 )
@@ -15,12 +14,13 @@ import (
 type Engine struct {
 	validator *validator.DeploymentValidator
 	executors map[string]executor.StepExecutor
-	variableStore *variable.VariableStore
+	variableStore *model.VariableStore
 	storeService service.StoreServiceInterface
+	logStore *model.LogStore
 	muEngine      sync.RWMutex
 }
 func NewEngine(
-	variableStore *variable.VariableStore,
+	variableStore *model.VariableStore,
 	storeService service.StoreServiceInterface) *Engine {
 
 	e := &Engine{
@@ -28,6 +28,7 @@ func NewEngine(
 		executors:     make(map[string]executor.StepExecutor),
 		variableStore: variableStore,
 		storeService:  storeService,
+		logStore: model.GetLogStore(),
 	}
 	return e
 }
@@ -51,33 +52,40 @@ func (e *Engine) Execute(ctx context.Context, deployment *model.Deployment) erro
 	}
 
 	for _, step := range deployment.Steps {
-		if err := e.executeStep(ctx, step); err != nil {
+		e.logStore.StartStep(step.Name)
+		message, err := e.executeStep(ctx, step)
+		if err != nil {
 			return fmt.Errorf("error en paso %s: %v", step.Name, err)
+		}else{
+			e.logStore.AddMessage(message)
 		}
 	}
 
 	return nil
 }
 
-func (e *Engine) tryContainerUp(ctx context.Context, variableStore *variable.VariableStore) bool {
+func (e *Engine) tryContainerUp(ctx context.Context, variableStore *model.VariableStore) bool {
 	dockerService := service.GetDockerService()
 	exists, _ := dockerService.ExistsContainer(ctx, variableStore)
 	if exists {
 		pathDockerCompose := router.GetRouter().GetFullPathDockerCompose()
-		err := dockerService.DockerComposeUp(ctx, pathDockerCompose, variableStore)
+		message , err := dockerService.DockerComposeUp(ctx, pathDockerCompose, variableStore)
+		if err == nil {
+			e.logStore.AddMessage(message)
+		}
 		return err == nil
 	}
 	return false
 }
 
-func (e *Engine) executeStep(ctx context.Context, step model.Step) error {
+func (e *Engine) executeStep(ctx context.Context, step model.Step) (string, error) {
 	if len(step.Parallel) > 0 {
-		return e.executeParallelSteps(ctx, step.Parallel)
+		return "", e.executeParallelSteps(ctx, step.Parallel)
 	}
 
 	executor, exists := e.getExecutor(step.Type)
 	if !exists {
-		return fmt.Errorf("tipo de paso no soportado: %s", step.Type)
+		return "", fmt.Errorf("tipo de paso no soportado: %s", step.Type)
 	}
 
 	e.variableStore.PushScope(step.Variables)
@@ -94,7 +102,7 @@ func (e *Engine) executeParallelSteps(ctx context.Context, steps []model.Step) e
 		wg.Add(1)
 		go func(s model.Step) {
 			defer wg.Done()
-			if err := e.executeStep(ctx, s); err != nil {
+			if _, err := e.executeStep(ctx, s); err != nil {
 				errChan <- fmt.Errorf("error en paso paralelo %s: %v", s.Name, err)
 			}
 		}(step)

@@ -24,7 +24,7 @@ var (
 )
 
 type ProjectServiceInterface interface {
-	Initialize() *model.Response
+	Initialize() (string, error)
 	Load() (*model.Project, error)
 	Save(project *model.Project) error
 }
@@ -35,6 +35,7 @@ type projectService struct {
 	fileRepository      repository.FileRepository
 	router              *router.Router
 	muProjectService    sync.RWMutex
+	logStore            *model.LogStore
 }
 
 var (
@@ -53,6 +54,7 @@ func GetProjectService(
 			globalConfigService: globalConfigService,
 			router:              router.GetRouter(),
 			fileRepository:      fileRepository,
+			logStore:            model.GetLogStore(),
 		}
 	})
 	return instanceProjectService
@@ -64,24 +66,24 @@ func (s *projectService) SetYamlRepository(yamlRepository repository.YamlReposit
 	s.yamlRepository = yamlRepository
 }
 
-func (s *projectService) Initialize() *model.Response {
+func (s *projectService) Initialize() (string, error) {
+	s.logStore.StartStep("")
 	if _, err := s.Load(); err != nil {
 		if errors.Is(err, ErrProjectNotFound) || errors.Is(err, ErrProjectNotComplete) {
 
 			project, err := s.createModelProject()
 			if err != nil {
-				return model.GetNewResponseError(err)
+				return "", fmt.Errorf("%v", err)
 			}
 
 			if err = s.Save(project); err != nil {
-				return model.GetNewResponseError(err)
+				return "", fmt.Errorf("%v", err)
 			}
-			
-			return model.GetNewResponseMessage(constant.MsgInitializeSuccess)
+			return constant.MsgInitializeSuccess, nil
 		}
-		return model.GetNewResponseError(err)
+		return "", fmt.Errorf("%v", err)
 	}
-	return model.GetNewResponseMessage(constant.MsgInitializeExists)
+	return constant.MsgInitializeExists, nil
 }
 
 func (s *projectService) Load() (*model.Project, error) {

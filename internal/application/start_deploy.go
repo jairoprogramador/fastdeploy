@@ -2,15 +2,15 @@ package application
 
 import (
 	"deploy/internal/domain/engine"
-	"deploy/internal/application/dto"
-	"deploy/internal/domain/variable"
+	"deploy/internal/domain/model"
 	"deploy/internal/domain/validator"
 	"context"
 	"time"
 )
 
-func StartDeploy() *dto.ResponseDto {
-	storeVariable := variable.GetVariableStore()
+func StartDeploy() *model.LogStore {
+	logStore := model.NewLogStore("start deploy")
+	storeVariable := model.GetVariableStore()
 	storeService := getStoreService()
 
 	engine := engine.NewEngine(storeVariable, storeService)
@@ -23,12 +23,13 @@ func StartDeploy() *dto.ResponseDto {
 	deploymentService := getDeploymentService()
 	deployment, err := deploymentService.Load()
 	if err != nil {
-		return dto.GetDtoWithError(err)
+		logStore.AddError(err)
 	}
 	
 	if err := engine.Execute(ctx, &deployment); err != nil {
-        return dto.GetDtoWithError(err)
+        logStore.AddError(err)
     }
 
-	return dto.GetDtoWithMessage("Despliegue completado exitosamente")
+	logStore.FinishSteps()
+	return logStore
 }

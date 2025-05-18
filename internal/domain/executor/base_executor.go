@@ -8,7 +8,7 @@ import (
 )
 
 type StepExecutor interface {
-	Execute(ctx context.Context, step model.Step) error
+	Execute(ctx context.Context, step model.Step) (string, error)
 }
 
 type BaseExecutor struct {}
@@ -38,7 +38,7 @@ func (e *BaseExecutor) prepareContext(ctx context.Context, step model.Step) (con
 	return context.WithTimeout(ctx, timeout)
 }
 
-func (e *BaseExecutor) handleRetry(step model.Step, fn func() error) error {
+func (e *BaseExecutor) handleRetry(step model.Step, fn func() (string, error)) (string, error) {
 	if step.Retry == nil {
 		return fn()
 	}
@@ -50,12 +50,11 @@ func (e *BaseExecutor) handleRetry(step model.Step, fn func() error) error {
 			time.Sleep(delay)
 		}
 
-		if err := fn(); err == nil {
-			return nil
+		if message, err := fn(); err == nil {
+			return message, nil
 		} else {
 			lastErr = err
 		}
 	}
-
-	return lastErr
+	return "", lastErr
 }

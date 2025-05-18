@@ -8,7 +8,6 @@ import (
 	"deploy/internal/domain/router"
 	"deploy/internal/domain/service"
 	"deploy/internal/domain/template"
-	"deploy/internal/domain/variable"
 	"fmt"
 	"net"
 )
@@ -33,7 +32,7 @@ type DockerComposeData struct {
 
 type ContainerExecutor struct {
 	baseExecutor        *BaseExecutor
-	variables           *variable.VariableStore
+	variables           *model.VariableStore
 	dockerService       service.DockerServiceInterface
 	containerRepository repository.ContainerRepository
 	fileRepository      repository.FileRepository
@@ -43,7 +42,7 @@ type ContainerExecutor struct {
 func GetContainerExecutor(
 	containerRepository repository.ContainerRepository,
 	fileRepository repository.FileRepository,
-	variables *variable.VariableStore) *ContainerExecutor {
+	variables *model.VariableStore) *ContainerExecutor {
 	return &ContainerExecutor{
 		baseExecutor:        GetBaseExecutor(),
 		variables:           variables,
@@ -54,25 +53,22 @@ func GetContainerExecutor(
 	}
 }
 
-func (e *ContainerExecutor) Execute(ctx context.Context, step model.Step) error {
-
+func (e *ContainerExecutor) Execute(ctx context.Context, step model.Step) (string, error) {
 	ctx, cancel := e.baseExecutor.prepareContext(ctx, step)
 	defer cancel()
 
-	return e.baseExecutor.handleRetry(step, func() error {
+	return e.baseExecutor.handleRetry(step, func() (string, error) {
 		e.variables.PushScope(step.Variables)
 		defer e.variables.PopScope()
 
-		fmt.Printf("---------------%s-----------------\n", step.Name)
-
 		err := e.delete(ctx)
 		if err != nil {
-			return err
+			return "", err
 		}
 
 		err = e.buildDockerfile()
 		if err != nil {
-			return err
+			return "", err
 		}
 
 		return e.createContainer(ctx)
@@ -134,25 +130,25 @@ func (e *ContainerExecutor) createDockerfile(pathDockerfile, pathDockerfileTempl
 	return e.fileRepository.WriteFile(pathDockerfile, contentDockerfile)
 }
 
-func (e *ContainerExecutor) createContainer(ctx context.Context) error {
+func (e *ContainerExecutor) createContainer(ctx context.Context) (string, error) {
 	pathDockerComposeTemplate := e.router.GetFullPathDockerComposeTemplate()
 	if !e.fileRepository.ExistsFile(pathDockerComposeTemplate) {
 		err := e.fileRepository.WriteFile(pathDockerComposeTemplate, template.ComposeTemplate)
 		if err != nil {
-			return err
+			return "", err
 		}
 	}
 	pathDockerCompose := e.router.GetFullPathDockerCompose()
 	if e.fileRepository.ExistsFile(pathDockerCompose) {
 		err := e.fileRepository.DeleteFile(pathDockerCompose)
 		if err != nil {
-			return err
+			return "", err
 		}
 	}
 
 	err := e.createDockerCompose(pathDockerCompose, pathDockerComposeTemplate)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	return e.dockerService.DockerComposeUp(ctx, pathDockerCompose, e.variables)

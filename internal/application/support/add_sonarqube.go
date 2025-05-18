@@ -1,10 +1,10 @@
 package application
 
 import (
-	"deploy/internal/application/dto"
+	"deploy/internal/domain/model"
 )
 
-func AddSonarQube() *dto.ResponseDto {
+func AddSonarQube() *model.LogStore {
 	/* sonarqubeRepository := repository.GetSonarqubeRepository()
 	sonarqubeService := service.GetSonarqubeService(sonarqubeRepository)
 

@@ -7,7 +7,7 @@ import (
 )
 
 type SonarqubeRepository interface {
-	Add() *model.Response
+	Add() *model.LogStore
 	WaitSonarqube(ctx context.Context, maxRetries int, interval time.Duration) error
 	CreateToken(projectKey string) (string, error)
 	ChangePassword() (string, error)

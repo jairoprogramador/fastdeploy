@@ -1,6 +1,7 @@
 package service
 
 import (
+	"deploy/internal/domain/model"
 	"bytes"
 	"context"
 	"fmt"
@@ -14,7 +15,9 @@ type ExecutorServiceInterface interface {
 	Run(ctx context.Context, command string) (string, error)
 }
 
-type DefaultExecutorService struct{}
+type DefaultExecutorService struct{
+	logStore *model.LogStore
+}
 
 var (
 	instanceExecutorService *DefaultExecutorService
@@ -23,7 +26,9 @@ var (
 
 func GetExecutorService() ExecutorServiceInterface {
 	onceExecutorService.Do(func() {
-		instanceExecutorService = &DefaultExecutorService{}
+		instanceExecutorService = &DefaultExecutorService{
+			logStore: model.GetLogStore(),
+		}
 	})
 	return instanceExecutorService
 }
@@ -44,7 +49,7 @@ func (r *DefaultExecutorService) Run(ctx context.Context, cmdExec string) (strin
 	command := parts[0]
 	args := parts[1:]
 
-	//println(fmt.Sprintf("Error ejecutando comando '%s %s'", command, strings.Join(args, " ")))
+	r.logStore.AddCommand(fmt.Sprintf("%s %s", command, strings.Join(args, " ")))
 
 	var stdoutBuf, stderrBuf bytes.Buffer
 
@@ -73,7 +78,6 @@ func (r *DefaultExecutorService) Run(ctx context.Context, cmdExec string) (strin
 		if stderrBuf.Len() > 0 {
 			errMsg += fmt.Sprintf("\nStandard Error:\n%s", stderrBuf.String())
 		}
-
 		return "", fmt.Errorf("%s", errMsg)
 	}
 
