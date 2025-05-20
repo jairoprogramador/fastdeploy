@@ -6,9 +6,9 @@ const (
 )
 
 type StepLog struct {
-	StepName     string
+	StepName string
 	Status   string
-	Message   string
+	Message  string
 	Error    error
 	Commands []string
 }
@@ -19,26 +19,14 @@ type LogStore struct {
 	Steps    []StepLog
 }
 
-var (
-	instanceLogStore *LogStore
-)
-
 func NewLogStore(command string) *LogStore {
-	instanceLogStore = &LogStore{
+	return &LogStore{
 		Command: command,
 		LastStep: StepLog{
 			StepName: command,
 		},
-		Steps:    []StepLog{},
+		Steps: []StepLog{},
 	}
-	return instanceLogStore
-}
-
-func GetLogStore() *LogStore {
-	if instanceLogStore == nil {
-		instanceLogStore = NewLogStore("not defined")
-	}
-	return instanceLogStore
 }
 
 func (s *LogStore) StartStep(stepName string) {
@@ -47,7 +35,7 @@ func (s *LogStore) StartStep(stepName string) {
 		s.LastStep = StepLog{
 			StepName: stepName,
 			Status:   StatusSuccess,
-			Message:   "",
+			Message:  "",
 			Error:    nil,
 			Commands: []string{},
 		}
@@ -83,3 +71,26 @@ func (s *LogStore) GetLogs() []StepLog {
 	s.FinishSteps()
 	return s.Steps
 }
+
+func (s *LogStore) HasErrors() bool {
+	s.FinishSteps()
+	for _, step := range s.Steps {
+		if step.Status == StatusError || step.Error != nil {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *LogStore) GetError() error {
+	s.FinishSteps()
+	for _, step := range s.Steps {
+		if step.Status == StatusError || step.Error != nil {
+			return step.Error
+		}
+	}
+	return nil
+}
+
+
+

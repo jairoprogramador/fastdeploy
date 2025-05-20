@@ -4,25 +4,16 @@ import (
 	"context"
 	"deploy/internal/domain/model"
 	"time"
-	"sync"
 )
 
-type StepExecutor interface {
+type StepExecutorInterface interface {
 	Execute(ctx context.Context, step model.Step) (string, error)
 }
 
-type BaseExecutor struct {}
+type BaseExecutor struct{}
 
-var (
-	instanceBaseExecutor *BaseExecutor
-	onceBaseExecutor     sync.Once
-)
-
-func GetBaseExecutor() *BaseExecutor {
-	onceBaseExecutor.Do(func() {
-		instanceBaseExecutor = &BaseExecutor{}
-	})
-	return instanceBaseExecutor
+func NewBaseExecutor() *BaseExecutor {
+	return &BaseExecutor{}
 }
 
 func (e *BaseExecutor) prepareContext(ctx context.Context, step model.Step) (context.Context, context.CancelFunc) {

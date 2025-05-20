@@ -7,9 +7,7 @@ import (
 	"deploy/internal/domain/model"
 	"deploy/internal/domain/repository"
 	"deploy/internal/domain/template"
-	"deploy/internal/domain/variable"
 	"deploy/internal/infrastructure/filesystem"
-	"deploy/internal/infrastructure/tools"
 	"deploy/internal/interface/presenter"
 	"encoding/json"
 	"fmt"
@@ -17,7 +15,6 @@ import (
 	"net/http"
 	"net/url"
 	"path/filepath"
-	"sync"
 	"time"
 )
 
@@ -40,7 +37,7 @@ type TokenResponse struct {
 	Token string `json:"token"`
 }
 
-type sonarqubeRepositoryImpl struct {
+type SonarqubeRepositoryImpl struct {
 	client            *http.Client
 	user              string
 	passwordDefault   string
@@ -56,14 +53,11 @@ type sonarqubeRepositoryImpl struct {
 	fileRepository    repository.FileRepository
 }
 
-var (
-	instanceSonarqubeRepository     repository.SonarqubeRepository
-	instanceOnceSonarqubeRepository sync.Once
-)
-
-func GetSonarqubeRepository() repository.SonarqubeRepository {
-	instanceOnceSonarqubeRepository.Do(func() {
-		instanceSonarqubeRepository = &sonarqubeRepositoryImpl{
+func NewSonarqubeRepositoryImpl(
+	dockerRepo repository.DockerRepository,
+	fileRepo repository.FileRepository,
+) repository.SonarqubeRepository {
+	return &SonarqubeRepositoryImpl{
 			client: &http.Client{
 				Timeout: 10 * time.Second,
 			},
@@ -77,14 +71,12 @@ func GetSonarqubeRepository() repository.SonarqubeRepository {
 			createProjectAPI:  createProjectAPI,
 			searchProjectAPI:  searchProjectAPI,
 			projectStatusAPI:  projectStatusAPI,
-			dockerRepo:        tools.NewDockerService(),
-			fileRepository:    GetFileRepository(),
+		dockerRepo:        dockerRepo,
+		fileRepository:    fileRepo,
 		}
-	})
-	return instanceSonarqubeRepository
 }
 
-func (s *sonarqubeRepositoryImpl) Add() *model.Response {
+func (s *SonarqubeRepositoryImpl) Add() *model.Response {
 	homeDir, err := filesystem.GetHomeDirectory()
 	if err != nil {
 		return model.GetNewResponseError(err)
@@ -148,14 +140,14 @@ func (s *sonarqubeRepositoryImpl) Add() *model.Response {
 	return s.validate()
 }
 
-func (s *sonarqubeRepositoryImpl) validate() *model.Response {
+func (s *SonarqubeRepositoryImpl) validate() *model.Response {
 	containerIds, err := s.dockerRepo.GetContainersID("sonarqube:community")
 	if err != nil {
 		return model.GetNewResponseError(err)
 	}
 
 	if len(containerIds) > 0 {
-		urlsContainers, err :=  s.dockerRepo.GetUrlsContainer(containerIds)
+		urlsContainers, err := s.dockerRepo.GetUrlsContainer(containerIds)
 		if err != nil {
 			return model.GetNewResponseError(err)
 		}
@@ -206,7 +198,7 @@ func (s *sonarqubeRepositoryImpl) validate() *model.Response {
 	}
 }
 
-func (s *sonarqubeRepositoryImpl) WaitSonarqube(ctx context.Context, maxRetries int, interval time.Duration) error {
+func (s *SonarqubeRepositoryImpl) WaitSonarqube(ctx context.Context, maxRetries int, interval time.Duration) error {
 	fmt.Println("Esperando a que SonarQube esté listo...")
 
 	for attempt := 1; attempt <= maxRetries; attempt++ {
@@ -243,7 +235,7 @@ func (s *sonarqubeRepositoryImpl) WaitSonarqube(ctx context.Context, maxRetries 
 	return fmt.Errorf("sonarqube no estuvo listo después de %d intentos", maxRetries)
 }
 
-func (s *sonarqubeRepositoryImpl) CreateToken(projectKey string) (string, error) {
+func (s *SonarqubeRepositoryImpl) CreateToken(projectKey string) (string, error) {
 	data := url.Values{}
 	data.Set("name", s.tokenName)
 	data.Set("type", "PROJECT_ANALYSIS_TOKEN")
@@ -266,7 +258,7 @@ func (s *sonarqubeRepositoryImpl) CreateToken(projectKey string) (string, error)
 	return result.Token, nil
 }
 
-func (s *sonarqubeRepositoryImpl) RevokeToken() error {
+func (s *SonarqubeRepositoryImpl) RevokeToken() error {
 	data := url.Values{}
 	data.Set("name", s.tokenName)
 
@@ -282,7 +274,7 @@ func (s *sonarqubeRepositoryImpl) RevokeToken() error {
 	return nil
 }
 
-func (s *sonarqubeRepositoryImpl) ChangePassword() (string, error) {
+func (s *SonarqubeRepositoryImpl) ChangePassword() (string, error) {
 	data := url.Values{}
 	data.Set("login", s.user)
 	data.Set("previousPassword", s.passwordDefault)
@@ -300,7 +292,7 @@ func (s *sonarqubeRepositoryImpl) ChangePassword() (string, error) {
 	return s.password, nil
 }
 
-func (s *sonarqubeRepositoryImpl) CreateProject(projectKey, projectName string) error {
+func (s *SonarqubeRepositoryImpl) CreateProject(projectKey, projectName string) error {
 	data := url.Values{}
 	data.Set("name", projectName)
 	data.Set("project", projectKey)
@@ -319,7 +311,7 @@ func (s *sonarqubeRepositoryImpl) CreateProject(projectKey, projectName string) 
 	return nil
 }
 
-func (s *sonarqubeRepositoryImpl) CanLogin(user, pass string) bool {
+func (s *SonarqubeRepositoryImpl) CanLogin(user, pass string) bool {
 	_, status, err := s.sendRequest("GET", statusAPI, nil, s.user, s.password)
 	if err != nil {
 		return false
@@ -327,7 +319,7 @@ func (s *sonarqubeRepositoryImpl) CanLogin(user, pass string) bool {
 	return status == http.StatusOK
 }
 
-func (s *sonarqubeRepositoryImpl) ProjectExists(projectKey string) (bool, error) {
+func (s *SonarqubeRepositoryImpl) ProjectExists(projectKey string) (bool, error) {
 	apiURL := s.searchProjectAPI + "?projects=" + projectKey
 	body, status, err := s.sendRequest("GET", apiURL, nil, s.user, s.password)
 	if err != nil {
@@ -355,7 +347,7 @@ func (s *sonarqubeRepositoryImpl) ProjectExists(projectKey string) (bool, error)
 	return false, nil
 }
 
-func (s *sonarqubeRepositoryImpl) GetQualityGateStatus(projectKey string) (string, error) {
+func (s *SonarqubeRepositoryImpl) GetQualityGateStatus(projectKey string) (string, error) {
 	apiURL := s.projectStatusAPI + "?projectKey=" + projectKey
 
 	body, status, err := s.sendRequest("GET", apiURL, nil, s.user, s.password)
@@ -380,7 +372,7 @@ func (s *sonarqubeRepositoryImpl) GetQualityGateStatus(projectKey string) (strin
 	return result.ProjectStatus.Status, nil
 }
 
-func (s *sonarqubeRepositoryImpl) sendRequest(method, url string, data url.Values, authUser, authPass string) ([]byte, int, error) {
+func (s *SonarqubeRepositoryImpl) sendRequest(method, url string, data url.Values, authUser, authPass string) ([]byte, int, error) {
 	req, err := http.NewRequest(method, url, bytes.NewBufferString(data.Encode()))
 	if err != nil {
 		return nil, 0, fmt.Errorf("error creando request: %w", err)

@@ -1,45 +1,38 @@
 package service
 
 import (
-	"deploy/internal/domain/model"
-	"deploy/internal/domain/constant"
-	"deploy/internal/domain/router"
-	"sync"
 	"context"
+	"deploy/internal/domain/constant"
+	"deploy/internal/domain/model"
+	"deploy/internal/domain/router"
+	"fmt"
 )
 
 type StoreServiceInterface interface {
-	GetVariablesGlobal(ctx context.Context, deployment *model.Deployment) ([]model.Variable, error) 
+	GetVariablesGlobal(ctx context.Context, deployment *model.Deployment, project *model.Project) ([]model.Variable, error)
 }
 
 type StoreService struct {
-	project *model.Project
 	gitService GitServiceInterface
-	muVariableService    sync.RWMutex
+	router     *router.Router
+	//muVariableService sync.RWMutex
 }
 
-var (
-	instanceStoreService     *StoreService
-	instanceOnceStoreService sync.Once
-)
-
-func GetStoreService(project *model.Project) StoreServiceInterface {
-	instanceOnceStoreService.Do(func() {
-		instanceStoreService = &StoreService {
-			project: project,
-			gitService: GetGitService(),
-		}
-	})
-	return instanceStoreService
+func NewStoreService(
+	gitService GitServiceInterface,
+	router *router.Router,
+) StoreServiceInterface {
+	return &StoreService{
+		gitService: gitService,
+		router:     router,
+	}
 }
 
-func (s *StoreService) SetProjectModel(project *model.Project) {
-	s.muVariableService.Lock()
-	defer s.muVariableService.Unlock()
-	s.project = project
-}
+func (s *StoreService) GetVariablesGlobal(ctx context.Context, deployment *model.Deployment, project *model.Project) ([]model.Variable, error) {
+	if project == nil {
+		return nil, fmt.Errorf("el proyecto no puede ser nulo para GetVariablesGlobal")
+	}
 
-func (s *StoreService) GetVariablesGlobal(ctx context.Context, deployment *model.Deployment) ([]model.Variable, error) {
 	commitHash, err := s.gitService.GetCommitHash(ctx)
 	if err != nil {
 		return []model.Variable{}, err
@@ -59,27 +52,27 @@ func (s *StoreService) GetVariablesGlobal(ctx context.Context, deployment *model
 
 	variables = append(variables, model.Variable{
 		Name:  constant.VAR_PROJECT_ORGANIZATION,
-		Value: s.project.Organization,
+		Value: project.Organization,
 	})
 
 	variables = append(variables, model.Variable{
 		Name:  constant.VAR_PROJECT_ID,
-		Value: s.project.ProjectID,
+		Value: project.ProjectID,
 	})
 
 	variables = append(variables, model.Variable{
 		Name:  constant.VAR_PROJECT_NAME,
-		Value: s.project.Name,
+		Value: project.Name,
 	})
 
 	variables = append(variables, model.Variable{
 		Name:  constant.VAR_PROJECT_VERSION,
-		Value: s.project.Version,
+		Value: project.Version,
 	})
 
 	variables = append(variables, model.Variable{
 		Name:  constant.VAR_PROJECT_TEAM,
-		Value: s.project.TeamName,
+		Value: project.TeamName,
 	})
 
 	variables = append(variables, model.Variable{
@@ -99,12 +92,12 @@ func (s *StoreService) GetVariablesGlobal(ctx context.Context, deployment *model
 
 	variables = append(variables, model.Variable{
 		Name:  constant.VAR_PATH_HOME_DIRECTORY,
-		Value: router.GetRouter().GetHomeDirectory(),
+		Value: s.router.GetHomeDirectory(),
 	})
 
 	variables = append(variables, model.Variable{
 		Name:  constant.VAR_PATH_DOCKER_DIRECTORY,
-		Value: router.GetRouter().GetPathDockerDirectory(),
+		Value: s.router.GetPathDockerDirectory(),
 	})
 
 	for _, variable := range deployment.Variables.Global {

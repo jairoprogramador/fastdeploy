@@ -5,7 +5,7 @@ type VariableStore struct {
 	local  []map[string]string
 }
 
-func GetVariableStore() *VariableStore {
+func NewVariableStore() *VariableStore {
 	return &VariableStore{
 		global: make(map[string]string),
 		local:  make([]map[string]string, 0),

@@ -2,80 +2,64 @@ package engine
 
 import (
 	"context"
-	"fmt"
-	"sync"
 	"deploy/internal/domain/executor"
 	"deploy/internal/domain/model"
-	"deploy/internal/domain/validator"
 	"deploy/internal/domain/service"
-	"deploy/internal/domain/router"
+	"deploy/internal/domain/validator"
+	"fmt"
+	"sync"
 )
 
 type Engine struct {
-	validator *validator.DeploymentValidator
-	executors map[string]executor.StepExecutor
+	validator     *validator.DeploymentValidator
+	Executors     map[string]executor.StepExecutorInterface
 	variableStore *model.VariableStore
-	storeService service.StoreServiceInterface
-	logStore *model.LogStore
-	muEngine      sync.RWMutex
+	storeService  service.StoreServiceInterface
+	logStore      *model.LogStore
 }
+
 func NewEngine(
 	variableStore *model.VariableStore,
-	storeService service.StoreServiceInterface) *Engine {
-
+	storeService service.StoreServiceInterface,
+	logStore *model.LogStore,
+	validator *validator.DeploymentValidator,
+) *Engine {
 	e := &Engine{
-		validator:     validator.GetDeploymentValidator(),
-		executors:     make(map[string]executor.StepExecutor),
+		validator:     validator,
+		Executors:     make(map[string]executor.StepExecutorInterface),
 		variableStore: variableStore,
 		storeService:  storeService,
-		logStore: model.GetLogStore(),
+		logStore:      logStore,
 	}
 	return e
 }
 
-func (e *Engine) Execute(ctx context.Context, deployment *model.Deployment) error {
+func (e *Engine) Execute(ctx context.Context, deployment *model.Deployment, project *model.Project) error {
 	if err := e.validator.Validate(deployment); err != nil {
 		return fmt.Errorf("archivo deployment con errores: %v", err)
 	}
 
-	variablesGlobal, err := e.storeService.GetVariablesGlobal(ctx, deployment)
+	variablesGlobal, err := e.storeService.GetVariablesGlobal(ctx, deployment, project)
 	if err != nil {
 		return fmt.Errorf("error al obtener variables globales: %v", err)
 	}
 
 	e.variableStore.Initialize(variablesGlobal)
 
-	if deployment.HasType(validator.TypeContainer) {
-		if e.tryContainerUp(ctx, e.variableStore) {
-			return nil
-		}
-	}
-
 	for _, step := range deployment.Steps {
 		e.logStore.StartStep(step.Name)
 		message, err := e.executeStep(ctx, step)
 		if err != nil {
 			return fmt.Errorf("error en paso %s: %v", step.Name, err)
-		}else{
+		} else {
 			e.logStore.AddMessage(message)
+			if step.Then == validator.ThenFinish {
+				break
+			}
 		}
 	}
 
 	return nil
-}
-
-func (e *Engine) tryContainerUp(ctx context.Context, variableStore *model.VariableStore) bool {
-	dockerService := service.GetDockerService()
-	exists, _ := dockerService.ExistsContainer(ctx, variableStore)
-	if exists {
-		pathDockerCompose := router.GetRouter().GetFullPathDockerCompose()
-		message , err := dockerService.DockerComposeUp(ctx, pathDockerCompose, variableStore)
-		if err == nil {
-			e.logStore.AddMessage(message)
-		}
-		return err == nil
-	}
-	return false
 }
 
 func (e *Engine) executeStep(ctx context.Context, step model.Step) (string, error) {
@@ -83,7 +67,7 @@ func (e *Engine) executeStep(ctx context.Context, step model.Step) (string, erro
 		return "", e.executeParallelSteps(ctx, step.Parallel)
 	}
 
-	executor, exists := e.getExecutor(step.Type)
+	executor, exists := e.Executors[step.Type]
 	if !exists {
 		return "", fmt.Errorf("tipo de paso no soportado: %s", step.Type)
 	}
@@ -121,20 +105,4 @@ func (e *Engine) executeParallelSteps(ctx context.Context, steps []model.Step) e
 	}
 
 	return nil
-}
-
-func (e *Engine) RegisterExecutor(stepType string, executor executor.StepExecutor) {
-	e.muEngine.Lock()
-	defer e.muEngine.Unlock()
-	e.executors[stepType] = executor
-}
-
-func (e *Engine) getExecutor(stepType string) (executor.StepExecutor, bool) {
-	e.muEngine.RLock()
-	defer e.muEngine.RUnlock()
-	executorRegistered, exists := e.executors[stepType]
-	if !exists {
-		return executor.GetCommandExecutor(e.variableStore), true
-	}
-	return executorRegistered, exists
 }

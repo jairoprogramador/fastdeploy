@@ -2,7 +2,6 @@ package repository
 
 import (
 	"deploy/internal/domain/repository"
-	"sync"
 
 	"gopkg.in/yaml.v3"
 )
@@ -11,18 +10,10 @@ type YamlRepositoryImpl struct {
 	fileRepository repository.FileRepository
 }
 
-var (
-	instanceYamlRepository     repository.YamlRepository
-	instanceOnceYamlRepository sync.Once
-)
-
-func GetYamlRepository() repository.YamlRepository {
-	instanceOnceYamlRepository.Do(func() {
-		instanceYamlRepository = &YamlRepositoryImpl{
-			fileRepository: GetFileRepository(),
-		}
-	})
-	return instanceYamlRepository
+func NewYamlRepositoryImpl(fileRepo repository.FileRepository) repository.YamlRepository {
+	return &YamlRepositoryImpl{
+		fileRepository: fileRepo,
+	}
 }
 
 func (st *YamlRepositoryImpl) Load(pathFile string, out any) error {

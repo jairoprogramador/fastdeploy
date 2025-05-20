@@ -4,21 +4,12 @@ import (
 	"deploy/internal/domain/constant"
 	"os"
 	"path/filepath"
-	"sync"
 )
 
 type Router struct{}
 
-var (
-	instanceRouter     *Router
-	instanceOnceRouter sync.Once
-)
-
-func GetRouter() *Router {
-	instanceOnceRouter.Do(func() {
-		instanceRouter = &Router{}
-	})
-	return instanceRouter
+func NewRouter() *Router {
+	return &Router{}
 }
 
 func (st *Router) GetFullPathDockerComposeTemplate() string {

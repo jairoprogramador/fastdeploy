@@ -6,11 +6,10 @@ import (
 	"deploy/internal/domain/repository"
 	"deploy/internal/domain/router"
 	"errors"
-	"sync"
 )
 
 var (
-	ErrGlobalConfigNotFound    = errors.New(constant.MsgGlobalConfigNotFound)
+	ErrGlobalConfigNotFound     = errors.New(constant.MsgGlobalConfigNotFound)
     ErrGlobalConfigCanNotBeNull = errors.New(constant.MsgGlobalConfigCannoBeNull)
 )
 
@@ -20,35 +19,21 @@ type GlobalConfigServiceInterface interface {
 }
 
 type globalConfigService struct {
-	yamlRepository 			repository.YamlRepository
-	fileRepository      repository.FileRepository
-	router 						*router.Router
-    mutexGlobalConfigService 	sync.RWMutex
+	yamlRepository           repository.YamlRepository
+	fileRepository           repository.FileRepository
+	router                   *router.Router
 }
 
-var (
-	instanceGlobalConfigService     *globalConfigService
-	instanceOnceGlobalConfigService sync.Once
-)
-
-func GetGlobalConfigService(
+func NewGlobalConfigService(
 	yamlRepository repository.YamlRepository,
-	fileRepository repository.FileRepository) GlobalConfigServiceInterface {
-	
-	instanceOnceGlobalConfigService.Do(func() {
-		instanceGlobalConfigService = &globalConfigService{
+	fileRepository repository.FileRepository,
+	router *router.Router,
+) GlobalConfigServiceInterface {
+	return &globalConfigService{
 			yamlRepository: yamlRepository,
 			fileRepository: fileRepository,
-			router: router.GetRouter(),
+		router:         router,
 		}
-	})
-	return instanceGlobalConfigService
-}
-
-func (s *globalConfigService) SetYamlRepository(yamlRepository repository.YamlRepository) {
-	s.mutexGlobalConfigService.Lock()
-	defer s.mutexGlobalConfigService.Unlock()
-	s.yamlRepository = yamlRepository
 }
 
 func (s *globalConfigService) Load() (model.GlobalConfig, error) {
@@ -67,7 +52,7 @@ func (s *globalConfigService) Load() (model.GlobalConfig, error) {
 	return globalConfig, nil
 }
 
-func (s *globalConfigService) Create(globalConfig *model.GlobalConfig) error{
+func (s *globalConfigService) Create(globalConfig *model.GlobalConfig) error {
 	if globalConfig == nil {
 		return ErrGlobalConfigCanNotBeNull
 	}

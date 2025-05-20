@@ -3,15 +3,6 @@ package condition
 import (
 	"regexp"
 	"strings"
-	"sync"
-)
-
-// Evaluadores singleton
-var (
-	notEmptyEvaluator *NotEmptyEvaluator
-	emptyEvaluator    *EmptyEvaluator
-	onceNotEmpty      sync.Once
-	onceEmpty         sync.Once
 )
 
 type NotEmptyEvaluator struct{}
@@ -26,20 +17,12 @@ type MatchesEvaluator struct {
 	Pattern *regexp.Regexp
 }
 
-// GetNotEmptyEvaluator retorna la instancia única del evaluador
-func GetNotEmptyEvaluator() *NotEmptyEvaluator {
-	onceNotEmpty.Do(func() {
-		notEmptyEvaluator = &NotEmptyEvaluator{}
-	})
-	return notEmptyEvaluator
+func NewNotEmptyEvaluator() *NotEmptyEvaluator {
+	return &NotEmptyEvaluator{}
 }
 
-// GetEmptyEvaluator retorna la instancia única del evaluador
-func GetEmptyEvaluator() *EmptyEvaluator {
-	onceEmpty.Do(func() {
-		emptyEvaluator = &EmptyEvaluator{}
-	})
-	return emptyEvaluator
+func NewEmptyEvaluator() *EmptyEvaluator {
+	return &EmptyEvaluator{}
 }
 
 func (e *NotEmptyEvaluator) Evaluate(output string) (bool, error) {

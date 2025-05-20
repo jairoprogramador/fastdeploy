@@ -22,8 +22,8 @@ type DockerfileData struct {
 }
 
 type DockerComposeData struct {
-	NameDelivery 		string
-	CommitHash   		string
+	NameDelivery        string
+	CommitHash          string
 	Port                string
 	Version             string
 	PathDockerDirectory string
@@ -39,17 +39,21 @@ type ContainerExecutor struct {
 	router              *router.Router
 }
 
-func GetContainerExecutor(
+func NewContainerExecutor(
+	baseExecutor *BaseExecutor,
+	variables *model.VariableStore,
+	dockerService service.DockerServiceInterface,
 	containerRepository repository.ContainerRepository,
 	fileRepository repository.FileRepository,
-	variables *model.VariableStore) *ContainerExecutor {
+	router *router.Router,
+) StepExecutorInterface {
 	return &ContainerExecutor{
-		baseExecutor:        GetBaseExecutor(),
+		baseExecutor:        baseExecutor,
 		variables:           variables,
-		dockerService:       service.GetDockerService(),
+		dockerService:       dockerService,
 		containerRepository: containerRepository,
 		fileRepository:      fileRepository,
-		router:              router.GetRouter(),
+		router:              router,
 	}
 }
 
@@ -78,7 +82,7 @@ func (e *ContainerExecutor) Execute(ctx context.Context, step model.Step) (strin
 func (e *ContainerExecutor) delete(ctx context.Context) error {
 	pathDockerCompose := e.router.GetFullPathDockerCompose()
 	if e.fileRepository.ExistsFile(pathDockerCompose) {
-		if err := e.dockerService.DockerComposeDownLocal(ctx, pathDockerCompose); err != nil {
+		if err := e.dockerService.DockerComposeDown(ctx, pathDockerCompose); err != nil {
 			return err
 		}
 	}
@@ -151,17 +155,17 @@ func (e *ContainerExecutor) createContainer(ctx context.Context) (string, error)
 		return "", err
 	}
 
-	return e.dockerService.DockerComposeUp(ctx, pathDockerCompose, e.variables)
+	return e.dockerService.DockerComposeUpBuild(ctx, pathDockerCompose, e.variables)
 }
 
 func (e *ContainerExecutor) createDockerCompose(pathDockerCompose, pathDockerComposeTemplate string) error {
 	params := DockerComposeData{
-		NameDelivery: e.variables.Get(constant.VAR_PROJECT_NAME),
-		CommitHash:   e.variables.Get(constant.VAR_COMMIT_HASH),
-		Version:      e.variables.Get(constant.VAR_PROJECT_VERSION),
+		NameDelivery:        e.variables.Get(constant.VAR_PROJECT_NAME),
+		CommitHash:          e.variables.Get(constant.VAR_COMMIT_HASH),
+		Version:             e.variables.Get(constant.VAR_PROJECT_VERSION),
 		PathDockerDirectory: e.variables.Get(constant.VAR_PATH_DOCKER_DIRECTORY),
 		PathHomeDirectory:   e.variables.Get(constant.VAR_PATH_HOME_DIRECTORY),
-		Port:         e.getPort(),
+		Port:                e.getPort(),
 	}
 
 	contentDockerCompose, err := e.containerRepository.GetContentTemplate(pathDockerComposeTemplate, params)

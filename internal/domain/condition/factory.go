@@ -4,21 +4,12 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
-	"sync"
 )
 
 type ConditionFactory struct{}
 
-var (
-	instanceConditionFactory *ConditionFactory
-	onceConditionFactory     sync.Once
-)
-
-func GetConditionFactory() *ConditionFactory {
-	onceConditionFactory.Do(func() {
-		instanceConditionFactory = &ConditionFactory{}
-	})
-	return instanceConditionFactory
+func NewConditionFactory() *ConditionFactory {
+	return &ConditionFactory{}
 }
 
 func (f *ConditionFactory) CreateEvaluator(conditionStr string, output string) (ConditionEvaluator, error) {
@@ -26,9 +17,9 @@ func (f *ConditionFactory) CreateEvaluator(conditionStr string, output string) (
 
 	switch parts[0] {
 		case string(NotEmpty):
-			return GetNotEmptyEvaluator(), nil
+		return NewNotEmptyEvaluator(), nil
 		case string(Empty):
-			return GetEmptyEvaluator(), nil
+		return NewEmptyEvaluator(), nil
 		case string(Equals):
 			if output == "" {
 				return nil, fmt.Errorf("value is required for equals condition")

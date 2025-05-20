@@ -38,32 +38,20 @@ type projectService struct {
 	logStore            *model.LogStore
 }
 
-var (
-	instanceProjectService     *projectService
-	instanceOnceProjectService sync.Once
-)
-
-func GetProjectService(
+func NewProjectService(
 	yamlRepository repository.YamlRepository,
 	globalConfigService GlobalConfigServiceInterface,
-	fileRepository repository.FileRepository) ProjectServiceInterface {
-
-	instanceOnceProjectService.Do(func() {
-		instanceProjectService = &projectService{
+	fileRepository repository.FileRepository,
+	router *router.Router,
+	logStore *model.LogStore,
+) ProjectServiceInterface {
+	return &projectService{
 			yamlRepository:      yamlRepository,
 			globalConfigService: globalConfigService,
-			router:              router.GetRouter(),
+		router:              router,
 			fileRepository:      fileRepository,
-			logStore:            model.GetLogStore(),
-		}
-	})
-	return instanceProjectService
+		logStore:            logStore,
 }
-
-func (s *projectService) SetYamlRepository(yamlRepository repository.YamlRepository) {
-	s.muProjectService.Lock()
-	defer s.muProjectService.Unlock()
-	s.yamlRepository = yamlRepository
 }
 
 func (s *projectService) Initialize() (string, error) {
@@ -112,7 +100,7 @@ func (s *projectService) Save(project *model.Project) error {
 		return ErrProjectCanNotBeNull
 	}
 
-	if !project.IsComplete(){
+	if !project.IsComplete() {
 		return ErrProjectNotComplete
 	}
 

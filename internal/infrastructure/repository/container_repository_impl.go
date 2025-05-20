@@ -2,30 +2,21 @@ package repository
 
 import (
 	"deploy/internal/domain/repository"
-	"deploy/internal/infrastructure/filesystem"
-	"text/template"
 	"fmt"
-	"strings"
 	"os"
-	"sync"
+	"path/filepath"
+	"strings"
+	"text/template"
 )
 
 type containerRepositoryImpl struct {
 	fileRepository repository.FileRepository
 }
 
-var (
-	instanceContainerRepository     repository.ContainerRepository
-	instanceOnceContainerRepository sync.Once
-)
-
-func GetContainerRepository() repository.ContainerRepository {
-	instanceOnceContainerRepository.Do(func() {
-		instanceContainerRepository = &containerRepositoryImpl {
-			fileRepository: GetFileRepository(),
-		}
-	})
-	return instanceContainerRepository
+func NewContainerRepositoryImpl(fileRepo repository.FileRepository) repository.ContainerRepository {
+	return &containerRepositoryImpl{
+		fileRepository: fileRepo,
+	}
 }
 
 func (st *containerRepositoryImpl) GetFullPathResource() (string, error) {
@@ -67,10 +58,13 @@ func getFullPathResources(directory string) ([]string, error) {
 		if !archivo.IsDir() && strings.HasSuffix(archivo.Name(), ".jar") &&
 			!strings.Contains(archivo.Name(), "sources") &&
 			!strings.Contains(archivo.Name(), "original") {
-				
-			path := filesystem.GetPath(directory, archivo.Name())
-			path = filesystem.GetAbsolutePath(path)
-			pathFiles = append(pathFiles, path)
+
+			path := filepath.Join(directory, archivo.Name())
+			absolutePath, err := filepath.Abs(path)
+			if err != nil {
+				return nil, fmt.Errorf("error obteniendo ruta absoluta para %s: %w", path, err)
+			}
+			pathFiles = append(pathFiles, absolutePath)
 		}
 	}
 

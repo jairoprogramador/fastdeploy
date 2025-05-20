@@ -5,8 +5,8 @@ import (
 	"deploy/internal/domain/model"
 	"fmt"
 	"strings"
-	"sync"
 	"time"
+
 	"github.com/go-playground/locales/es"
 	translator "github.com/go-playground/universal-translator"
 	"github.com/go-playground/validator/v10"
@@ -16,6 +16,11 @@ import (
 const (
 	TypeCommand   = "command"
 	TypeContainer = "container"
+	TypeSetup     = "setup"
+)
+
+const (
+	ThenFinish    = "finish"
 )
 
 type DeploymentValidator struct {
@@ -23,26 +28,18 @@ type DeploymentValidator struct {
 	trans    translator.Translator
 }
 
-var (
-	instance                *DeploymentValidator
-	onceDeploymentValidator sync.Once
-)
+func NewDeploymentValidator() *DeploymentValidator {
+	locatorEs := es.New()
+	universalTranslator := translator.New(locatorEs, locatorEs)
+	translatorEs, _ := universalTranslator.GetTranslator("es")
 
-func GetDeploymentValidator() *DeploymentValidator {
-	onceDeploymentValidator.Do(func() {
-		locatorEs := es.New()
-		universalTranslator := translator.New(locatorEs, locatorEs)
-		translatorEs, _ := universalTranslator.GetTranslator("es")
+	validatorStruct := validator.New()
+	_ = dictionary_es.RegisterDefaultTranslations(validatorStruct, translatorEs)
 
-		validatorStruct := validator.New()
-		_ = dictionary_es.RegisterDefaultTranslations(validatorStruct, translatorEs)
-
-		instance = &DeploymentValidator{
-			validate: validatorStruct,
-			trans:    translatorEs,
-		}
-	})
-	return instance
+	return &DeploymentValidator{
+		validate: validatorStruct,
+		trans:    translatorEs,
+	}
 }
 
 func (v *DeploymentValidator) Validate(deployment *model.Deployment) error {
@@ -70,10 +67,6 @@ func (v *DeploymentValidator) validateSteps(steps []model.Step) error {
 			return fmt.Errorf("nombre de paso duplicado: %s", step.Name)
 		}
 		stepNames[step.Name] = true
-
-		if step.Type == "" {
-			step.Type = TypeCommand
-		}
 
 		if !v.isValidStepType(step.Type) {
 			return fmt.Errorf("tipo inválido: %s en paso %s", step.Type, step.Name)
@@ -104,8 +97,9 @@ func (v *DeploymentValidator) validateSteps(steps []model.Step) error {
 
 func (v *DeploymentValidator) isValidStepType(stepType string) bool {
 	validTypes := map[string]bool{
-		TypeContainer: true,
-		TypeCommand: true,
+		TypeContainer:       true,
+		TypeCommand:         true,
+		TypeSetup:           true,
 	}
 	return validTypes[stepType]
 }
@@ -119,7 +113,7 @@ func (v *DeploymentValidator) validateConditions(step model.Step, stepNames map[
 	if len(parts) == 0 {
 		return fmt.Errorf("formato de condición inválido en paso %s", step.Name)
 	}
-	
+
 	validConditions := map[string]bool{
 		string(condition.NotEmpty): true,
 		string(condition.Empty):    true,

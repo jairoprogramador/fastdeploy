@@ -9,18 +9,23 @@ import (
 )
 
 type CommandExecutor struct {
-	baseExecutor *BaseExecutor
-	commandRunner service.ExecutorServiceInterface
+	baseExecutor     *BaseExecutor
+	commandRunner    service.ExecutorServiceInterface
 	conditionFactory *condition.ConditionFactory
-	variables *model.VariableStore
+	variables        *model.VariableStore
 }
 
-func GetCommandExecutor(variables *model.VariableStore) *CommandExecutor {
-	return &CommandExecutor {
-		baseExecutor: GetBaseExecutor(),
-		variables: variables,
-		commandRunner: service.GetExecutorService(),
-		conditionFactory: condition.GetConditionFactory(),
+func NewCommandExecutor(
+	baseExecutor *BaseExecutor,
+	variables *model.VariableStore,
+	commandRunner service.ExecutorServiceInterface,
+	conditionFactory *condition.ConditionFactory,
+) StepExecutorInterface {
+	return &CommandExecutor{
+		baseExecutor:     baseExecutor,
+		variables:        variables,
+		commandRunner:    commandRunner,
+		conditionFactory: conditionFactory,
 	}
 }
 
