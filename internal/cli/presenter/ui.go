@@ -1,7 +1,7 @@
 package presenter
 
 import (
-	"deploy/internal/domain/model"
+	"deploy/internal/domain/model/logger"
 	"fmt"
 )
 
@@ -43,9 +43,9 @@ func ShowSuccess(stepName string, message string) {
 	fmt.Println(output)
 }
 
-func ShowLogStore(logStore *model.LogStore) {
-	for _, step := range logStore.Steps {
-		if step.Status == model.StatusError {
+func ShowLogStore(logStore *logger.Logger) {
+	/* for _, step := range logStore.Steps {
+		if step.Status == loggerApp.StatusError {
 			ShowError(step.StepName, step.Error)
 			return
 		}
@@ -53,5 +53,5 @@ func ShowLogStore(logStore *model.LogStore) {
 
 	for _, step := range logStore.Steps {
 		ShowSuccess(step.StepName, step.Message)
-	}
+	} */
 }

@@ -2,10 +2,10 @@ package service
 
 import (
 	"deploy/internal/domain/constant"
+	"deploy/internal/domain/engine/validator"
 	"deploy/internal/domain/model"
 	"deploy/internal/domain/repository"
-	"deploy/internal/domain/router"
-	"deploy/internal/domain/validator"
+	"deploy/internal/domain/service/router"
 	"errors"
 )
 
@@ -13,68 +13,46 @@ var (
 	ErrDeploymentNotFound = errors.New(constant.MsgDeploymentNotFound)
 )
 
-type DeploymentServiceInterface interface {
-	Load() (*model.Deployment, error)
+type DeploymentLoader interface {
+	Load() (*model.DeploymentEntity, error)
 }
 
-type DeploymentService struct {
-	yamlRepository repository.YamlRepository
-	fileRepository repository.FileRepository
-	router         *router.Router
+type deploymentService struct {
+	deploymentRepository repository.DeploymentRepository
+	router               *router.Router
 }
 
 func NewDeploymentService(
-	yamlRepository repository.YamlRepository,
-	fileRepository repository.FileRepository,
+	deploymentRepository repository.DeploymentRepository,
 	router *router.Router,
-) DeploymentServiceInterface {
-	return &DeploymentService{
-		yamlRepository: yamlRepository,
-		router:         router,
-		fileRepository: fileRepository,
+) DeploymentLoader {
+	return &deploymentService{
+		deploymentRepository: deploymentRepository,
+		router:               router,
 	}
 }
 
-func (s *DeploymentService) Load() (*model.Deployment, error) {
-	path := s.router.GetFullPathDeploymentFile()
-
-	exists := s.fileRepository.ExistsFile(path)
-	if !exists {
-		return &model.Deployment{}, ErrDeploymentNotFound
-	}
-
-	var deployment *model.Deployment
-	err := s.yamlRepository.Load(path, &deployment)
+func (s *deploymentService) Load() (*model.DeploymentEntity, error) {
+	deployment, err := s.deploymentRepository.Load()
 	if err != nil {
-		return &model.Deployment{}, err
+		return nil, err
 	}
 
-	deployment = s.setDefaultValues(deployment)
-	deployment = s.setSetupStep(deployment)
-
-	return deployment, nil
-}
-
-func (s *DeploymentService) setSetupStep(deployment *model.Deployment) *model.Deployment {
-	if deployment.HasType(validator.TypeContainer) {
-		deployment.Steps = append([]model.Step{	
-			{
-				Name:    validator.TypeSetup,
-				Type:    validator.TypeSetup,
-				Timeout: "30s",
-				Then:    validator.ThenFinish,
-			},
-		}, deployment.Steps...)
-	}
-	return deployment
-}
-
-func (s *DeploymentService) setDefaultValues(deployment *model.Deployment) *model.Deployment {
 	for i := range deployment.Steps {
 		if deployment.Steps[i].Type == "" {
 			deployment.Steps[i].Type = validator.TypeCommand
 		}
 	}
-	return deployment
-}
 
+	if deployment.HasType(validator.TypeContainer) {
+		setupStep := model.Step{
+			Name:    validator.TypeSetup,
+			Type:    validator.TypeSetup,
+			Timeout: "30s",
+			Then:    validator.ThenFinish,
+		}
+		deployment.Steps = append([]model.Step{setupStep}, deployment.Steps...)
+	}
+
+	return deployment, nil
+}

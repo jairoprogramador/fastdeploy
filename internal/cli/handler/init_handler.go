@@ -2,11 +2,10 @@ package handler
 
 import (
 	"fmt"
-	"deploy/internal/domain/model"
 	"deploy/internal/cli/presenter"
 )
 
-type InitAppFunc func(logStore *model.LogStore) *model.LogStore
+type InitAppFunc func() error
 
 type InitHandler struct {
 	initAppFunc InitAppFunc
@@ -26,8 +25,5 @@ func (h *InitHandler) Controller() error {
 	}
 
 	presenter.ShowBanner()
-	initLogStore := model.NewLogStore("InitializeOperationCmd")
-	finalLogStore := h.initAppFunc(initLogStore)
-	presenter.ShowLogStore(finalLogStore)
-	return finalLogStore.GetError()
+	return h.initAppFunc()
 }

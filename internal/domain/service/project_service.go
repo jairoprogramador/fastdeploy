@@ -4,149 +4,158 @@ import (
 	"crypto/sha256"
 	"deploy/internal/domain/constant"
 	"deploy/internal/domain/model"
+	"deploy/internal/domain/model/logger"
 	"deploy/internal/domain/repository"
-	"deploy/internal/domain/router"
+	"deploy/internal/domain/service/router"
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"sync"
 	"time"
 )
 
 var (
-	ErrProjectNotFound      = errors.New(constant.MsgProjectNotFound)
-	ErrProjectCanNotBeNull  = errors.New(constant.MsgProjectCanNotBeNull)
-	ErrProjectLoad          = errors.New(constant.MsgProjectLoad)
-	ErrProjectNotComplete   = errors.New(constant.MsgProjectNotComplete)
-	ErrProjectName          = errors.New(constant.MsgProjectName)
-	ErrInvalidProjectData   = errors.New(constant.MsgProjectInvalidData)
-	ErrGlobalConfigCreating = errors.New(constant.MsgGlobalConfigCreating)
+	ErrProjectNotFound     = errors.New(constant.MsgProjectNotFound)
+	ErrProjectCanNotBeNull = errors.New(constant.MsgProjectCanNotBeNull)
+	ErrProjectNotComplete  = errors.New(constant.MsgProjectNotComplete)
 )
 
-type ProjectServiceInterface interface {
+type ProjectLoader interface {
+	Load() (*model.ProjectEntity, error)
+}
+
+type ProjectPersister interface {
+	Save(project *model.ProjectEntity) error
+}
+
+type ProjectInitializer interface {
 	Initialize() (string, error)
-	Load() (*model.Project, error)
-	Save(project *model.Project) error
+}
+
+type ProjectService interface {
+	ProjectLoader
+	ProjectPersister
+	ProjectInitializer
+	GetFullPathResource() (string, error)
 }
 
 type projectService struct {
-	yamlRepository      repository.YamlRepository
-	globalConfigService GlobalConfigServiceInterface
-	fileRepository      repository.FileRepository
-	router              *router.Router
-	muProjectService    sync.RWMutex
-	logStore            *model.LogStore
+	logger            *logger.Logger
+	projectRepository repository.ProjectRepository
+	configService     ConfigService
+	router            *router.Router
 }
 
 func NewProjectService(
-	yamlRepository repository.YamlRepository,
-	globalConfigService GlobalConfigServiceInterface,
-	fileRepository repository.FileRepository,
+	logger *logger.Logger,
+	projectRepository repository.ProjectRepository,
+	configService ConfigService,
 	router *router.Router,
-	logStore *model.LogStore,
-) ProjectServiceInterface {
+) ProjectService {
 	return &projectService{
-			yamlRepository:      yamlRepository,
-			globalConfigService: globalConfigService,
-		router:              router,
-			fileRepository:      fileRepository,
-		logStore:            logStore,
-}
+		projectRepository: projectRepository,
+		configService:     configService,
+		router:            router,
+		logger:            logger,
+	}
 }
 
 func (s *projectService) Initialize() (string, error) {
-	s.logStore.StartStep("")
 	if _, err := s.Load(); err != nil {
 		if errors.Is(err, ErrProjectNotFound) || errors.Is(err, ErrProjectNotComplete) {
-
-			project, err := s.createModelProject()
+			projectEntity, err := s.newProjectEntity()
 			if err != nil {
-				return "", fmt.Errorf("%v", err)
+				return "", err
 			}
 
-			if err = s.Save(project); err != nil {
-				return "", fmt.Errorf("%v", err)
+			if err = s.Save(projectEntity); err != nil {
+				return "", err
 			}
 			return constant.MsgInitializeSuccess, nil
 		}
-		return "", fmt.Errorf("%v", err)
+		return "", err
 	}
 	return constant.MsgInitializeExists, nil
 }
 
-func (s *projectService) Load() (*model.Project, error) {
-	path := s.router.GetPathProjectFile()
-
-	exists := s.fileRepository.ExistsFile(path)
-	if !exists {
-		return &model.Project{}, ErrProjectNotFound
+func (s *projectService) Load() (*model.ProjectEntity, error) {
+	project, err := s.projectRepository.Load()
+	if err == nil && project != nil {
+		if !project.IsComplete() {
+			return &model.ProjectEntity{}, ErrProjectNotComplete
+		}
 	}
-
-	var project model.Project
-	err := s.yamlRepository.Load(path, &project)
-	if err != nil {
-		return &model.Project{}, err
-	}
-
-	if !project.IsComplete() {
-		return &model.Project{}, ErrProjectNotComplete
-	}
-
-	return &project, nil
+	return project, err
 }
 
-func (s *projectService) Save(project *model.Project) error {
-	if project == nil {
+func (s *projectService) Save(projectEntity *model.ProjectEntity) error {
+	if projectEntity == nil {
 		return ErrProjectCanNotBeNull
 	}
 
-	if !project.IsComplete() {
+	if !projectEntity.IsComplete() {
 		return ErrProjectNotComplete
 	}
-
-	path := s.router.GetPathProjectFile()
-
-	if err := s.fileRepository.DeleteFile(path); err != nil {
-		return err
-	}
-
-	if err := s.yamlRepository.Save(path, project); err != nil {
-		return err
-	}
-
-	return nil
+	return s.projectRepository.Save(projectEntity)
 }
 
-func (s *projectService) createModelProject() (*model.Project, error) {
-	projectName, err := s.router.GetProjectName()
+func (s *projectService) GetFullPathResource() (string, error) {
+	return s.projectRepository.GetFullPathResource()
+}
+
+func (s *projectService) newProjectEntity() (*model.ProjectEntity, error) {
+	projectName, err := s.projectRepository.GetName()
 	if err != nil || projectName == "" {
-		return &model.Project{}, ErrProjectName
+		return &model.ProjectEntity{}, err
 	}
 
-	projectId := s.generateProjectId(projectName)
+	projectId := s.GenerateID(projectName)
 
-	globalConfig, err := s.getGlobalConfig()
+	configEntity, err := s.getConfigEntity()
 	if err != nil {
-		return &model.Project{}, err
+		return &model.ProjectEntity{}, err
 	}
 
-	return model.NewProject(globalConfig.Organization, projectId, projectName, globalConfig.TeamName), nil
+	projectEntity := model.NewProjectEntity(projectId, projectName)
+	projectEntity.Organization = configEntity.Organization
+	projectEntity.TeamName = configEntity.TeamName
+
+	return projectEntity, nil
 }
 
-func (s *projectService) getGlobalConfig() (model.GlobalConfig, error) {
-	globalConfig, err := s.globalConfigService.Load()
+func (s *projectService) getConfigEntity() (*model.ConfigEntity, error) {
+	configEntity, err := s.configService.Load()
 
 	if err != nil {
-		globalConfig = *model.NewGlobalConfigDefault()
-		if err = s.globalConfigService.Create(&globalConfig); err != nil {
-			return model.GlobalConfig{}, ErrGlobalConfigCreating
+		if errors.Is(err, ErrConfigNotFound) || errors.Is(err, ErrConfigNotComplete) {
+			configEntity, err = s.newConfigEntity()
+			if err != nil {
+				return &model.ConfigEntity{}, err
+			}
+			return configEntity, nil
+		} else {
+			return &model.ConfigEntity{}, err
 		}
 	}
-	
-	return globalConfig, nil
+
+	if !configEntity.IsComplete() {
+		configEntity, err = s.newConfigEntity()
+		if err != nil {
+			return &model.ConfigEntity{}, err
+		}
+	}
+
+	return configEntity, nil
 }
 
-func (s *projectService) generateProjectId(prefix string) string {
+func (s *projectService) newConfigEntity() (*model.ConfigEntity, error) {
+	configEntity := model.NewConfigEntity()
+	if err := s.configService.Save(configEntity); err != nil {
+		return &model.ConfigEntity{}, err
+	}
+	return configEntity, nil
+}
+
+func (s *projectService) GenerateID(prefix string) string {
 	timestamp := time.Now().UnixNano()
 	data := []byte(fmt.Sprintf("%s-%d", prefix, timestamp))
 	hash := sha256.Sum256(data)

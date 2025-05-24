@@ -1,22 +1,23 @@
 package main
 
 import (
+	"deploy/internal/application"
+	"deploy/internal/cli/command"
+	"deploy/internal/cli/handler"
+	"deploy/internal/domain/engine"
+	"deploy/internal/domain/engine/condition"
+	executor2 "deploy/internal/domain/engine/executor"
+	"deploy/internal/domain/engine/validator"
+	"deploy/internal/domain/model"
+	"deploy/internal/domain/model/logger"
+	"deploy/internal/domain/service"
+	"deploy/internal/domain/service/router"
+	infraService "deploy/internal/infrastructure/adapter"
+	"deploy/internal/infrastructure/repository"
+	"fmt"
+	"github.com/spf13/cobra"
 	"log"
 	"os"
-	"deploy/internal/cli/command"
-	"deploy/internal/application"
-	"deploy/internal/domain/condition"
-	"deploy/internal/domain/engine"
-	"deploy/internal/domain/executor"
-	"deploy/internal/domain/model"
-	"deploy/internal/domain/router"
-	"deploy/internal/domain/service"
-	"deploy/internal/domain/validator"
-	"deploy/internal/infrastructure/repository"
-	"deploy/internal/cli/handler"
-	"fmt"
-	infraService "deploy/internal/infrastructure/service"
-	"github.com/spf13/cobra"
 )
 
 func main() {
@@ -24,36 +25,49 @@ func main() {
 
 	mainLogger.Println("Initializing common components...")
 	appRouter := router.NewRouter()
-	appLogStore := model.NewLogStore("FastDeploy")
+	appLogger := logger.NewLogger(appRouter.GetFullPathLoggerFile())
 	variableStore := model.NewVariableStore()
 
 	mainLogger.Println("Initializing repositories...")
-	fileRepo := repository.NewFileRepositoryImpl()
-	yamlRepo := repository.NewYamlRepositoryImpl(fileRepo)
-	containerRepo := repository.NewContainerRepositoryImpl(fileRepo)
+	fileRepo := infraService.NewFileRepositoryImpl()
+	yamlRepo := infraService.NewYamlRepositoryImpl(fileRepo)
+	configRepo := repository.NewYamlConfigRepository(yamlRepo, fileRepo, appRouter)
+	projectRepo := repository.NewYamlProjectRepository(yamlRepo, fileRepo, appRouter)
+	deploymentRepo := repository.NewYamlDeploymentRepository(yamlRepo, fileRepo, appRouter)
+	//containerRepo := repository.NewContainerRepositoryImpl(fileRepo)
 
 	mainLogger.Println("Initializing domain services...")
-	executorInfraService := infraService.NewExecutorService(appLogStore)
+	executorInfraService := infraService.NewExecutorService()
 	conditionFactory := condition.NewConditionFactory()
-	deploymentValidator := validator.NewDeploymentValidator()
-	baseExecutor := executor.NewBaseExecutor()
-	gitInfraService := infraService.NewGitServiceImpl(executorInfraService)
-	dockerInfraService := infraService.NewDockerServiceImpl(executorInfraService)
-	globalConfigService := service.NewGlobalConfigService(yamlRepo, fileRepo, appRouter)
-	projectService := service.NewProjectService(yamlRepo, globalConfigService, fileRepo, appRouter, appLogStore)
-	storeService := service.NewStoreService(gitInfraService, appRouter)
-	deploymentService := service.NewDeploymentService(yamlRepo, fileRepo, appRouter)
+	deploymentValidator := validator.NewDeploymentValidator(appLogger)
+	baseExecutor := executor2.NewBaseExecutor()
+
+	// Initialize infrastructure services
+	gitInfraService := infraService.NewLocalGitCommand(executorInfraService)
+	templateService := infraService.NewTextDockerTemplate()
+
+	// Initialize domain services
+	globalConfigService := service.NewConfigService(configRepo)
+	projectService := service.NewProjectService(appLogger, projectRepo, globalConfigService, appRouter)
+	storeService := service.NewStoreService(appLogger, gitInfraService, appRouter)
+	deploymentService := service.NewDeploymentService(deploymentRepo, appRouter)
+
+	// Initialize docker image service
+	dockerImageService := infraService.NewLocalDockerImage(executorInfraService, fileRepo, templateService, projectService, appRouter, variableStore)
+
+	// Initialize docker container service with docker image dependency
+	dockerInfraService := infraService.NewLocalDockerContainer(executorInfraService, fileRepo, templateService, dockerImageService, appRouter, variableStore, appLogger)
 
 	mainLogger.Println("Instantiating step executors...")
-	commandExecutor := executor.NewCommandExecutor(baseExecutor, variableStore,executorInfraService, conditionFactory)
-	containerExecutor := executor.NewContainerExecutor(baseExecutor, variableStore, dockerInfraService, containerRepo, fileRepo, appRouter)
-	setupExecutor := executor.NewSetupExecutor(dockerInfraService, variableStore, appRouter, appLogStore)
-	
+	commandExecutor := executor2.NewCommandExecutor(appLogger, baseExecutor, variableStore, executorInfraService, conditionFactory)
+	containerExecutor := executor2.NewContainerExecutor(baseExecutor, variableStore, dockerInfraService)
+	setupExecutor := executor2.NewSetupExecutor(appLogger, dockerInfraService, variableStore, appRouter)
+
 	mainLogger.Println("Instantiating engine...")
 	engineInstance := engine.NewEngine(
 		variableStore,
 		storeService,
-		appLogStore,
+		appLogger,
 		deploymentValidator,
 	)
 
@@ -61,7 +75,7 @@ func main() {
 	engineInstance.Executors[validator.TypeCommand] = commandExecutor
 	engineInstance.Executors[validator.TypeContainer] = containerExecutor
 	engineInstance.Executors[validator.TypeSetup] = setupExecutor
-	
+
 	mainLogger.Println("Instantiating commands...")
 	deployCmdFn := getDeployCmdFn()
 	initCmd := newInitCmd(projectService)
@@ -73,7 +87,7 @@ func main() {
 	cmd.Execute()
 }
 
-func getDeployCmdFn() (func() *cobra.Command){
+func getDeployCmdFn() func() *cobra.Command {
 	deployHandler := handler.NewDeployHandler()
 	getDeployCmdFn := func() *cobra.Command {
 		return cmd.GetDeployCmd(deployHandler.Controller)
@@ -81,16 +95,16 @@ func getDeployCmdFn() (func() *cobra.Command){
 	return getDeployCmdFn
 }
 
-func newInitCmd(projectService service.ProjectServiceInterface) *cobra.Command{
-	initAppFn := func(appLogger *model.LogStore) *model.LogStore {
-		return application.InitApp(projectService, appLogger)
+func newInitCmd(projectService service.ProjectService) *cobra.Command {
+	initAppFn := func() error {
+		return application.InitApp(projectService)
 	}
 	initHandler := handler.NewInitHandler(initAppFn)
 	return cmd.NewInitCmd(initHandler.Controller)
 }
 
-func newStartCmd(projectService service.ProjectServiceInterface, engineInstance *engine.Engine, deploymentService service.DeploymentServiceInterface) *cobra.Command{
-	isInitAppFn := func() (*model.Project, error) {
+func newStartCmd(projectService service.ProjectService, engineInstance *engine.Engine, deploymentService service.DeploymentLoader) *cobra.Command {
+	isInitAppFn := func() (*model.ProjectEntity, error) {
 		project, err := projectService.Load()
 		if err != nil {
 			if err == service.ErrProjectNotFound || err == service.ErrProjectNotComplete {
@@ -101,7 +115,7 @@ func newStartCmd(projectService service.ProjectServiceInterface, engineInstance 
 		return project, nil
 	}
 
-	startAppFn := func(project *model.Project) *model.LogStore {
+	startAppFn := func(project *model.ProjectEntity) error {
 		return application.StartDeploy(engineInstance, deploymentService, project)
 	}
 
@@ -109,7 +123,7 @@ func newStartCmd(projectService service.ProjectServiceInterface, engineInstance 
 	return cmd.NewStartCmd(startHandler.Controller)
 }
 
-func newAddCmd() *cobra.Command{
+func newAddCmd() *cobra.Command {
 	addSupportHandler := newAddSupportHandler()
 	addDependencyHandler := newAddDependencyHandler()
 	return cmd.NewAddCmd(
@@ -119,7 +133,7 @@ func newAddCmd() *cobra.Command{
 	)
 }
 
-func newAddSupportHandler() *handler.AddSupportHandler{
+func newAddSupportHandler() *handler.AddSupportHandler {
 	addSonarQubeAppFn := func() (string, error) {
 		return "", fmt.Errorf("no implementado")
 	}
@@ -130,7 +144,7 @@ func newAddSupportHandler() *handler.AddSupportHandler{
 	return handler.NewAddSupportHandler(addSonarQubeAppFn, addFortifyAppFn)
 }
 
-func newAddDependencyHandler() *handler.AddDependencyHandler{
+func newAddDependencyHandler() *handler.AddDependencyHandler {
 	addProjectDependencyAppFn := func(name string, version string) (string, error) {
 		return "", fmt.Errorf("no implementado")
 	}

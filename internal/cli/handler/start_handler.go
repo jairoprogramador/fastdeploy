@@ -1,12 +1,12 @@
 package handler
 
 import (
-	"deploy/internal/domain/model"
 	"deploy/internal/cli/presenter"
+	"deploy/internal/domain/model"
 	"fmt"
 )
 
-type StartAppFunc func(project *model.Project) *model.LogStore
+type StartAppFunc func(project *model.ProjectEntity) error
 
 type StartHandler struct {
 	startAppFn  StartAppFunc
@@ -46,8 +46,5 @@ func (h *StartHandler) Controller() error {
 		return err
 	}
 
-	logStore := h.startAppFn(project)
-	presenter.ShowLogStore(logStore)
-
-	return logStore.GetError()
+	return h.startAppFn(project)
 }

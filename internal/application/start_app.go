@@ -2,31 +2,27 @@ package application
 
 import (
 	"context"
-	"time"
 	"deploy/internal/domain/engine"
 	"deploy/internal/domain/model"
 	"deploy/internal/domain/service"
+	"time"
 )
 
 func StartDeploy(
 	engineInstance *engine.Engine,
-	deploymentService service.DeploymentServiceInterface,
-	project *model.Project,
-) *model.LogStore {
-	logStore := model.NewLogStore("start deploy")
-
+	deploymentService service.DeploymentLoader,
+	project *model.ProjectEntity,
+) error {
 	deployment, err := deploymentService.Load()
 	if err != nil {
-		logStore.AddError(err)
-	}else{
+		return err
+	} else {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
 		defer cancel()
 
 		if err := engineInstance.Execute(ctx, deployment, project); err != nil {
-			logStore.AddError(err)
+			return err
 		}
 	}
-
-	logStore.FinishSteps()
-	return logStore
+	return nil
 }

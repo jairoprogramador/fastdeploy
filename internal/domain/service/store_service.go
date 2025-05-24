@@ -4,49 +4,62 @@ import (
 	"context"
 	"deploy/internal/domain/constant"
 	"deploy/internal/domain/model"
-	"deploy/internal/domain/router"
-	"fmt"
+	"deploy/internal/domain/model/logger"
+	"deploy/internal/domain/port"
+	"deploy/internal/domain/service/router"
+)
+
+const (
+	prefix = "engine"
 )
 
 type StoreServiceInterface interface {
-	GetVariablesGlobal(ctx context.Context, deployment *model.Deployment, project *model.Project) ([]model.Variable, error)
+	GetVariablesGlobal(ctx context.Context, deployment *model.DeploymentEntity, project *model.ProjectEntity) ([]model.Variable, error)
 }
 
 type StoreService struct {
-	gitService GitServiceInterface
+	gitService port.GitCommand
 	router     *router.Router
-	//muVariableService sync.RWMutex
+	logger     *logger.Logger
 }
 
 func NewStoreService(
-	gitService GitServiceInterface,
+	logger *logger.Logger,
+	gitService port.GitCommand,
 	router *router.Router,
 ) StoreServiceInterface {
 	return &StoreService{
 		gitService: gitService,
 		router:     router,
+		logger:     logger,
 	}
 }
 
-func (s *StoreService) GetVariablesGlobal(ctx context.Context, deployment *model.Deployment, project *model.Project) ([]model.Variable, error) {
+func (s *StoreService) GetVariablesGlobal(ctx context.Context, deployment *model.DeploymentEntity, project *model.ProjectEntity) ([]model.Variable, error) {
 	if project == nil {
-		return nil, fmt.Errorf("el proyecto no puede ser nulo para GetVariablesGlobal")
+		return []model.Variable{}, s.logger.NewError("data project cannot be nil")
 	}
 
-	commitHash, err := s.gitService.GetCommitHash(ctx)
-	if err != nil {
-		return []model.Variable{}, err
+	response := s.gitService.GetHash(ctx)
+	if !response.IsSuccess() {
+		s.setError(response.Details, response.Error)
+		return []model.Variable{}, response.Error
 	}
+	commitHash := response.Result.(string)
 
-	commitAuthor, err := s.gitService.GetCommitAuthor(ctx, commitHash)
-	if err != nil {
-		return []model.Variable{}, err
+	response = s.gitService.GetAuthor(ctx, commitHash)
+	if !response.IsSuccess() {
+		s.setError(response.Details, response.Error)
+		return []model.Variable{}, response.Error
 	}
+	commitAuthor := response.Result.(string)
 
-	commitMessage, err := s.gitService.GetCommitMessage(ctx, commitHash)
-	if err != nil {
-		return []model.Variable{}, err
+	response = s.gitService.GetMessage(ctx, commitHash)
+	if !response.IsSuccess() {
+		s.setError(response.Details, response.Error)
+		return []model.Variable{}, response.Error
 	}
+	commitMessage := response.Result.(string)
 
 	variables := []model.Variable{}
 
@@ -107,4 +120,9 @@ func (s *StoreService) GetVariablesGlobal(ctx context.Context, deployment *model
 		})
 	}
 	return variables, nil
+}
+
+func (s *StoreService) setError(message string, err error) {
+	s.logger.ErrorSystemMessage(message, err)
+	s.logger.Error(err)
 }

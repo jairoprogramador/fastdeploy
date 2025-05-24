@@ -13,3 +13,5 @@ const DockerComposeFileName = "compose.yaml"
 const DockerComposeTemplateFileName = "compose.template"
 
 const DeploymentFileName = "deployment.yaml"
+
+const LoggerFileName = "logger.log"
