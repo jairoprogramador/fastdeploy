@@ -4,21 +4,20 @@ import (
 	"deploy/internal/domain/model"
 	"deploy/internal/domain/repository"
 	"deploy/internal/domain/service"
-	"deploy/internal/domain/service/router"
 	"deploy/internal/infrastructure/adapter"
 )
 
 type yamlConfigRepository struct {
-	yamlRepository adapter.YamlRepository
-	fileRepository adapter.FileRepository
-	router         *router.Router
+	yamlRepository adapter.YamlController
+	fileRepository adapter.FileController
+	router         *service.PathService
 }
 
 // NewYamlConfigRepository creates a new instance of ConfigRepository
 func NewYamlConfigRepository(
-	yamlRepository adapter.YamlRepository,
-	fileRepository adapter.FileRepository,
-	router *router.Router,
+	yamlRepository adapter.YamlController,
+	fileRepository adapter.FileController,
+	router *service.PathService,
 ) repository.ConfigRepository {
 	return &yamlConfigRepository{
 		yamlRepository: yamlRepository,

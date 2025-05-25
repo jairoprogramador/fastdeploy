@@ -1,7 +1,7 @@
 package repository
 
 import (
-	"deploy/internal/domain/model"
+	"deploy/internal/domain/engine/model"
 )
 
 type DeploymentRepository interface {

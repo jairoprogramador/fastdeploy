@@ -7,11 +7,11 @@ import (
 	"deploy/internal/domain/engine"
 	"deploy/internal/domain/engine/condition"
 	executor2 "deploy/internal/domain/engine/executor"
+	model2 "deploy/internal/domain/engine/model"
 	"deploy/internal/domain/engine/validator"
 	"deploy/internal/domain/model"
 	"deploy/internal/domain/model/logger"
 	"deploy/internal/domain/service"
-	"deploy/internal/domain/service/router"
 	infraService "deploy/internal/infrastructure/adapter"
 	"deploy/internal/infrastructure/repository"
 	"fmt"
@@ -24,26 +24,26 @@ func main() {
 	mainLogger := log.New(os.Stdout, "FASTDEPLOY: ", log.LstdFlags)
 
 	mainLogger.Println("Initializing common components...")
-	appRouter := router.NewRouter()
+	appRouter := service.NewPathService()
 	appLogger := logger.NewLogger(appRouter.GetFullPathLoggerFile())
-	variableStore := model.NewVariableStore()
+	variableStore := model2.NewVariableStore()
 
 	mainLogger.Println("Initializing repositories...")
-	fileRepo := infraService.NewFileRepositoryImpl()
-	yamlRepo := infraService.NewYamlRepositoryImpl(fileRepo)
+	fileRepo := infraService.NewOsFileController()
+	yamlRepo := infraService.NewGoPkgYamlController(fileRepo)
 	configRepo := repository.NewYamlConfigRepository(yamlRepo, fileRepo, appRouter)
 	projectRepo := repository.NewYamlProjectRepository(yamlRepo, fileRepo, appRouter)
 	deploymentRepo := repository.NewYamlDeploymentRepository(yamlRepo, fileRepo, appRouter)
 	//containerRepo := repository.NewContainerRepositoryImpl(fileRepo)
 
 	mainLogger.Println("Initializing domain services...")
-	executorInfraService := infraService.NewExecutorService()
-	conditionFactory := condition.NewConditionFactory()
-	deploymentValidator := validator.NewDeploymentValidator(appLogger)
-	baseExecutor := executor2.NewBaseExecutor()
+	executorInfraService := infraService.NewOsRunCommand()
+	conditionFactory := condition.NewEvaluatorFactory()
+	deploymentValidator := validator.NewValidator(appLogger)
+	baseExecutor := executor2.NewStepExecutor()
 
 	// Initialize infrastructure services
-	gitInfraService := infraService.NewLocalGitCommand(executorInfraService)
+	gitInfraService := infraService.NewLocalGitRequest(executorInfraService)
 	templateService := infraService.NewTextDockerTemplate()
 
 	// Initialize domain services
@@ -53,7 +53,7 @@ func main() {
 	deploymentService := service.NewDeploymentService(deploymentRepo, appRouter)
 
 	// Initialize docker image service
-	dockerImageService := infraService.NewLocalDockerImage(executorInfraService, fileRepo, templateService, projectService, appRouter, variableStore)
+	dockerImageService := infraService.NewLocalDockerImage(fileRepo, templateService, projectService, appRouter, variableStore)
 
 	// Initialize docker container service with docker image dependency
 	dockerInfraService := infraService.NewLocalDockerContainer(executorInfraService, fileRepo, templateService, dockerImageService, appRouter, variableStore, appLogger)
@@ -61,7 +61,7 @@ func main() {
 	mainLogger.Println("Instantiating step executors...")
 	commandExecutor := executor2.NewCommandExecutor(appLogger, baseExecutor, variableStore, executorInfraService, conditionFactory)
 	containerExecutor := executor2.NewContainerExecutor(baseExecutor, variableStore, dockerInfraService)
-	setupExecutor := executor2.NewSetupExecutor(appLogger, dockerInfraService, variableStore, appRouter)
+	setupExecutor := executor2.NewCheckExecutor(appLogger, dockerInfraService, variableStore, appRouter)
 
 	mainLogger.Println("Instantiating engine...")
 	engineInstance := engine.NewEngine(
@@ -72,9 +72,9 @@ func main() {
 	)
 
 	mainLogger.Println("Registering step executors...")
-	engineInstance.Executors[validator.TypeCommand] = commandExecutor
-	engineInstance.Executors[validator.TypeContainer] = containerExecutor
-	engineInstance.Executors[validator.TypeSetup] = setupExecutor
+	engineInstance.Executors[string(model2.Command)] = commandExecutor
+	engineInstance.Executors[string(model2.Container)] = containerExecutor
+	engineInstance.Executors[string(model2.Setup)] = setupExecutor
 
 	mainLogger.Println("Instantiating commands...")
 	deployCmdFn := getDeployCmdFn()

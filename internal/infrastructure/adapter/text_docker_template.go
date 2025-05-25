@@ -1,19 +1,20 @@
 package adapter
 
 import (
-	"deploy/internal/domain/port"
 	"strings"
 	"text/template"
 )
 
+type DockerTemplate interface {
+	GetContent(pathTemplate string, params any) (string, error)
+}
+
 type TextDockerTemplate struct{}
 
-// NewTextDockerTemplate creates a new instance of DockerTemplate
-func NewTextDockerTemplate() port.DockerTemplate {
+func NewTextDockerTemplate() DockerTemplate {
 	return &TextDockerTemplate{}
 }
 
-// GetContentTemplate parses a template file and executes it with the provided parameters
 func (t *TextDockerTemplate) GetContent(pathTemplate string, params any) (string, error) {
 	templateFile, err := template.ParseFiles(pathTemplate)
 	if err == nil {

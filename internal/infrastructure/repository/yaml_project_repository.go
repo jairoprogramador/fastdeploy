@@ -4,7 +4,6 @@ import (
 	"deploy/internal/domain/model"
 	"deploy/internal/domain/repository"
 	"deploy/internal/domain/service"
-	"deploy/internal/domain/service/router"
 	"deploy/internal/infrastructure/adapter"
 	"fmt"
 	"os"
@@ -13,16 +12,16 @@ import (
 )
 
 type yamlProjectRepository struct {
-	yamlRepository adapter.YamlRepository
-	fileRepository adapter.FileRepository
-	router         *router.Router
+	yamlRepository adapter.YamlController
+	fileRepository adapter.FileController
+	router         *service.PathService
 }
 
 // NewYamlProjectRepository creates a new instance of ProjectRepository
 func NewYamlProjectRepository(
-	yamlRepository adapter.YamlRepository,
-	fileRepository adapter.FileRepository,
-	router *router.Router,
+	yamlRepository adapter.YamlController,
+	fileRepository adapter.FileController,
+	router *service.PathService,
 ) repository.ProjectRepository {
 	return &yamlProjectRepository{
 		yamlRepository: yamlRepository,

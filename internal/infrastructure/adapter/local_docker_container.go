@@ -3,10 +3,11 @@ package adapter
 import (
 	"context"
 	"deploy/internal/domain/constant"
+	model2 "deploy/internal/domain/engine/model"
 	"deploy/internal/domain/model"
 	"deploy/internal/domain/model/logger"
 	"deploy/internal/domain/port"
-	"deploy/internal/domain/service/router"
+	"deploy/internal/domain/service"
 	"deploy/internal/domain/template"
 	"fmt"
 	"net"
@@ -26,11 +27,9 @@ const (
 	dockerPsIDsUpCmd        = "docker ps -q --filter ancestor=%s:%s"
 	dockerPortCmd           = "docker port %s"
 
-	// Error messages
 	errComposeFileNotFound = "file compose not found in %s"
 )
 
-// DockerComposeData holds the data needed to generate a docker-compose file
 type DockerComposeData struct {
 	NameDelivery        string // Name of the delivery/project
 	CommitHash          string // Git commit hash
@@ -40,74 +39,68 @@ type DockerComposeData struct {
 	PathHomeDirectory   string // Path to the home directory
 }
 
-// localDockerContainer implements the port.DockerContainer interface
 type localDockerContainer struct {
-	executorService port.ExecutorServiceInterface
-	fileRepository  FileRepository
-	dockerTemplate  port.DockerTemplate
-	dockerImage     port.DockerImage
-	router          *router.Router
-	variables       *model.VariableStore
-	logger          *logger.Logger
+	runCommand     port.RunCommand
+	fileRepository FileController
+	dockerTemplate DockerTemplate
+	dockerImage    DockerImage
+	router         *service.PathService
+	variables      *model2.VariableStore
+	logger         *logger.Logger
 }
 
-// NewLocalDockerContainer creates a new instance of localDockerContainer
 func NewLocalDockerContainer(
-	executorService port.ExecutorServiceInterface,
-	fileRepository FileRepository,
-	templateService port.DockerTemplate,
-	dockerImage port.DockerImage,
-	router *router.Router,
-	variables *model.VariableStore,
+	runCommand port.RunCommand,
+	fileRepository FileController,
+	dockerTemplate DockerTemplate,
+	dockerImage DockerImage,
+	router *service.PathService,
+	variables *model2.VariableStore,
 	logger *logger.Logger,
 ) port.DockerContainer {
 	return &localDockerContainer{
-		executorService: executorService,
-		fileRepository:  fileRepository,
-		dockerTemplate:  templateService,
-		dockerImage:     dockerImage,
-		router:          router,
-		variables:       variables,
-		logger:          logger,
+		runCommand:     runCommand,
+		fileRepository: fileRepository,
+		dockerTemplate: dockerTemplate,
+		dockerImage:    dockerImage,
+		router:         router,
+		variables:      variables,
+		logger:         logger,
 	}
 }
 
-// UpBuild starts containers with docker-compose up --build
-func (d *localDockerContainer) UpBuild(ctx context.Context) model.InfrastructureResponse {
-	pathDockerCompose := d.router.GetFullPathDockerCompose()
-	command := fmt.Sprintf(dockerComposeUpBuildCmd, pathDockerCompose)
-	return d.executorService.Run(ctx, command)
-}
-
-// Up starts containers with docker-compose up
 func (d *localDockerContainer) Up(ctx context.Context) model.InfrastructureResponse {
 	pathDockerCompose := d.router.GetFullPathDockerCompose()
 	command := fmt.Sprintf(dockerComposeUpCmd, pathDockerCompose)
-	return d.executorService.Run(ctx, command)
+	return d.runCommand.Run(ctx, command)
 }
 
-// Down stops and removes containers with docker-compose down
-func (d *localDockerContainer) Down(ctx context.Context) model.InfrastructureResponse {
-	pathDockerCompose := d.router.GetFullPathDockerCompose()
-
-	exists, err := d.fileRepository.ExistsFile(pathDockerCompose)
-	if err != nil {
-		return model.NewErrorResponse(err)
+func (d *localDockerContainer) Start(ctx context.Context) error {
+	// Step 1: Stop any existing containers
+	result := d.down(ctx)
+	if result.Error != nil {
+		d.logger.Error(result.Error)
+		return result.Error
 	}
 
-	if !exists {
-		err = fmt.Errorf(errComposeFileNotFound, pathDockerCompose)
-		return model.NewErrorResponse(err)
+	// Step 2: createContainer a Dockerfile
+	if err := d.dockerImage.CreateDockerfile(); err != nil {
+		d.logger.Error(err)
+		return err
 	}
 
-	command := fmt.Sprintf(dockerComposeDownCmd, pathDockerCompose)
-	return d.executorService.Run(ctx, command)
+	// Step 3: createContainer and start a new container
+	if err := d.createContainer(ctx); err != nil {
+		d.logger.Error(err)
+		return err
+	}
+
+	return nil
 }
 
-// Exists checks if a container with the given commit hash and version exists
 func (d *localDockerContainer) Exists(ctx context.Context, commitHash, version string) model.InfrastructureResponse {
 	command := fmt.Sprintf(dockerPsIDsAllCmd, commitHash, version)
-	response := d.executorService.Run(ctx, command)
+	response := d.runCommand.Run(ctx, command)
 
 	if !response.IsSuccess() {
 		return response
@@ -117,8 +110,7 @@ func (d *localDockerContainer) Exists(ctx context.Context, commitHash, version s
 	return model.NewResponseWithDetails(len(containerId) > 0, response.Details)
 }
 
-// GetURLs returns the URLs for all running containers with the given commit hash and version
-func (d *localDockerContainer) GetURLs(ctx context.Context, commitHash, version string) model.InfrastructureResponse {
+func (d *localDockerContainer) GetURLsUp(ctx context.Context, commitHash, version string) model.InfrastructureResponse {
 	// Get IDs of running containers
 	containerIDsResponse := d.getContainerIDsUp(ctx, commitHash, version)
 	if !containerIDsResponse.IsSuccess() {
@@ -150,10 +142,32 @@ func (d *localDockerContainer) GetURLs(ctx context.Context, commitHash, version 
 	return model.NewResponseWithDetails(urls, details.String())
 }
 
-// getContainerIDsUp returns the IDs of all running containers with the given commit hash and version
+func (d *localDockerContainer) upBuild(ctx context.Context) model.InfrastructureResponse {
+	pathDockerCompose := d.router.GetFullPathDockerCompose()
+	command := fmt.Sprintf(dockerComposeUpBuildCmd, pathDockerCompose)
+	return d.runCommand.Run(ctx, command)
+}
+
+func (d *localDockerContainer) down(ctx context.Context) model.InfrastructureResponse {
+	pathDockerCompose := d.router.GetFullPathDockerCompose()
+
+	exists, err := d.fileRepository.ExistsFile(pathDockerCompose)
+	if err != nil {
+		return model.NewErrorResponse(err)
+	}
+
+	if !exists {
+		err = fmt.Errorf(errComposeFileNotFound, pathDockerCompose)
+		return model.NewErrorResponse(err)
+	}
+
+	command := fmt.Sprintf(dockerComposeDownCmd, pathDockerCompose)
+	return d.runCommand.Run(ctx, command)
+}
+
 func (d *localDockerContainer) getContainerIDsUp(ctx context.Context, commitHash, version string) model.InfrastructureResponse {
 	command := fmt.Sprintf(dockerPsIDsUpCmd, commitHash, version)
-	containerIDsResponse := d.executorService.Run(ctx, command)
+	containerIDsResponse := d.runCommand.Run(ctx, command)
 	if !containerIDsResponse.IsSuccess() {
 		return containerIDsResponse
 	}
@@ -167,10 +181,9 @@ func (d *localDockerContainer) getContainerIDsUp(ctx context.Context, commitHash
 	return model.NewResponseWithDetails(strings.Split(containerIDs, "\n"), containerIDsResponse.Details)
 }
 
-// getContainerPort returns the host port for a container
 func (d *localDockerContainer) getContainerPort(ctx context.Context, containerID string) model.InfrastructureResponse {
 	command := fmt.Sprintf(dockerPortCmd, containerID)
-	response := d.executorService.Run(ctx, command)
+	response := d.runCommand.Run(ctx, command)
 	if !response.IsSuccess() {
 		return response
 	}
@@ -198,9 +211,7 @@ func (d *localDockerContainer) getContainerPort(ctx context.Context, containerID
 	return model.NewErrorResponseWithDetails(fmt.Errorf(constant.MsgErrorNoPortHost), response.Details)
 }
 
-// Create implements the Create method of the DockerContainer interface
-// It creates and starts a Docker container using a docker-compose file
-func (d *localDockerContainer) Create(ctx context.Context) error {
+func (d *localDockerContainer) createContainer(ctx context.Context) error {
 	// Get paths
 	pathComposeTemplate := d.router.GetFullPathDockerComposeTemplate()
 	pathCompose := d.router.GetFullPathDockerCompose()
@@ -227,7 +238,6 @@ func (d *localDockerContainer) Create(ctx context.Context) error {
 	return d.startContainer(ctx)
 }
 
-// prepareComposeData creates a DockerComposeData struct with values from variables
 func (d *localDockerContainer) prepareComposeData() DockerComposeData {
 	return DockerComposeData{
 		NameDelivery:        d.variables.Get(constant.VAR_PROJECT_NAME),
@@ -239,7 +249,6 @@ func (d *localDockerContainer) prepareComposeData() DockerComposeData {
 	}
 }
 
-// ensureTemplateExists checks if the template file exists and creates it if not
 func (d *localDockerContainer) ensureTemplateExists(pathTemplate string) error {
 	exists, err := d.fileRepository.ExistsFile(pathTemplate)
 	if err != nil {
@@ -255,7 +264,6 @@ func (d *localDockerContainer) ensureTemplateExists(pathTemplate string) error {
 	return nil
 }
 
-// removeExistingComposeFile removes the compose file if it exists
 func (d *localDockerContainer) removeExistingComposeFile(pathDockerCompose string) error {
 	exists, err := d.fileRepository.ExistsFile(pathDockerCompose)
 	if err != nil {
@@ -271,7 +279,6 @@ func (d *localDockerContainer) removeExistingComposeFile(pathDockerCompose strin
 	return nil
 }
 
-// generateComposeFile creates a docker-compose file from a template
 func (d *localDockerContainer) generateComposeFile(pathTemplate, pathDockerCompose string, composeData DockerComposeData) error {
 	contentFile, err := d.dockerTemplate.GetContent(pathTemplate, composeData)
 	if err != nil {
@@ -285,9 +292,8 @@ func (d *localDockerContainer) generateComposeFile(pathTemplate, pathDockerCompo
 	return nil
 }
 
-// startContainer builds and starts the container
 func (d *localDockerContainer) startContainer(ctx context.Context) error {
-	response := d.UpBuild(ctx)
+	response := d.upBuild(ctx)
 	if !response.IsSuccess() {
 		return response.Error
 	}
@@ -295,32 +301,6 @@ func (d *localDockerContainer) startContainer(ctx context.Context) error {
 	return nil
 }
 
-// Start implements the Start method of the DockerContainer interface
-// It stops any existing containers, creates a Dockerfile, and starts a new container
-func (d *localDockerContainer) Start(ctx context.Context) error {
-	// Step 1: Stop any existing containers
-	result := d.Down(ctx)
-	if result.Error != nil {
-		d.logger.Error(result.Error)
-		return result.Error
-	}
-
-	// Step 2: Create a Dockerfile
-	if err := d.dockerImage.CreateDockerfile(); err != nil {
-		d.logger.Error(err)
-		return err
-	}
-
-	// Step 3: Create and start a new container
-	if err := d.Create(ctx); err != nil {
-		d.logger.Error(err)
-		return err
-	}
-
-	return nil
-}
-
-// getPort finds an available port between minPort and maxPort
 func (d *localDockerContainer) getPort() string {
 	defaultPort := minPort
 

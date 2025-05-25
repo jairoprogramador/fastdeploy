@@ -1,23 +1,22 @@
 package repository
 
 import (
-	"deploy/internal/domain/model"
+	"deploy/internal/domain/engine/model"
 	"deploy/internal/domain/repository"
 	"deploy/internal/domain/service"
-	"deploy/internal/domain/service/router"
 	"deploy/internal/infrastructure/adapter"
 )
 
 type yamlDeploymentRepository struct {
-	yamlRepository adapter.YamlRepository
-	fileRepository adapter.FileRepository
-	router         *router.Router
+	yamlRepository adapter.YamlController
+	fileRepository adapter.FileController
+	router         *service.PathService
 }
 
 func NewYamlDeploymentRepository(
-	yamlRepository adapter.YamlRepository,
-	fileRepository adapter.FileRepository,
-	router *router.Router,
+	yamlRepository adapter.YamlController,
+	fileRepository adapter.FileController,
+	router *service.PathService,
 ) repository.DeploymentRepository {
 	return &yamlDeploymentRepository{
 		yamlRepository: yamlRepository,

@@ -6,11 +6,8 @@ import (
 )
 
 type DockerContainer interface {
-	UpBuild(ctx context.Context) model.InfrastructureResponse
 	Up(ctx context.Context) model.InfrastructureResponse
-	Down(ctx context.Context) model.InfrastructureResponse
 	Exists(ctx context.Context, commitHash, version string) model.InfrastructureResponse
-	GetURLs(ctx context.Context, commitHash, version string) model.InfrastructureResponse
-	Create(ctx context.Context) error
+	GetURLsUp(ctx context.Context, commitHash, version string) model.InfrastructureResponse
 	Start(ctx context.Context) error
 }

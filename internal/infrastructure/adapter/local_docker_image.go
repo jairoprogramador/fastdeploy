@@ -2,13 +2,17 @@ package adapter
 
 import (
 	"deploy/internal/domain/constant"
-	"deploy/internal/domain/model"
-	"deploy/internal/domain/port"
+	"deploy/internal/domain/engine/model"
 	"deploy/internal/domain/service"
-	"deploy/internal/domain/service/router"
 	"deploy/internal/domain/template"
 )
 
+// DockerImage defines operations for Docker image creation
+type DockerImage interface {
+	CreateDockerfile() error
+}
+
+// DockerfileData contains all parameters needed for Dockerfile template
 type DockerfileData struct {
 	FileName      string
 	CommitMessage string
@@ -18,81 +22,112 @@ type DockerfileData struct {
 	Organization  string
 }
 
+// localDockerImage implements DockerImage interface
 type localDockerImage struct {
-	executorService port.ExecutorServiceInterface
-	fileRepository  FileRepository
-	dockerTemplate  port.DockerTemplate
-	projectService  service.ProjectService
-	router          *router.Router
-	variables       *model.VariableStore
+	fileRepository FileController
+	dockerTemplate DockerTemplate
+	projectService service.ProjectService
+	router         *service.PathService
+	variables      *model.VariableStore
 }
 
+// NewLocalDockerImage creates a new instance of DockerImage
 func NewLocalDockerImage(
-	executorService port.ExecutorServiceInterface,
-	fileRepository FileRepository,
-	templateService port.DockerTemplate,
+	fileRepository FileController,
+	dockerTemplate DockerTemplate,
 	projectService service.ProjectService,
-	router *router.Router,
+	router *service.PathService,
 	variables *model.VariableStore,
-) port.DockerImage {
+) DockerImage {
 	return &localDockerImage{
-		executorService: executorService,
-		fileRepository:  fileRepository,
-		dockerTemplate:  templateService,
-		projectService:  projectService,
-		router:          router,
-		variables:       variables,
+		fileRepository: fileRepository,
+		dockerTemplate: dockerTemplate,
+		projectService: projectService,
+		router:         router,
+		variables:      variables,
 	}
 }
 
-func (d *localDockerImage) CreateDockerfile() error {
-	pathTemplateDockerfile := d.router.GetFullPathDockerfileTemplate()
-	exists, err := d.fileRepository.ExistsFile(pathTemplateDockerfile)
+// CreateDockerfile generates a Dockerfile based on templates and project configuration
+func (docker *localDockerImage) CreateDockerfile() error {
+	// Ensure template exists
+	if err := docker.ensureTemplateExists(); err != nil {
+		return err
+	}
+
+	// Prepare destination file
+	pathDockerFile := docker.router.GetFullPathDockerfile()
+	if err := docker.prepareDestinationFile(pathDockerFile); err != nil {
+		return err
+	}
+
+	// Generate template parameters
+	templateParams, err := docker.createTemplateParameters()
 	if err != nil {
 		return err
 	}
+
+	// Generate and write Dockerfile content
+	return docker.generateDockerfile(pathDockerFile, templateParams)
+}
+
+// ensureTemplateExists checks if template exists and creates it if needed
+func (docker *localDockerImage) ensureTemplateExists() error {
+	templatePath := docker.router.GetFullPathDockerfileTemplate()
+
+	exists, err := docker.fileRepository.ExistsFile(templatePath)
+	if err != nil {
+		return err
+	}
+
 	if !exists {
-		err := d.fileRepository.WriteFile(
-			pathTemplateDockerfile, template.DockerfileTemplate)
-		if err != nil {
-			return err
-		}
+		return docker.fileRepository.WriteFile(templatePath, template.DockerfileTemplate)
 	}
 
-	pathDockerFile := d.router.GetFullPathDockerfile()
-	exists, err = d.fileRepository.ExistsFile(pathDockerFile)
-	if err != nil {
-		return err
-	}
-	if exists {
-		if err := d.fileRepository.DeleteFile(pathDockerFile); err != nil {
-			return err
-		}
-	}
-
-	nameResource, err := d.projectService.GetFullPathResource()
-	if err != nil {
-		return err
-	}
-
-	nameResource = d.router.GetRelativePathFromHome(nameResource)
-
-	params := DockerfileData{
-		FileName:      nameResource,
-		CommitMessage: d.variables.Get(constant.VAR_COMMIT_MESSAGE),
-		CommitHash:    d.variables.Get(constant.VAR_COMMIT_HASH),
-		CommitAuthor:  d.variables.Get(constant.VAR_COMMIT_AUTHOR),
-		Team:          d.variables.Get(constant.VAR_PROJECT_TEAM),
-		Organization:  d.variables.Get(constant.VAR_PROJECT_ORGANIZATION),
-	}
-
-	contentFile, err := d.dockerTemplate.GetContent(pathTemplateDockerfile, params)
-	if err != nil {
-		return err
-	}
-
-	if err = d.fileRepository.WriteFile(pathDockerFile, contentFile); err != nil {
-		return err
-	}
 	return nil
+}
+
+// prepareDestinationFile ensures the destination file is ready for writing
+func (docker *localDockerImage) prepareDestinationFile(filePath string) error {
+	exists, err := docker.fileRepository.ExistsFile(filePath)
+	if err != nil {
+		return err
+	}
+
+	if exists {
+		return docker.fileRepository.DeleteFile(filePath)
+	}
+
+	return nil
+}
+
+// createTemplateParameters builds the parameters needed for the Dockerfile template
+func (docker *localDockerImage) createTemplateParameters() (DockerfileData, error) {
+	resourcePath, err := docker.projectService.GetFullPathResource()
+	if err != nil {
+		return DockerfileData{}, err
+	}
+
+	relativePath := docker.router.GetRelativePathFromHome(resourcePath)
+
+	return DockerfileData{
+		FileName:      relativePath,
+		CommitMessage: docker.variables.Get(constant.VAR_COMMIT_MESSAGE),
+		CommitHash:    docker.variables.Get(constant.VAR_COMMIT_HASH),
+		CommitAuthor:  docker.variables.Get(constant.VAR_COMMIT_AUTHOR),
+		Team:          docker.variables.Get(constant.VAR_PROJECT_TEAM),
+		Organization:  docker.variables.Get(constant.VAR_PROJECT_ORGANIZATION),
+	}, nil
+}
+
+// generateDockerfile creates the final Dockerfile from template and parameters
+func (docker *localDockerImage) generateDockerfile(destinationPath string, params DockerfileData) error {
+	templatePath := docker.router.GetFullPathDockerfileTemplate()
+
+	content, err := docker.dockerTemplate.GetContent(templatePath, params)
+	if err != nil {
+		return err
+	}
+
+	return docker.fileRepository.WriteFile(destinationPath, content)
 }

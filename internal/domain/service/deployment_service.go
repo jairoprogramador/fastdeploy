@@ -2,10 +2,9 @@ package service
 
 import (
 	"deploy/internal/domain/constant"
+	"deploy/internal/domain/engine/model"
 	"deploy/internal/domain/engine/validator"
-	"deploy/internal/domain/model"
 	"deploy/internal/domain/repository"
-	"deploy/internal/domain/service/router"
 	"errors"
 )
 
@@ -19,12 +18,12 @@ type DeploymentLoader interface {
 
 type deploymentService struct {
 	deploymentRepository repository.DeploymentRepository
-	router               *router.Router
+	router               *PathService
 }
 
 func NewDeploymentService(
 	deploymentRepository repository.DeploymentRepository,
-	router *router.Router,
+	router *PathService,
 ) DeploymentLoader {
 	return &deploymentService{
 		deploymentRepository: deploymentRepository,
@@ -40,14 +39,14 @@ func (s *deploymentService) Load() (*model.DeploymentEntity, error) {
 
 	for i := range deployment.Steps {
 		if deployment.Steps[i].Type == "" {
-			deployment.Steps[i].Type = validator.TypeCommand
+			deployment.Steps[i].Type = string(model.Command)
 		}
 	}
 
-	if deployment.HasType(validator.TypeContainer) {
+	if deployment.HasType(string(model.Container)) {
 		setupStep := model.Step{
-			Name:    validator.TypeSetup,
-			Type:    validator.TypeSetup,
+			Name:    string(model.Setup),
+			Type:    string(model.Setup),
 			Timeout: "30s",
 			Then:    validator.ThenFinish,
 		}

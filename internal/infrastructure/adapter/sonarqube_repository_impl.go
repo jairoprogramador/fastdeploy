@@ -29,7 +29,7 @@ const (
 	tokenGenerateAPI  = sonarURL + "/api/user_tokens/generate"
 	tokenRevokeAPI    = sonarURL + "/api/user_tokens/revoke"
 	changePasswordAPI = sonarURL + "/api/users/change_password"
-	createProjectAPI  = sonarURL + "/api/projects/create"
+	createProjectAPI  = sonarURL + "/api/projects/createContainer"
 	searchProjectAPI  = sonarURL + "/api/projects/search"
 	projectStatusAPI  = sonarURL + "/api/qualitygates/project_status"
 )
@@ -51,12 +51,12 @@ type SonarqubeRepositoryImpl struct {
 	searchProjectAPI  string
 	projectStatusAPI  string
 	dockerRepo        repository.DockerRepository
-	fileRepository    repository.FileRepository
+	fileRepository    repository.FileController
 }
 
 func NewSonarqubeRepositoryImpl(
 	dockerRepo repository.DockerRepository,
-	fileRepo repository.FileRepository,
+	fileRepo repository.FileController,
 ) repository.SonarqubeRepository {
 	return &SonarqubeRepositoryImpl{
 			client: &http.Client{

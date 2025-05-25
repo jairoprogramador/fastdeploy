@@ -1,15 +1,11 @@
 package condition
 
-type ConditionType string
+type TypeCondition string
 
 const (
-	NotEmpty ConditionType = "not_empty"
-	Empty    ConditionType = "empty"
-	Equals   ConditionType = "equals"
-	Contains ConditionType = "contains"
-	Matches  ConditionType = "matches"
+	NotEmpty TypeCondition = "not_empty"
+	Empty    TypeCondition = "empty"
+	Equals   TypeCondition = "equals"
+	Contains TypeCondition = "contains"
+	Matches  TypeCondition = "matches"
 )
-
-type ConditionEvaluator interface {
-	Evaluate(output string) bool
-}

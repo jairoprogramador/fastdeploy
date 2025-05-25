@@ -18,7 +18,6 @@ func (s *VariableStore) Initialize(variables []Variable) {
 	for _, v := range variables {
 		s.global[v.Name] = v.Value
 	}
-
 }
 
 func (s *VariableStore) AddVariableGlobal(name, value string) {

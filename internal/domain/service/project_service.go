@@ -6,7 +6,6 @@ import (
 	"deploy/internal/domain/model"
 	"deploy/internal/domain/model/logger"
 	"deploy/internal/domain/repository"
-	"deploy/internal/domain/service/router"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -42,14 +41,14 @@ type projectService struct {
 	logger            *logger.Logger
 	projectRepository repository.ProjectRepository
 	configService     ConfigService
-	router            *router.Router
+	router            *PathService
 }
 
 func NewProjectService(
 	logger *logger.Logger,
 	projectRepository repository.ProjectRepository,
 	configService ConfigService,
-	router *router.Router,
+	router *PathService,
 ) ProjectService {
 	return &projectService{
 		projectRepository: projectRepository,

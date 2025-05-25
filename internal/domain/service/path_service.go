@@ -1,4 +1,4 @@
-package router
+package service
 
 import (
 	"deploy/internal/domain/constant"
@@ -6,63 +6,63 @@ import (
 	"path/filepath"
 )
 
-type Router struct{}
+type PathService struct{}
 
-func NewRouter() *Router {
-	return &Router{}
+func NewPathService() *PathService {
+	return &PathService{}
 }
 
-func (st *Router) GetFullPathDockerComposeTemplate() string {
+func (st *PathService) GetFullPathDockerComposeTemplate() string {
 	projectName := st.getProjectName()
 	return filepath.Join(st.GetHomeDirectory(), constant.FastdeployRootDirectory,
 		projectName, constant.DockerRootDirectory, constant.DockerComposeTemplateFileName)
 }
 
-func (st *Router) GetFullPathDockerCompose() string {
+func (st *PathService) GetFullPathDockerCompose() string {
 	projectName := st.getProjectName()
 	return filepath.Join(st.GetHomeDirectory(), constant.FastdeployRootDirectory,
 		projectName, constant.DockerRootDirectory, constant.DockerComposeFileName)
 }
 
-func (st *Router) GetFullPathDockerfileTemplate() string {
+func (st *PathService) GetFullPathDockerfileTemplate() string {
 	projectName := st.getProjectName()
 	return filepath.Join(st.GetHomeDirectory(), constant.FastdeployRootDirectory,
 		projectName, constant.DockerRootDirectory, constant.DockerfileTemplateFileName)
 }
 
-func (st *Router) GetFullPathDockerfile() string {
+func (st *PathService) GetFullPathDockerfile() string {
 	projectName := st.getProjectName()
 	return filepath.Join(st.GetHomeDirectory(), constant.FastdeployRootDirectory,
 		projectName, constant.DockerRootDirectory, constant.DockerfileFileName)
 }
 
-func (st *Router) GetPathDockerDirectory() string {
+func (st *PathService) GetPathDockerDirectory() string {
 	projectName := st.getProjectName()
 	return filepath.Join(constant.FastdeployRootDirectory,
 		projectName, constant.DockerRootDirectory)
 }
 
-func (st *Router) GetPathProjectFile() string {
+func (st *PathService) GetPathProjectFile() string {
 	return filepath.Join(constant.ProjectRootDirectory, constant.ProjectFileName)
 }
 
-func (st *Router) GetFullPathGlobalConfigFile() string {
+func (st *PathService) GetFullPathGlobalConfigFile() string {
 	return filepath.Join(st.GetHomeDirectory(),
 		constant.FastdeployRootDirectory, constant.GlobalConfigFileName)
 }
 
-func (st *Router) GetFullPathDeploymentFile() string {
+func (st *PathService) GetFullPathDeploymentFile() string {
 	return filepath.Join(st.GetHomeDirectory(),
 		constant.FastdeployRootDirectory, constant.DeploymentFileName)
 }
 
-func (st *Router) GetFullPathLoggerFile() string {
+func (st *PathService) GetFullPathLoggerFile() string {
 	projectName := st.getProjectName()
-	return filepath.Join(st.GetHomeDirectory(), 
+	return filepath.Join(st.GetHomeDirectory(),
 		constant.FastdeployRootDirectory, projectName, constant.LoggerFileName)
 }
 
-func (st *Router) getProjectName() string {
+func (st *PathService) getProjectName() string {
 	currentDir, err := st.GetProjectName()
 	if err != nil {
 		return ""
@@ -70,7 +70,7 @@ func (st *Router) getProjectName() string {
 	return currentDir
 }
 
-func (st *Router) GetProjectName() (string, error) {
+func (st *PathService) GetProjectName() (string, error) {
 	currentDir, err := os.Getwd()
 	if err != nil {
 		return "", err
@@ -78,7 +78,7 @@ func (st *Router) GetProjectName() (string, error) {
 	return filepath.Base(currentDir), nil
 }
 
-func (st *Router) GetHomeDirectory() string {
+func (st *PathService) GetHomeDirectory() string {
 	homeDirectory, err := os.UserHomeDir()
 	if err != nil {
 		return ""
@@ -86,7 +86,7 @@ func (st *Router) GetHomeDirectory() string {
 	return homeDirectory
 }
 
-func (st *Router) GetRelativePathFromHome(absolutePath string) string {
+func (st *PathService) GetRelativePathFromHome(absolutePath string) string {
 	homeDir := st.GetHomeDirectory()
 	if homeDir == "" {
 		return absolutePath
