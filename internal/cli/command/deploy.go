@@ -1,16 +1,16 @@
 package cmd
 
 import (
-	"os"
 	"fmt"
 	"github.com/spf13/cobra"
+	"os"
 )
 
 var deployCmdInstance *cobra.Command
 
 type DeployControllerFunc func() error
 
-func GetDeployCmd(runControllerFunc DeployControllerFunc) *cobra.Command {
+func GetDeployCmd(deployControllerFunc DeployControllerFunc) *cobra.Command {
 	if deployCmdInstance != nil {
 		return deployCmdInstance
 	}
@@ -20,11 +20,11 @@ func GetDeployCmd(runControllerFunc DeployControllerFunc) *cobra.Command {
 		Short: "CLI para gestionar despliegues de aplicaciones",
 		Long:  `Una herramienta de línea de comandos para gestionar el despliegue de aplicaciones en diferentes ambientes con dependencias configurables.`,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-			if runControllerFunc == nil {
+			if deployControllerFunc == nil {
 				fmt.Println("Controlador de comando deploy no implementado")
 				os.Exit(1)
 			}
-			if err := runControllerFunc(); err != nil {
+			if err := deployControllerFunc(); err != nil {
 				os.Exit(1)
 			}
 		},

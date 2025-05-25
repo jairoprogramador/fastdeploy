@@ -45,7 +45,7 @@ type localDockerContainer struct {
 	dockerTemplate DockerTemplate
 	dockerImage    DockerImage
 	router         *service.PathService
-	variables      *model2.VariableStore
+	variables      *model2.StoreEntity
 	logger         *logger.Logger
 }
 
@@ -55,7 +55,7 @@ func NewLocalDockerContainer(
 	dockerTemplate DockerTemplate,
 	dockerImage DockerImage,
 	router *service.PathService,
-	variables *model2.VariableStore,
+	variables *model2.StoreEntity,
 	logger *logger.Logger,
 ) port.DockerContainer {
 	return &localDockerContainer{

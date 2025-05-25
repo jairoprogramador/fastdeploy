@@ -22,7 +22,7 @@ type CommandExecutor struct {
 	baseExecutor     *StepExecutor
 	commandRunner    port.RunCommand
 	conditionFactory *condition.EvaluatorFactory
-	variables        *model.VariableStore
+	variables        *model.StoreEntity
 	logger           *logger.Logger
 }
 
@@ -30,7 +30,7 @@ type CommandExecutor struct {
 func NewCommandExecutor(
 	logger *logger.Logger,
 	baseExecutor *StepExecutor,
-	variables *model.VariableStore,
+	variables *model.StoreEntity,
 	commandRunner port.RunCommand,
 	conditionFactory *condition.EvaluatorFactory,
 ) Executor {

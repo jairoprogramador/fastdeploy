@@ -25,14 +25,14 @@ const (
 type Engine struct {
 	validator     *validator.Validator
 	Executors     map[string]executor.Executor
-	variableStore *engineModel.VariableStore
+	variableStore *engineModel.StoreEntity
 	storeService  service.StoreServiceInterface
 	logger        *logger.Logger
 }
 
 // NewEngine creates a new deployment engine instance
 func NewEngine(
-	variableStore *engineModel.VariableStore,
+	variableStore *engineModel.StoreEntity,
 	storeService service.StoreServiceInterface,
 	logger *logger.Logger,
 	validator *validator.Validator,

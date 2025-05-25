@@ -7,25 +7,24 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var actualRootCmd *cobra.Command
+var rootCmd *cobra.Command
 
 func SetupCommands(rootCmdFn func() *cobra.Command, childCmds ...*cobra.Command) {
-	actualRootCmd = rootCmdFn()
-	if actualRootCmd == nil {
+	rootCmd = rootCmdFn()
+	if rootCmd == nil {
 		fmt.Println("Error: El comando raíz no pudo ser configurado.")
 		os.Exit(1)
 	}
-	actualRootCmd.AddCommand(childCmds...)
+	rootCmd.AddCommand(childCmds...)
 }
 
 func Execute() {
-	if actualRootCmd == nil {
+	if rootCmd == nil {
 		fmt.Println("Error: Comandos no configurados. Llamar a SetupCommands primero.")
 		os.Exit(1)
 	}
-	if err := actualRootCmd.Execute(); err != nil {
+	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
 }
-

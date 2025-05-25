@@ -14,14 +14,14 @@ type CheckExecutor struct {
 	logger          *logger.Logger
 	dockerContainer port.DockerContainer
 	router          *service.PathService
-	variables       *model.VariableStore
+	variables       *model.StoreEntity
 }
 
 // NewSetupExecutor creates a new setup executor instance
 func NewCheckExecutor(
 	logger *logger.Logger,
 	dockerContainer port.DockerContainer,
-	variables *model.VariableStore,
+	variables *model.StoreEntity,
 	router *service.PathService,
 ) Executor {
 	return &CheckExecutor{

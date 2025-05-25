@@ -9,14 +9,14 @@ import (
 // ContainerExecutor handles Docker container operations
 type ContainerExecutor struct {
 	baseExecutor    *StepExecutor
-	variables       *model.VariableStore
+	variables       *model.StoreEntity
 	dockerContainer port.DockerContainer
 }
 
 // NewContainerExecutor creates a new container executor instance
 func NewContainerExecutor(
 	baseExecutor *StepExecutor,
-	variables *model.VariableStore,
+	variables *model.StoreEntity,
 	dockerContainer port.DockerContainer,
 ) Executor {
 	return &ContainerExecutor{

@@ -28,7 +28,7 @@ type localDockerImage struct {
 	dockerTemplate DockerTemplate
 	projectService service.ProjectService
 	router         *service.PathService
-	variables      *model.VariableStore
+	variables      *model.StoreEntity
 }
 
 // NewLocalDockerImage creates a new instance of DockerImage
@@ -37,7 +37,7 @@ func NewLocalDockerImage(
 	dockerTemplate DockerTemplate,
 	projectService service.ProjectService,
 	router *service.PathService,
-	variables *model.VariableStore,
+	variables *model.StoreEntity,
 ) DockerImage {
 	return &localDockerImage{
 		fileRepository: fileRepository,

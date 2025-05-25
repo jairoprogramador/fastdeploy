@@ -1,18 +1,18 @@
 package model
 
-type VariableStore struct {
+type StoreEntity struct {
 	global map[string]string
 	local  []map[string]string
 }
 
-func NewVariableStore() *VariableStore {
-	return &VariableStore{
+func NewStoreEntity() *StoreEntity {
+	return &StoreEntity{
 		global: make(map[string]string),
 		local:  make([]map[string]string, 0),
 	}
 }
 
-func (s *VariableStore) Initialize(variables []Variable) {
+func (s *StoreEntity) Initialize(variables []Variable) {
 	s.global = make(map[string]string)
 
 	for _, v := range variables {
@@ -20,14 +20,14 @@ func (s *VariableStore) Initialize(variables []Variable) {
 	}
 }
 
-func (s *VariableStore) AddVariableGlobal(name, value string) {
+func (s *StoreEntity) AddVariableGlobal(name, value string) {
 	if s.global == nil {
 		s.global = make(map[string]string)
 	}
 	s.global[name] = value
 }
 
-func (s *VariableStore) PushScope(variables []Variable) {
+func (s *StoreEntity) PushScope(variables []Variable) {
 	scope := make(map[string]string)
 	for _, v := range variables {
 		scope[v.Name] = v.Value
@@ -35,13 +35,13 @@ func (s *VariableStore) PushScope(variables []Variable) {
 	s.local = append(s.local, scope)
 }
 
-func (s *VariableStore) PopScope() {
+func (s *StoreEntity) PopScope() {
 	if len(s.local) > 0 {
 		s.local = s.local[:len(s.local)-1]
 	}
 }
 
-func (s *VariableStore) Get(name string) string {
+func (s *StoreEntity) Get(name string) string {
 	for i := len(s.local) - 1; i >= 0; i-- {
 		if value, exists := s.local[i][name]; exists {
 			return value
