@@ -92,8 +92,7 @@ func main() {
 	deployCmdFn := getDeployCmdFn()
 	initCmd := newInitCmd(projectService)
 	startCmd := newStartCmd(projectService, engineInstance, deploymentService)
-	addCmd := newAddCmd()
-	cmd.SetupCommands(deployCmdFn, initCmd, startCmd, addCmd)
+	cmd.SetupCommands(deployCmdFn, initCmd, startCmd)
 
 	mainLogger.Println(msgRunningCLI)
 	cmd.Execute()
@@ -133,32 +132,4 @@ func newStartCmd(projectService service.ProjectService, engineInstance *engine.E
 
 	startHandler := handler.NewStartHandler(startAppFn, isInitAppFn)
 	return cmd.NewStartCmd(startHandler.Controller)
-}
-
-func newAddCmd() *cobra.Command {
-	addSupportHandler := newAddSupportHandler()
-	addDependencyHandler := newAddDependencyHandler()
-	return cmd.NewAddCmd(
-		addSupportHandler.ControllerSonarQube,
-		addSupportHandler.ControllerFortify,
-		addDependencyHandler.Controller,
-	)
-}
-
-func newAddSupportHandler() *handler.AddSupportHandler {
-	addSonarQubeAppFn := func() (string, error) {
-		return "", fmt.Errorf("not implemented")
-	}
-	addFortifyAppFn := func() (string, error) {
-		return "", fmt.Errorf("not implemented")
-	}
-
-	return handler.NewAddSupportHandler(addSonarQubeAppFn, addFortifyAppFn)
-}
-
-func newAddDependencyHandler() *handler.AddDependencyHandler {
-	addProjectDependencyAppFn := func(name string, version string) (string, error) {
-		return "", fmt.Errorf("not implemented")
-	}
-	return handler.NewAddDependencyHandler(addProjectDependencyAppFn)
 }
