@@ -1,14 +1,14 @@
 package validator
 
 import (
-	"deploy/internal/domain/engine/condition"
-	"deploy/internal/domain/engine/model"
-	"deploy/internal/domain/model/logger"
 	"errors"
 	"fmt"
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/jairoprogramador/fastdeploy/internal/domain/engine/condition"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/engine/model"
 
 	"github.com/go-playground/locales/es"
 	translator "github.com/go-playground/universal-translator"
@@ -63,11 +63,10 @@ const (
 type Validator struct {
 	validate *validator.Validate
 	trans    translator.Translator
-	logger   *logger.Logger
 }
 
 // NewValidator creates a new deployment validator
-func NewValidator(logger *logger.Logger) *Validator {
+func NewValidator() *Validator {
 	locatorEs := es.New()
 	universalTranslator := translator.New(locatorEs, locatorEs)
 	translatorEs, _ := universalTranslator.GetTranslator("es")
@@ -78,7 +77,6 @@ func NewValidator(logger *logger.Logger) *Validator {
 	return &Validator{
 		validate: validatorStruct,
 		trans:    translatorEs,
-		logger:   logger,
 	}
 }
 
@@ -133,11 +131,11 @@ func collectStepNames(steps []model.Step) map[string]bool {
 // validateStepName validates a step name and checks for duplicates
 func (v *Validator) validateStepName(name string, existingNames map[string]bool) error {
 	if name == "" {
-		return v.logger.NewError(fmt.Sprintf(ErrorEmptyStepName, ErrorPrefix))
+		return fmt.Errorf(ErrorEmptyStepName, ErrorPrefix)
 	}
 
 	if existingNames[name] {
-		return v.logger.NewError(fmt.Sprintf(ErrorDuplicateStep, ErrorPrefix, name))
+		return fmt.Errorf(ErrorDuplicateStep, ErrorPrefix, name)
 	}
 	return nil
 }
@@ -145,7 +143,7 @@ func (v *Validator) validateStepName(name string, existingNames map[string]bool)
 // validateStepType validates the step type
 func (v *Validator) validateStepType(step model.Step) error {
 	if !v.isValidStepType(step.Type) {
-		return v.logger.NewError(fmt.Sprintf(ErrorInvalidStepType, ErrorPrefix, step.Type, step.Name))
+		return fmt.Errorf(ErrorInvalidStepType, ErrorPrefix, step.Type, step.Name)
 	}
 	return nil
 }
@@ -162,7 +160,7 @@ func (v *Validator) validateTimeout(step model.Step) error {
 	}
 
 	if _, err := time.ParseDuration(step.Timeout); err != nil {
-		return v.logger.NewError(fmt.Sprintf(ErrorTimeoutFormat, ErrorPrefix, step.Timeout, step.Name))
+		return fmt.Errorf(ErrorTimeoutFormat, ErrorPrefix, step.Timeout, step.Name)
 	}
 	return nil
 }
@@ -174,11 +172,11 @@ func (v *Validator) validateRetry(step model.Step) error {
 	}
 
 	if step.Retry.Attempts < MinRetryAttempts {
-		return v.logger.NewError(fmt.Sprintf(ErrorRetryAttempts, ErrorPrefix, step.Retry.Attempts, step.Name))
+		return fmt.Errorf(ErrorRetryAttempts, ErrorPrefix, step.Retry.Attempts, step.Name)
 	}
 
 	if _, err := time.ParseDuration(step.Retry.Delay); err != nil {
-		return v.logger.NewError(fmt.Sprintf(ErrorRetryDelay, ErrorPrefix, step.Retry.Delay, step.Name))
+		return fmt.Errorf(ErrorRetryDelay, ErrorPrefix, step.Retry.Delay, step.Name)
 	}
 
 	return nil
@@ -192,7 +190,7 @@ func (v *Validator) validateConditions(step model.Step, stepNames map[string]boo
 
 	parts := strings.SplitN(step.If, ConditionSeparator, 2)
 	if len(parts) == 0 {
-		return v.logger.NewError(fmt.Sprintf(ErrorInvalidCondition, ErrorPrefix, step.Name))
+		return fmt.Errorf(ErrorInvalidCondition, ErrorPrefix, step.Name)
 	}
 
 	conditionType := parts[0]
@@ -214,7 +212,7 @@ func (v *Validator) validateConditions(step model.Step, stepNames map[string]boo
 // validateConditionType validates the condition type
 func (v *Validator) validateConditionType(condType string, stepName string) error {
 	if !validConditionTypes[condType] {
-		return v.logger.NewError(fmt.Sprintf(ErrorInvalidCondType, ErrorPrefix, condType, stepName))
+		return fmt.Errorf(ErrorInvalidCondType, ErrorPrefix, condType, stepName)
 	}
 
 	return nil
@@ -231,7 +229,7 @@ func (v *Validator) validateConditionValue(condType string, parts []string, step
 	}
 
 	if len(parts) != 2 || parts[1] == "" {
-		return v.logger.NewError(fmt.Sprintf(ErrorRequiredValue, ErrorPrefix, condType, stepName))
+		return fmt.Errorf(ErrorRequiredValue, ErrorPrefix, condType, stepName)
 	}
 
 	return nil
@@ -244,7 +242,7 @@ func (v *Validator) validateRegexPattern(condType string, parts []string, stepNa
 	}
 
 	if _, err := regexp.Compile(parts[1]); err != nil {
-		return v.logger.NewError(fmt.Sprintf(ErrorInvalidRegex, ErrorPrefix, parts[1], stepName))
+		return fmt.Errorf(ErrorInvalidRegex, ErrorPrefix, parts[1], stepName)
 	}
 
 	return nil
@@ -256,7 +254,7 @@ func (v *Validator) validateThenStep(step model.Step, stepNames map[string]bool)
 		return nil
 	}
 
-	return v.logger.NewError(fmt.Sprintf(ErrorDestStepNotFound, ErrorPrefix, step.Name, step.Then))
+	return fmt.Errorf(ErrorDestStepNotFound, ErrorPrefix, step.Name, step.Then)
 }
 
 // translateError translates validation errors to user-friendly messages

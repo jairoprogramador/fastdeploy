@@ -88,3 +88,50 @@ Further improvements could include:
 2. Implementing a dependency injection container
 3. Further splitting large services into smaller, more focused ones
 4. Applying similar principles to other parts of the codebase
+
+## Recent Improvements (May 2024)
+
+### 1. Module and Go Version
+
+- Fixed Go version in `go.mod` to a valid version (1.22)
+- Updated module name for consistency
+
+### 2. Interface-Based Design for Path Service
+
+#### Before:
+- `PathService` was in `internal/domain/common/path/` with no interface
+- Error handling was inconsistent (sometimes returning errors, sometimes empty strings)
+- No clear separation between interface and implementation
+
+#### After:
+- Created a `PathService` interface in `internal/domain/port/path_service.go`
+- Implemented `OsPathService` in `internal/infrastructure/adapter/os_path_service.go`
+- Improved error handling consistency
+- Added comprehensive documentation
+
+### 3. Recommendations for Further Improvements
+
+#### Architecture and Organization
+1. **Move Common Utilities**: Move common utilities from `internal/domain/common/` to a more appropriate location like `internal/pkg/` or `pkg/`.
+2. **Define Interfaces for All Domain Services**: Define interfaces for all domain services in `internal/domain/port/` to improve testability and provide clear contracts.
+3. **Improve Error Handling**: Standardize error handling across the codebase. Currently, some functions return errors directly, while others wrap them in `InfraResultEntity`.
+4. **Use Context Propagation**: Ensure that `context.Context` is propagated through all layers of the application for proper cancellation and timeout handling.
+5. **Add Observability**: Implement structured logging, metrics, and tracing using OpenTelemetry to improve observability.
+
+#### Code Quality
+1. **Add Tests**: Add unit tests for all components, especially domain services and repositories.
+2. **Improve Documentation**: Add godoc-style comments to all exported functions and types.
+3. **Use Linters**: Configure and use linters like `golangci-lint` to enforce code quality standards.
+4. **Reduce Duplication**: Identify and eliminate code duplication, especially in the Docker-related code.
+
+#### Dependencies
+1. **Clean Up Indirect Dependencies**: Run `go mod tidy` to clean up indirect dependencies in `go.mod`.
+2. **Vendor Dependencies**: Consider vendoring dependencies for better reproducibility.
+
+#### Configuration
+1. **Use Environment Variables**: Use environment variables for configuration instead of hardcoded values.
+2. **Add Configuration Validation**: Validate configuration values at startup to fail fast if there are issues.
+
+#### Security
+1. **Add Input Validation**: Add input validation for all user inputs to prevent security issues.
+2. **Use Secure Defaults**: Ensure that all security-related settings use secure defaults.

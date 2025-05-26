@@ -1,17 +1,16 @@
 package adapter
 
 import (
+	"github.com/jairoprogramador/fastdeploy/internal/domain/model/logger"
 	"os"
 	"path/filepath"
 )
 
-// File permission constants
 const (
 	dirPermission  = 0755
 	filePermission = 0644
 )
 
-// FileController defines the interface for file system operations
 type FileController interface {
 	ExistsFile(filePath string) (bool, error)
 	DeleteFile(filePath string) error
@@ -27,14 +26,16 @@ type FileController interface {
 	GetPathAbsolute(relativePath string) (string, error)
 }
 
-type osFileController struct{}
-
-// NewOsFileController creates a new file controller instance
-func NewOsFileController() FileController {
-	return &osFileController{}
+type osFileController struct {
+	fileLogger *logger.FileLogger
 }
 
-// WriteFile writes content to a file, creating it if it doesn't exist
+func NewOsFileController(fileLogger *logger.FileLogger) FileController {
+	return &osFileController{
+		fileLogger: fileLogger,
+	}
+}
+
 func (fc *osFileController) WriteFile(filePath string, content string) error {
 	file, err := fc.CreateFile(filePath)
 	if err != nil {
@@ -43,14 +44,15 @@ func (fc *osFileController) WriteFile(filePath string, content string) error {
 	defer file.Close()
 
 	_, err = file.WriteString(content)
+	if err != nil {
+		fc.logError(err)
+	}
 	return err
 }
 
-// CreateFile creates a new file, ensuring its directory exists
 func (fc *osFileController) CreateFile(filePath string) (*os.File, error) {
 	dirPath := filepath.Dir(filePath)
 
-	// Ensure directory exists
 	exists, err := fc.ExistsDirectory(dirPath)
 	if err != nil {
 		return nil, err
@@ -58,33 +60,38 @@ func (fc *osFileController) CreateFile(filePath string) (*os.File, error) {
 
 	if !exists {
 		if err := os.MkdirAll(dirPath, dirPermission); err != nil {
+			fc.logError(err)
 			return nil, err
 		}
 	}
 
-	return os.OpenFile(filePath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, filePermission)
+	file, err := os.OpenFile(filePath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, filePermission)
+	if err != nil {
+		fc.logError(err)
+	}
+	return file, err
 }
 
-// OpenFile opens an existing file for reading
 func (fc *osFileController) OpenFile(filePath string) (*os.File, error) {
-	return os.Open(filePath)
+	file, err := os.Open(filePath)
+	if err != nil {
+		fc.logError(err)
+	}
+	return file, err
 }
 
-// ExistsFile checks if a file exists at the given path
 func (fc *osFileController) ExistsFile(filePath string) (bool, error) {
-	isDirectory, err := fc.isPathDirectory(filePath)
+	isDirectory, err := fc.ExistsDirectory(filePath)
 	if err != nil {
 		return false, err
 	}
 	return !isDirectory, nil
 }
 
-// ExistsDirectory checks if a directory exists at the given path
 func (fc *osFileController) ExistsDirectory(dirPath string) (bool, error) {
 	return fc.isPathDirectory(dirPath)
 }
 
-// DeleteFile removes a file if it exists
 func (fc *osFileController) DeleteFile(filePath string) error {
 	exists, err := fc.ExistsFile(filePath)
 	if err != nil {
@@ -92,40 +99,58 @@ func (fc *osFileController) DeleteFile(filePath string) error {
 	}
 
 	if !exists {
-		return nil // File doesn't exist, nothing to delete
+		return nil
 	}
 
-	return os.Remove(filePath)
+	err = os.Remove(filePath)
+	if err != nil {
+		fc.logError(err)
+	}
+	return err
 }
 
-// GetPathAbsolute converts a relative path to an absolute path
 func (fc *osFileController) GetPathAbsolute(relativePath string) (string, error) {
-	return filepath.Abs(relativePath)
+	path, err := filepath.Abs(relativePath)
+	if err != nil {
+		fc.logError(err)
+	}
+	return path, err
 }
 
-// GetUserHomeDirectory returns the current user's home directory
 func (fc *osFileController) GetUserHomeDirectory() (string, error) {
-	return os.UserHomeDir()
+	dir, err := os.UserHomeDir()
+	if err != nil {
+		fc.logError(err)
+	}
+	return dir, err
 }
 
-// ReadDirectory returns the contents of a directory
 func (fc *osFileController) ReadDirectory(dirPath string) ([]os.DirEntry, error) {
-	return os.ReadDir(dirPath)
+	entries, err := os.ReadDir(dirPath)
+	if err != nil {
+		fc.logError(err)
+	}
+	return entries, err
 }
 
-// GetPath joins path elements into a single path
 func (fc *osFileController) GetPath(paths ...string) string {
 	return filepath.Join(paths...)
 }
 
-// isPathDirectory checks if a path points to a directory
 func (fc *osFileController) isPathDirectory(path string) (bool, error) {
 	fileInfo, err := os.Stat(path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return false, nil
 		}
+		fc.logError(err)
 		return false, err
 	}
 	return fileInfo.IsDir(), nil
+}
+
+func (fc *osFileController) logError(err error) {
+	if err != nil {
+		fc.fileLogger.Error(err)
+	}
 }

@@ -1,10 +1,10 @@
 package application
 
 import (
-	"deploy/internal/domain/service"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/model"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/service"
 )
 
-func InitApp(projectService service.ProjectService) error {
-	_, err := projectService.Initialize()
-	return err
+func InitApp(projectService service.ProjectService) model.DomainResultEntity {
+	return projectService.Initialize()
 }

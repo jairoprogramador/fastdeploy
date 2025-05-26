@@ -1,14 +1,13 @@
 package service
 
 import (
-	"deploy/internal/domain/constant"
-	"deploy/internal/domain/model"
-	"deploy/internal/domain/repository"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/constant"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/model"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/repository"
 	"errors"
 )
 
 var (
-	ErrConfigNotFound    = errors.New(constant.MsgConfigNotFound)
 	ErrConfigCanNotBeNil = errors.New(constant.MsgConfigCannoBeNil)
 	ErrConfigNotComplete = errors.New(constant.MsgConfigNotComplete)
 )
@@ -31,13 +30,14 @@ func NewConfigService(
 }
 
 func (s *configService) Load() (*model.ConfigEntity, error) {
-	config, err := s.configRepository.Load()
-	if err == nil && config != nil {
+	result := s.configRepository.Load()
+	if result.IsSuccess() {
+		config := result.Result.(*model.ConfigEntity)
 		if !config.IsComplete() {
 			return &model.ConfigEntity{}, ErrConfigNotComplete
 		}
 	}
-	return config, err
+	return &model.ConfigEntity{}, result.Error
 }
 
 func (s *configService) Save(configEntity *model.ConfigEntity) error {
@@ -46,7 +46,8 @@ func (s *configService) Save(configEntity *model.ConfigEntity) error {
 	}
 
 	if !configEntity.IsComplete() {
-		return ErrConfigNotFound
+		return ErrConfigNotComplete
 	}
-	return s.configRepository.Save(configEntity)
+	result := s.configRepository.Save(configEntity)
+	return result.Error
 }

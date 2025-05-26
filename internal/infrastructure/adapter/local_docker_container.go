@@ -2,13 +2,12 @@ package adapter
 
 import (
 	"context"
-	"deploy/internal/domain/constant"
-	model2 "deploy/internal/domain/engine/model"
-	"deploy/internal/domain/model"
-	"deploy/internal/domain/model/logger"
-	"deploy/internal/domain/port"
-	"deploy/internal/domain/service"
-	"deploy/internal/domain/template"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/constant"
+	engineModel "github.com/jairoprogramador/fastdeploy/internal/domain/engine/model"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/model"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/model/logger"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/port"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/template"
 	"fmt"
 	"net"
 	"strings"
@@ -27,7 +26,12 @@ const (
 	dockerPsIDsUpCmd        = "docker ps -q --filter ancestor=%s:%s"
 	dockerPortCmd           = "docker port %s"
 
-	errComposeFileNotFound = "file compose not found in %s"
+	errContainerIDsNotFound  = "container IDs not found"
+	errContainerPortNotFound = "container port not found"
+	errComposeFileNotFound   = "compose file not found: %s"
+	errPortNoAvailable       = "no available ports found between %d and %d"
+
+	msgSuccessfullStart = "successfully started container"
 )
 
 type DockerComposeData struct {
@@ -41,64 +45,61 @@ type DockerComposeData struct {
 
 type localDockerContainer struct {
 	runCommand     port.RunCommand
-	fileRepository FileController
+	fileController FileController
 	dockerTemplate DockerTemplate
 	dockerImage    DockerImage
-	router         *service.PathService
-	variables      *model2.StoreEntity
-	logger         *logger.Logger
+	pathService    port.PathService
+	store          *engineModel.StoreEntity
+	fileLogger     *logger.FileLogger
 }
 
 func NewLocalDockerContainer(
 	runCommand port.RunCommand,
-	fileRepository FileController,
+	fileController FileController,
 	dockerTemplate DockerTemplate,
 	dockerImage DockerImage,
-	router *service.PathService,
-	variables *model2.StoreEntity,
-	logger *logger.Logger,
+	pathService port.PathService,
+	store *engineModel.StoreEntity,
+	fileLogger *logger.FileLogger,
 ) port.DockerContainer {
 	return &localDockerContainer{
 		runCommand:     runCommand,
-		fileRepository: fileRepository,
+		fileController: fileController,
 		dockerTemplate: dockerTemplate,
 		dockerImage:    dockerImage,
-		router:         router,
-		variables:      variables,
-		logger:         logger,
+		pathService:    pathService,
+		store:          store,
+		fileLogger:     fileLogger,
 	}
 }
 
-func (d *localDockerContainer) Up(ctx context.Context) model.InfrastructureResponse {
-	pathDockerCompose := d.router.GetFullPathDockerCompose()
+func (d *localDockerContainer) Up(ctx context.Context) model.InfraResultEntity {
+	pathDockerCompose := d.pathService.GetFullPathDockerCompose()
 	command := fmt.Sprintf(dockerComposeUpCmd, pathDockerCompose)
 	return d.runCommand.Run(ctx, command)
 }
 
-func (d *localDockerContainer) Start(ctx context.Context) error {
+func (d *localDockerContainer) Start(ctx context.Context) model.InfraResultEntity {
 	// Step 1: Stop any existing containers
 	result := d.down(ctx)
 	if result.Error != nil {
-		d.logger.Error(result.Error)
-		return result.Error
+		return result
 	}
 
 	// Step 2: createContainer a Dockerfile
 	if err := d.dockerImage.CreateDockerfile(); err != nil {
-		d.logger.Error(err)
-		return err
+		return model.NewError(err)
 	}
 
 	// Step 3: createContainer and start a new container
 	if err := d.createContainer(ctx); err != nil {
-		d.logger.Error(err)
-		return err
+		return model.NewError(err)
 	}
 
-	return nil
+	return model.NewResult(msgSuccessfullStart)
 }
 
-func (d *localDockerContainer) Exists(ctx context.Context, commitHash, version string) model.InfrastructureResponse {
+func (d *localDockerContainer) Exists(ctx context.Context, commitHash, version string) model.InfraResultEntity {
 	command := fmt.Sprintf(dockerPsIDsAllCmd, commitHash, version)
 	response := d.runCommand.Run(ctx, command)
 
@@ -107,10 +108,10 @@ func (d *localDockerContainer) Exists(ctx context.Context, commitHash, version s
 	}
 
 	containerId := response.Result.(string)
-	return model.NewResponseWithDetails(len(containerId) > 0, response.Details)
+	return model.NewResult(len(containerId) > 0)
 }
 
-func (d *localDockerContainer) GetURLsUp(ctx context.Context, commitHash, version string) model.InfrastructureResponse {
+func (d *localDockerContainer) GetURLsUp(ctx context.Context, commitHash, version string) model.InfraResultEntity {
 	// Get IDs of running containers
 	containerIDsResponse := d.getContainerIDsUp(ctx, commitHash, version)
 	if !containerIDsResponse.IsSuccess() {
@@ -122,10 +123,6 @@ func (d *localDockerContainer) GetURLsUp(ctx context.Context, commitHash, versio
 		return containerIDsResponse
 	}
 
-	// Build details and collect URLs
-	var details strings.Builder
-	details.WriteString(containerIDsResponse.Details)
-
 	var urls []string
 	for _, containerID := range containerIDs {
 		portResponse := d.getContainerPort(ctx, containerID)
@@ -136,36 +133,33 @@ func (d *localDockerContainer) GetURLsUp(ctx context.Context, commitHash, versio
 		port := portResponse.Result.(string)
 		url := fmt.Sprintf("service available in: http://localhost:%s/", port)
 		urls = append(urls, url)
-		details.WriteString(fmt.Sprintf("\n%s", portResponse.Details))
 	}
-
-	return model.NewResponseWithDetails(urls, details.String())
+	return model.NewResult(urls)
 }
 
-func (d *localDockerContainer) upBuild(ctx context.Context) model.InfrastructureResponse {
-	pathDockerCompose := d.router.GetFullPathDockerCompose()
+func (d *localDockerContainer) upBuild(ctx context.Context) model.InfraResultEntity {
+	pathDockerCompose := d.pathService.GetFullPathDockerCompose()
 	command := fmt.Sprintf(dockerComposeUpBuildCmd, pathDockerCompose)
 	return d.runCommand.Run(ctx, command)
 }
 
-func (d *localDockerContainer) down(ctx context.Context) model.InfrastructureResponse {
-	pathDockerCompose := d.router.GetFullPathDockerCompose()
+func (d *localDockerContainer) down(ctx context.Context) model.InfraResultEntity {
+	pathDockerCompose := d.pathService.GetFullPathDockerCompose()
 
-	exists, err := d.fileRepository.ExistsFile(pathDockerCompose)
+	exists, err := d.fileController.ExistsFile(pathDockerCompose)
 	if err != nil {
-		return model.NewErrorResponse(err)
+		return model.NewError(err)
 	}
 
 	if !exists {
-		err = fmt.Errorf(errComposeFileNotFound, pathDockerCompose)
-		return model.NewErrorResponse(err)
+		return d.logError(fmt.Errorf(errComposeFileNotFound, pathDockerCompose))
 	}
 
 	command := fmt.Sprintf(dockerComposeDownCmd, pathDockerCompose)
 	return d.runCommand.Run(ctx, command)
 }
 
-func (d *localDockerContainer) getContainerIDsUp(ctx context.Context, commitHash, version string) model.InfrastructureResponse {
+func (d *localDockerContainer) getContainerIDsUp(ctx context.Context, commitHash, version string) model.InfraResultEntity {
 	command := fmt.Sprintf(dockerPsIDsUpCmd, commitHash, version)
 	containerIDsResponse := d.runCommand.Run(ctx, command)
 	if !containerIDsResponse.IsSuccess() {
@@ -175,13 +169,13 @@ func (d *localDockerContainer) getContainerIDsUp(ctx context.Context, commitHash
 	containerIDs := containerIDsResponse.Result.(string)
 	containerIDs = strings.TrimSpace(containerIDs)
 	if containerIDs == "" {
-		return model.NewResponseWithDetails([]string{}, containerIDsResponse.Details)
+		return d.logError(fmt.Errorf(errContainerIDsNotFound))
 	}
 
-	return model.NewResponseWithDetails(strings.Split(containerIDs, "\n"), containerIDsResponse.Details)
+	return model.NewResult(strings.Split(containerIDs, "\n"))
 }
 
-func (d *localDockerContainer) getContainerPort(ctx context.Context, containerID string) model.InfrastructureResponse {
+func (d *localDockerContainer) getContainerPort(ctx context.Context, containerID string) model.InfraResultEntity {
 	command := fmt.Sprintf(dockerPortCmd, containerID)
 	response := d.runCommand.Run(ctx, command)
 	if !response.IsSuccess() {
@@ -204,59 +198,59 @@ func (d *localDockerContainer) getContainerPort(ctx context.Context, containerID
 
 		portHost := strings.TrimSpace(parts[1])
 		if portHost != "" {
-			return model.NewResponseWithDetails(portHost, response.Details)
+			return model.NewResult(portHost)
 		}
 	}
-
-	return model.NewErrorResponseWithDetails(fmt.Errorf(constant.MsgErrorNoPortHost), response.Details)
+	return d.logError(fmt.Errorf(errContainerPortNotFound))
 }
 
 func (d *localDockerContainer) createContainer(ctx context.Context) error {
-	// Get paths
-	pathComposeTemplate := d.router.GetFullPathDockerComposeTemplate()
-	pathCompose := d.router.GetFullPathDockerCompose()
+	pathComposeTemplate := d.pathService.GetFullPathDockerComposeTemplate()
+	pathCompose := d.pathService.GetFullPathDockerCompose()
 
-	// Prepare compose data
-	composeData := d.prepareComposeData()
+	composeData, err := d.prepareComposeData()
+	if err != nil {
+		return err
+	}
 
-	// Ensure template exists
 	if err := d.ensureTemplateExists(pathComposeTemplate); err != nil {
 		return err
 	}
 
-	// Remove existing compose file if it exists
 	if err := d.removeExistingComposeFile(pathCompose); err != nil {
 		return err
 	}
 
-	// Generate compose file from template
 	if err := d.generateComposeFile(pathComposeTemplate, pathCompose, composeData); err != nil {
 		return err
 	}
 
-	// Start the container
 	return d.startContainer(ctx)
 }
 
-func (d *localDockerContainer) prepareComposeData() DockerComposeData {
-	return DockerComposeData{
-		NameDelivery:        d.variables.Get(constant.VAR_PROJECT_NAME),
-		CommitHash:          d.variables.Get(constant.VAR_COMMIT_HASH),
-		Version:             d.variables.Get(constant.VAR_PROJECT_VERSION),
-		PathDockerDirectory: d.variables.Get(constant.VAR_PATH_DOCKER_DIRECTORY),
-		PathHomeDirectory:   d.variables.Get(constant.VAR_PATH_HOME_DIRECTORY),
-		Port:                d.getPort(),
+func (d *localDockerContainer) prepareComposeData() (DockerComposeData, error) {
+	port, err := d.getPort()
+	if err != nil {
+		return DockerComposeData{}, err
 	}
+	return DockerComposeData{
+		NameDelivery:        d.store.Get(constant.VAR_PROJECT_NAME),
+		CommitHash:          d.store.Get(constant.VAR_COMMIT_HASH),
+		Version:             d.store.Get(constant.VAR_PROJECT_VERSION),
+		PathDockerDirectory: d.store.Get(constant.VAR_PATH_DOCKER_DIRECTORY),
+		PathHomeDirectory:   d.store.Get(constant.VAR_PATH_HOME_DIRECTORY),
+		Port:                port,
+	}, nil
 }
 
 func (d *localDockerContainer) ensureTemplateExists(pathTemplate string) error {
-	exists, err := d.fileRepository.ExistsFile(pathTemplate)
+	exists, err := d.fileController.ExistsFile(pathTemplate)
 	if err != nil {
 		return err
 	}
 
 	if !exists {
-		if err := d.fileRepository.WriteFile(pathTemplate, template.ComposeTemplate); err != nil {
+		if err := d.fileController.WriteFile(pathTemplate, template.ComposeTemplate); err != nil {
 			return err
 		}
 	}
@@ -265,13 +259,13 @@ func (d *localDockerContainer) ensureTemplateExists(pathTemplate string) error {
 }
 
 func (d *localDockerContainer) removeExistingComposeFile(pathDockerCompose string) error {
-	exists, err := d.fileRepository.ExistsFile(pathDockerCompose)
+	exists, err := d.fileController.ExistsFile(pathDockerCompose)
 	if err != nil {
 		return err
 	}
 
 	if exists {
-		if err := d.fileRepository.DeleteFile(pathDockerCompose); err != nil {
+		if err := d.fileController.DeleteFile(pathDockerCompose); err != nil {
 			return err
 		}
 	}
@@ -285,7 +279,7 @@ func (d *localDockerContainer) generateComposeFile(pathTemplate, pathDockerCompo
 		return err
 	}
 
-	if err = d.fileRepository.WriteFile(pathDockerCompose, contentFile); err != nil {
+	if err = d.fileController.WriteFile(pathDockerCompose, contentFile); err != nil {
 		return err
 	}
 
@@ -297,27 +291,30 @@ func (d *localDockerContainer) startContainer(ctx context.Context) error {
 	if !response.IsSuccess() {
 		return response.Error
 	}
-
 	return nil
 }
 
-func (d *localDockerContainer) getPort() string {
-	defaultPort := minPort
-
-	// Try to find an available port
+func (d *localDockerContainer) getPort() (string, error) {
 	for port := minPort; port <= maxPort; port++ {
 		address := fmt.Sprintf(":%d", port)
 		listener, err := net.Listen("tcp", address)
 
 		if err == nil {
-			// Found an available port
 			listener.Close()
-			return fmt.Sprintf("%d", port)
+			return fmt.Sprintf("%d", port), nil
+		} else {
+			d.fileLogger.Error(err)
 		}
+		continue
 	}
+	err := fmt.Errorf(errPortNoAvailable, minPort, maxPort)
+	d.fileLogger.Error(err)
+	return "", err
+}
 
-	// If no port is available, return the default
-	d.logger.Info(fmt.Sprintf("No available ports found between %d and %d, using default: %d",
-		minPort, maxPort, defaultPort))
-	return fmt.Sprintf("%d", defaultPort)
+func (d *localDockerContainer) logError(err error) model.InfraResultEntity {
+	if err != nil {
+		d.fileLogger.Error(err)
+	}
+	return model.NewError(err)
 }

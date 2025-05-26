@@ -2,7 +2,7 @@ package executor
 
 import (
 	"context"
-	"deploy/internal/domain/engine/model"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/engine/model"
 	"time"
 )
 

@@ -2,12 +2,12 @@ package engine
 
 import (
 	"context"
-	"deploy/internal/domain/engine/executor"
-	engineModel "deploy/internal/domain/engine/model"
-	"deploy/internal/domain/engine/validator"
-	"deploy/internal/domain/model"
-	"deploy/internal/domain/model/logger"
-	"deploy/internal/domain/service"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/engine/executor"
+	engineModel "github.com/jairoprogramador/fastdeploy/internal/domain/engine/model"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/engine/store"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/engine/validator"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/model"
+	//"deploy/internal/domain/service"
 	"fmt"
 	"sync"
 )
@@ -26,15 +26,13 @@ type Engine struct {
 	validator     *validator.Validator
 	Executors     map[string]executor.Executor
 	variableStore *engineModel.StoreEntity
-	storeService  service.StoreServiceInterface
-	logger        *logger.Logger
+	storeService  store.StoreServiceInterface
 }
 
 // NewEngine creates a new deployment engine instance
 func NewEngine(
 	variableStore *engineModel.StoreEntity,
-	storeService service.StoreServiceInterface,
-	logger *logger.Logger,
+	storeService store.StoreServiceInterface,
 	validator *validator.Validator,
 ) *Engine {
 	return &Engine{
@@ -42,35 +40,28 @@ func NewEngine(
 		Executors:     make(map[string]executor.Executor),
 		variableStore: variableStore,
 		storeService:  storeService,
-		logger:        logger,
 	}
 }
 
 // Execute runs a deployment process with the given context and configuration
 func (e *Engine) Execute(ctx context.Context, deployment *engineModel.DeploymentEntity, project *model.ProjectEntity) error {
-	// Validate deployment configuration
 	if err := e.validator.Validate(deployment); err != nil {
 		return fmt.Errorf(errDeploymentValidation, err)
 	}
 
-	// Get global variables
 	globalVars, err := e.storeService.GetVariablesGlobal(ctx, deployment, project)
 	if err != nil {
 		return err
 	}
 
-	// Initialize variable store
 	e.variableStore.Initialize(globalVars)
 
-	// Execute each step sequentially
 	for _, step := range deployment.Steps {
-		e.logger.Info(step.Name)
 
 		if err := e.executeStep(ctx, step); err != nil {
 			return fmt.Errorf(errStepExecution, step.Name, err)
 		}
 
-		// Check if we should finish after this step
 		if step.Then == validator.ThenFinish {
 			break
 		}
@@ -127,7 +118,6 @@ func (e *Engine) executeParallelSteps(ctx context.Context, steps []engineModel.S
 		errors = append(errors, err)
 	}
 
-	// Return combined error if any steps failed
 	if len(errors) > 0 {
 		return fmt.Errorf(errMultipleParallelSteps, errors)
 	}

@@ -1,12 +1,12 @@
 package repository
 
 import (
-	"deploy/internal/domain/model"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/model"
 )
 
 type ProjectRepository interface {
-	Load() (*model.ProjectEntity, error)
-	Save(project *model.ProjectEntity) error
-	GetName() (string, error)
-	GetFullPathResource() (string, error)
+	Load() model.InfraResultEntity
+	Save(project *model.ProjectEntity) model.InfraResultEntity
+	GetName() model.InfraResultEntity
+	GetFullPathResource() model.InfraResultEntity
 }

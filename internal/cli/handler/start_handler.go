@@ -1,50 +1,31 @@
 package handler
 
 import (
-	"deploy/internal/cli/presenter"
-	"deploy/internal/domain/model"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/model"
 	"fmt"
 )
 
-type StartAppFunc func(project *model.ProjectEntity) error
+const (
+	errFuncStartNotImplement = "function controller start not implemented"
+)
+
+type StartAppFunc func() model.DomainResultEntity
 
 type StartHandler struct {
-	startAppFn  StartAppFunc
-	isInitAppFn IsInitAppFunc
+	startAppFn StartAppFunc
 }
 
-func NewStartHandler(startAppFn StartAppFunc, isInitAppFn IsInitAppFunc) *StartHandler {
+func NewStartHandler(startAppFn StartAppFunc) *StartHandler {
 	return &StartHandler{
-		startAppFn:  startAppFn,
-		isInitAppFn: isInitAppFn,
+		startAppFn: startAppFn,
 	}
 }
 
-func (h *StartHandler) Controller() error {
+func (h *StartHandler) Controller() model.DomainResultEntity {
 	if h.startAppFn == nil {
-		err := fmt.Errorf("start: función de aplicación no implementada")
-		presenter.ShowError("StartHandler", err)
-		return err
+		err := fmt.Errorf(errFuncStartNotImplement)
+		return model.NewErrorApp(err)
 	}
 
-	if h.isInitAppFn == nil {
-		err := fmt.Errorf("isInit: función de aplicación no implementada")
-		presenter.ShowError("StartHandler", err)
-		return err
-	}
-
-	presenter.ShowStart("Start Deploy Command")
-
-	project, err := h.isInitAppFn()
-	if err != nil {
-		presenter.ShowError("StartCmd (IsInitialize)", err)
-		return err
-	}
-	if project == nil {
-		err = fmt.Errorf("el proyecto no pudo ser cargado o no está inicializado")
-		presenter.ShowError("StartCmd (IsInitialize)", err)
-		return err
-	}
-
-	return h.startAppFn(project)
+	return h.startAppFn()
 }

@@ -1,10 +1,10 @@
 package repository
 
 import (
-	"deploy/internal/domain/model"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/model"
 )
 
 type ConfigRepository interface {
-	Load() (*model.ConfigEntity, error)
-	Save(config *model.ConfigEntity) error
+	Load() model.InfraResultEntity
+	Save(config *model.ConfigEntity) model.InfraResultEntity
 }

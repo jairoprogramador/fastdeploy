@@ -1,87 +1,97 @@
 package repository
 
 import (
-	"deploy/internal/domain/model"
-	"deploy/internal/domain/repository"
-	"deploy/internal/domain/service"
-	"deploy/internal/infrastructure/adapter"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/model"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/model/logger"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/repository"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/port"
+	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/adapter"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 )
 
+const (
+	erroProjectNotFound  = "file project not found in %s"
+	erroResourceNotFound = "the resource was not found in the directory %s"
+
+	msgSuccessFileProjectExists = "file project exists in %s"
+	msgSuccessSaveProject       = "save file %s successful"
+)
+
 type yamlProjectRepository struct {
 	yamlRepository adapter.YamlController
 	fileRepository adapter.FileController
-	router         *service.PathService
+	router         port.PathService
+	fileLogger     *logger.FileLogger
 }
 
-// NewYamlProjectRepository creates a new instance of ProjectRepository
 func NewYamlProjectRepository(
 	yamlRepository adapter.YamlController,
 	fileRepository adapter.FileController,
-	router *service.PathService,
+	router port.PathService,
+	fileLogger *logger.FileLogger,
 ) repository.ProjectRepository {
 	return &yamlProjectRepository{
 		yamlRepository: yamlRepository,
 		fileRepository: fileRepository,
 		router:         router,
+		fileLogger:     fileLogger,
 	}
 }
 
-// Load loads a project from the file system
-func (r *yamlProjectRepository) Load() (*model.ProjectEntity, error) {
+func (r *yamlProjectRepository) Load() model.InfraResultEntity {
 	path := r.router.GetPathProjectFile()
 
-	if err := r.exists(path); err != nil {
-		return &model.ProjectEntity{}, err
+	if result := r.exists(path); !result.IsSuccess() {
+		return result
 	}
 
 	var project model.ProjectEntity
-	response := r.yamlRepository.Load(path, &project)
-	if !response.IsSuccess() {
-		return &model.ProjectEntity{}, response.Error
+	if err := r.yamlRepository.Load(path, &project); err != nil {
+		return model.NewError(err)
 	}
-	return &project, nil
+
+	return model.NewResult(&project)
 }
 
-// Save saves a project to the file system
-func (r *yamlProjectRepository) Save(project *model.ProjectEntity) error {
+func (r *yamlProjectRepository) Save(project *model.ProjectEntity) model.InfraResultEntity {
 	path := r.router.GetPathProjectFile()
 
-	if err := r.exists(path); err == nil {
+	if result := r.exists(path); result.IsSuccess() {
 		if err := r.fileRepository.DeleteFile(path); err != nil {
-			return err
+			return model.NewError(err)
 		}
 	}
 
-	if response := r.yamlRepository.Save(path, project); !response.IsSuccess() {
-		return response.Error
+	if err := r.yamlRepository.Save(path, project); err != nil {
+		return model.NewError(err)
 	}
 
-	return nil
+	return model.NewResult(fmt.Sprintf(msgSuccessSaveProject, path))
 }
 
-func (r *yamlProjectRepository) GetName() (string, error) {
+func (r *yamlProjectRepository) GetName() model.InfraResultEntity {
 	pathWorkingDir, err := os.Getwd()
 	if err != nil {
-		return "", err
+		return r.logError(err)
 	}
-	return filepath.Base(pathWorkingDir), nil
+
+	return model.NewResult(filepath.Base(pathWorkingDir))
 }
 
-func (r *yamlProjectRepository) GetFullPathResource() (string, error) {
+func (r *yamlProjectRepository) GetFullPathResource() model.InfraResultEntity {
 	directory := "target"
 	existsDir, err := r.fileRepository.ExistsDirectory(directory)
 	if err == nil && existsDir {
 		fullPathJarFiles, err := r.getFullPathResources(directory)
 		if err == nil {
-			return fullPathJarFiles[0], nil
+			return model.NewResult(fullPathJarFiles[0])
 		}
-		return "", err
+		return r.logError(err)
 	}
-	return "", err
+	return r.logError(err)
 }
 
 func (r *yamlProjectRepository) getFullPathResources(pathDirectory string) ([]string, error) {
@@ -107,19 +117,26 @@ func (r *yamlProjectRepository) getFullPathResources(pathDirectory string) ([]st
 	}
 
 	if len(pathFiles) <= 0 {
-		return nil, fmt.Errorf("the resource was not found in the directory %s", pathDirectory)
+		return nil, fmt.Errorf(erroResourceNotFound, pathDirectory)
 	}
 
 	return pathFiles, nil
 }
 
-func (r *yamlProjectRepository) exists(path string) error {
+func (r *yamlProjectRepository) exists(path string) model.InfraResultEntity {
 	exists, err := r.fileRepository.ExistsFile(path)
 	if err != nil {
-		return err
+		return model.NewError(err)
 	}
 	if !exists {
-		return service.ErrProjectNotFound
+		return r.logError(fmt.Errorf(erroProjectNotFound, path))
 	}
-	return nil
+	return model.NewResult(fmt.Sprintf(msgSuccessFileProjectExists, path))
+}
+
+func (r *yamlProjectRepository) logError(err error) model.InfraResultEntity {
+	if err != nil {
+		r.fileLogger.Error(err)
+	}
+	return model.NewError(err)
 }

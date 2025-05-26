@@ -2,12 +2,12 @@ package port
 
 import (
 	"context"
-	"deploy/internal/domain/model"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/model"
 )
 
 type DockerContainer interface {
-	Up(ctx context.Context) model.InfrastructureResponse
-	Exists(ctx context.Context, commitHash, version string) model.InfrastructureResponse
-	GetURLsUp(ctx context.Context, commitHash, version string) model.InfrastructureResponse
-	Start(ctx context.Context) error
+	Up(ctx context.Context) model.InfraResultEntity
+	Exists(ctx context.Context, commitHash, version string) model.InfraResultEntity
+	GetURLsUp(ctx context.Context, commitHash, version string) model.InfraResultEntity
+	Start(ctx context.Context) model.InfraResultEntity
 }

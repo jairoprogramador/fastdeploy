@@ -1,24 +1,22 @@
 package cmd
 
 import (
-	"fmt"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/model"
 	"github.com/spf13/cobra"
 	"os"
 )
 
-type StartControllerFunc func() error
+type StartControllerFunc func() model.DomainResultEntity
 
 func NewStartCmd(startControllerFunc StartControllerFunc) *cobra.Command {
 	return &cobra.Command{
 		Use:   "start",
 		Short: "Publicar aplicación",
 		Run: func(cmd *cobra.Command, args []string) {
-			if startControllerFunc == nil {
-				fmt.Println("Controlador de comando start no implementado")
-				os.Exit(1)
-			}
-			if err := startControllerFunc(); err != nil {
-				os.Exit(1)
+			if startControllerFunc != nil {
+				if result := startControllerFunc(); !result.IsSuccess() {
+					os.Exit(1)
+				}
 			}
 		},
 	}

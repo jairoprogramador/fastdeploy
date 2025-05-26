@@ -1,7 +1,6 @@
 package presenter
 
 import (
-	"deploy/internal/domain/model/logger"
 	"fmt"
 )
 
@@ -41,17 +40,4 @@ func ShowError(stepName string, err error) {
 func ShowSuccess(stepName string, message string) {
 	output := fmt.Sprintf("%s[SUCCESS]%s %s: %s", ColorGreen, ColorReset, stepName, message)
 	fmt.Println(output)
-}
-
-func ShowLogStore(logStore *logger.Logger) {
-	/* for _, step := range logStore.Steps {
-		if step.Status == loggerApp.StatusError {
-			ShowError(step.StepName, step.Error)
-			return
-		}
-	}
-
-	for _, step := range logStore.Steps {
-		ShowSuccess(step.StepName, step.Message)
-	} */
 }

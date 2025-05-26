@@ -1,11 +1,13 @@
 package service
 
 import (
+	"context"
 	"crypto/sha256"
-	"deploy/internal/domain/constant"
-	"deploy/internal/domain/model"
-	"deploy/internal/domain/model/logger"
-	"deploy/internal/domain/repository"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/constant"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/engine"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/model"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/port"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/repository"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -13,77 +15,92 @@ import (
 )
 
 var (
-	ErrProjectNotFound     = errors.New(constant.MsgProjectNotFound)
-	ErrProjectCanNotBeNull = errors.New(constant.MsgProjectCanNotBeNull)
-	ErrProjectNotComplete  = errors.New(constant.MsgProjectNotComplete)
+	ErrProjectCanNotBeNull = errors.New(constant.ErrorProjectCanNotBeNull)
+	ErrProjectNotComplete  = errors.New(constant.ErrorProjectNotComplete)
 )
 
-type ProjectLoader interface {
-	Load() (*model.ProjectEntity, error)
-}
-
-type ProjectPersister interface {
-	Save(project *model.ProjectEntity) error
-}
-
-type ProjectInitializer interface {
-	Initialize() (string, error)
-}
-
 type ProjectService interface {
-	ProjectLoader
-	ProjectPersister
-	ProjectInitializer
+	Initialize() model.DomainResultEntity
+	Start() model.DomainResultEntity
+
+	Load() (*model.ProjectEntity, error)
+	Save(project *model.ProjectEntity) error
 	GetFullPathResource() (string, error)
 }
 
 type projectService struct {
-	logger            *logger.Logger
+	engine            *engine.Engine
+	deploymentService DeploymentService
 	projectRepository repository.ProjectRepository
 	configService     ConfigService
-	router            *PathService
+	router            port.PathService
 }
 
 func NewProjectService(
-	logger *logger.Logger,
 	projectRepository repository.ProjectRepository,
+	deploymentService DeploymentService,
+	engine *engine.Engine,
 	configService ConfigService,
-	router *PathService,
+	router port.PathService,
 ) ProjectService {
 	return &projectService{
 		projectRepository: projectRepository,
 		configService:     configService,
 		router:            router,
-		logger:            logger,
+		deploymentService: deploymentService,
+		engine:            engine,
 	}
 }
 
-func (s *projectService) Initialize() (string, error) {
-	if _, err := s.Load(); err != nil {
-		if errors.Is(err, ErrProjectNotFound) || errors.Is(err, ErrProjectNotComplete) {
-			projectEntity, err := s.newProjectEntity()
-			if err != nil {
-				return "", err
-			}
+func (s *projectService) Start() model.DomainResultEntity {
+	if projectEntity, err := s.Load(); err == nil {
 
-			if err = s.Save(projectEntity); err != nil {
-				return "", err
-			}
-			return constant.MsgInitializeSuccess, nil
+		deploymentEntity, err := s.deploymentService.Load()
+		if err != nil {
+			return model.NewErrorApp(err)
 		}
-		return "", err
+
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
+		defer cancel()
+
+		if err := s.engine.Execute(ctx, deploymentEntity, projectEntity); err != nil {
+			return model.NewErrorApp(err)
+		}
+
+		return model.NewResultApp(constant.SuccessInitializeProject)
 	}
-	return constant.MsgInitializeExists, nil
+	return model.NewResultApp(constant.ErrorProjectLoad)
+}
+
+func (s *projectService) Initialize() model.DomainResultEntity {
+	if _, err := s.Load(); err != nil {
+		if err != nil {
+			return model.NewErrorApp(err)
+		}
+
+		projectEntity, err := s.newProjectEntity()
+		if err != nil {
+			return model.NewErrorApp(err)
+		}
+
+		if err = s.Save(projectEntity); err != nil {
+			return model.NewErrorApp(err)
+		}
+		return model.NewResultApp(constant.SuccessInitializeProject)
+	}
+	return model.NewResultApp(constant.MsgInitializeExists)
 }
 
 func (s *projectService) Load() (*model.ProjectEntity, error) {
-	project, err := s.projectRepository.Load()
-	if err == nil && project != nil {
+	result := s.projectRepository.Load()
+	if result.IsSuccess() {
+		project := result.Result.(*model.ProjectEntity)
 		if !project.IsComplete() {
 			return &model.ProjectEntity{}, ErrProjectNotComplete
 		}
+		return project, nil
 	}
-	return project, err
+	return &model.ProjectEntity{}, result.Error
 }
 
 func (s *projectService) Save(projectEntity *model.ProjectEntity) error {
@@ -94,19 +111,24 @@ func (s *projectService) Save(projectEntity *model.ProjectEntity) error {
 	if !projectEntity.IsComplete() {
 		return ErrProjectNotComplete
 	}
-	return s.projectRepository.Save(projectEntity)
+	return s.projectRepository.Save(projectEntity).Error
 }
 
 func (s *projectService) GetFullPathResource() (string, error) {
-	return s.projectRepository.GetFullPathResource()
+	result := s.projectRepository.GetFullPathResource()
+	if !result.IsSuccess() {
+		return "", result.Error
+	}
+	return result.Result.(string), result.Error
 }
 
 func (s *projectService) newProjectEntity() (*model.ProjectEntity, error) {
-	projectName, err := s.projectRepository.GetName()
-	if err != nil || projectName == "" {
-		return &model.ProjectEntity{}, err
+	result := s.projectRepository.GetName()
+	if !result.IsSuccess() {
+		return &model.ProjectEntity{}, result.Error
 	}
 
+	projectName := result.Result.(string)
 	projectId := s.GenerateID(projectName)
 
 	configEntity, err := s.getConfigEntity()
@@ -125,13 +147,8 @@ func (s *projectService) getConfigEntity() (*model.ConfigEntity, error) {
 	configEntity, err := s.configService.Load()
 
 	if err != nil {
-		if errors.Is(err, ErrConfigNotFound) || errors.Is(err, ErrConfigNotComplete) {
-			configEntity, err = s.newConfigEntity()
-			if err != nil {
-				return &model.ConfigEntity{}, err
-			}
-			return configEntity, nil
-		} else {
+		configEntity, err = s.newConfigEntity()
+		if err != nil {
 			return &model.ConfigEntity{}, err
 		}
 	}

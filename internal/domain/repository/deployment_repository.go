@@ -1,9 +1,9 @@
 package repository
 
 import (
-	"deploy/internal/domain/engine/model"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/model"
 )
 
 type DeploymentRepository interface {
-	Load() (*model.DeploymentEntity, error)
+	Load() model.InfraResultEntity
 }

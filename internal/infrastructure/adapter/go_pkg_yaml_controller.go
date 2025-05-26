@@ -1,69 +1,61 @@
 package adapter
 
 import (
-	"deploy/internal/domain/model"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/model/logger"
 	"fmt"
 	"gopkg.in/yaml.v3"
 )
 
-// Error message constants to avoid duplication and improve consistency
 const (
-	errFileIsNil          = "file is nil: %s"
-	errFailedToOpen       = "Failed to open file: %s"
-	errFailedToCreate     = "Failed to create file: %s"
-	errFailedToDecode     = "Failed to decode YAML from file: %s"
-	errFailedToEncode     = "Failed to encode data to YAML in file: %s"
-	msgSuccessfullyLoaded = "Successfully loaded YAML from file: %s"
-	msgSuccessfullySaved  = "Successfully saved YAML to file: %s"
+	errFileIsNil      = "file is nil: %s"
+	errFailedToDecode = "failed to decode YAML from file: %s, the error is %v"
+	errFailedToEncode = "failed to encode data to YAML in file: %s, the error is %v"
 )
 
-// YamlController defines the interface for YAML file operations
 type YamlController interface {
-	Load(filePath string, out any) model.InfrastructureResponse
-	Save(filePath string, data any) model.InfrastructureResponse
+	Load(filePath string, out any) error
+	Save(filePath string, data any) error
 }
 
-// goPkgYamlController implements YamlController using gopkg.in/yaml.v3
 type goPkgYamlController struct {
 	fileController FileController
+	fileLogger     *logger.FileLogger
 }
 
-// NewGoPkgYamlController creates a new YAML controller with the given file controller
-func NewGoPkgYamlController(fileController FileController) YamlController {
+func NewGoPkgYamlController(fileController FileController, fileLogger *logger.FileLogger) YamlController {
 	return &goPkgYamlController{
 		fileController: fileController,
+		fileLogger:     fileLogger,
 	}
 }
 
-// Load reads and decodes YAML from a file into the provided output variable
-func (c *goPkgYamlController) Load(filePath string, out any) model.InfrastructureResponse {
+func (c *goPkgYamlController) Load(filePath string, out any) error {
 	file, err := c.fileController.OpenFile(filePath)
 	if err != nil {
-		return model.NewErrorResponseWithDetails(err, fmt.Sprintf(errFailedToOpen, filePath))
+		return err
 	}
 
 	if file == nil {
-		return model.NewErrorResponse(fmt.Errorf(errFileIsNil, filePath))
+		return c.logError(fmt.Errorf(errFileIsNil, filePath))
 	}
 	defer file.Close()
 
 	decoder := yaml.NewDecoder(file)
 	if err := decoder.Decode(out); err != nil {
-		return model.NewErrorResponseWithDetails(err, fmt.Sprintf(errFailedToDecode, filePath))
+		return c.logError(fmt.Errorf(errFailedToDecode, filePath, err))
 	}
 
-	return model.NewResponseWithDetails(out, fmt.Sprintf(msgSuccessfullyLoaded, filePath))
+	return nil
 }
 
-// Save encodes and writes data as YAML to a file
-func (c *goPkgYamlController) Save(filePath string, data any) model.InfrastructureResponse {
+func (c *goPkgYamlController) Save(filePath string, data any) error {
 	file, err := c.fileController.CreateFile(filePath)
 	if err != nil {
-		return model.NewErrorResponseWithDetails(err, fmt.Sprintf(errFailedToCreate, filePath))
+		return err
 	}
 
 	if file == nil {
-		return model.NewErrorResponse(fmt.Errorf(errFileIsNil, filePath))
+		return c.logError(fmt.Errorf(errFileIsNil, filePath))
 	}
 	defer file.Close()
 
@@ -71,8 +63,15 @@ func (c *goPkgYamlController) Save(filePath string, data any) model.Infrastructu
 	defer encoder.Close()
 
 	if err := encoder.Encode(data); err != nil {
-		return model.NewErrorResponseWithDetails(err, fmt.Sprintf(errFailedToEncode, filePath))
+		return c.logError(fmt.Errorf(errFailedToEncode, filePath, err))
 	}
 
-	return model.NewResponseWithDetails(data, fmt.Sprintf(msgSuccessfullySaved, filePath))
+	return nil
+}
+
+func (c *goPkgYamlController) logError(err error) error {
+	if err != nil {
+		c.fileLogger.Error(err)
+	}
+	return err
 }

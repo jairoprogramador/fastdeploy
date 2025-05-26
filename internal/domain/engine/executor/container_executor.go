@@ -2,8 +2,8 @@ package executor
 
 import (
 	"context"
-	"deploy/internal/domain/engine/model"
-	"deploy/internal/domain/port"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/engine/model"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/port"
 )
 
 // ContainerExecutor handles Docker container operations
@@ -37,6 +37,6 @@ func (e *ContainerExecutor) Execute(ctx context.Context, step model.Step) error 
 		defer e.variables.PopScope()
 
 		// Start the container
-		return e.dockerContainer.Start(ctx)
+		return e.dockerContainer.Start(ctx).Error
 	})
 }

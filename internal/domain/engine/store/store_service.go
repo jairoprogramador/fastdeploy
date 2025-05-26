@@ -1,12 +1,12 @@
-package service
+package store
 
 import (
 	"context"
-	"deploy/internal/domain/constant"
-	model2 "deploy/internal/domain/engine/model"
-	"deploy/internal/domain/model"
-	"deploy/internal/domain/model/logger"
-	"deploy/internal/domain/port"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/constant"
+	model2 "github.com/jairoprogramador/fastdeploy/internal/domain/engine/model"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/model"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/port"
+	"errors"
 )
 
 const (
@@ -18,45 +18,39 @@ type StoreServiceInterface interface {
 }
 
 type StoreService struct {
-	gitService port.GitRequest
-	router     *PathService
-	logger     *logger.Logger
+	gitService  port.GitRequest
+	pathService port.PathService
 }
 
 func NewStoreService(
-	logger *logger.Logger,
 	gitService port.GitRequest,
-	router *PathService,
+	pathService port.PathService,
 ) StoreServiceInterface {
 	return &StoreService{
-		gitService: gitService,
-		router:     router,
-		logger:     logger,
+		gitService:  gitService,
+		pathService: pathService,
 	}
 }
 
 func (s *StoreService) GetVariablesGlobal(ctx context.Context, deployment *model2.DeploymentEntity, project *model.ProjectEntity) ([]model2.Variable, error) {
 	if project == nil {
-		return []model2.Variable{}, s.logger.NewError("data project cannot be nil")
+		return []model2.Variable{}, errors.New("data project cannot be nil")
 	}
 
 	response := s.gitService.GetHash(ctx)
 	if !response.IsSuccess() {
-		s.setError(response.Details, response.Error)
 		return []model2.Variable{}, response.Error
 	}
 	commitHash := response.Result.(string)
 
 	response = s.gitService.GetAuthor(ctx, commitHash)
 	if !response.IsSuccess() {
-		s.setError(response.Details, response.Error)
 		return []model2.Variable{}, response.Error
 	}
 	commitAuthor := response.Result.(string)
 
 	response = s.gitService.GetMessage(ctx, commitHash)
 	if !response.IsSuccess() {
-		s.setError(response.Details, response.Error)
 		return []model2.Variable{}, response.Error
 	}
 	commitMessage := response.Result.(string)
@@ -105,12 +99,12 @@ func (s *StoreService) GetVariablesGlobal(ctx context.Context, deployment *model
 
 	variables = append(variables, model2.Variable{
 		Name:  constant.VAR_PATH_HOME_DIRECTORY,
-		Value: s.router.GetHomeDirectory(),
+		Value: s.pathService.GetHomeDirectory(),
 	})
 
 	variables = append(variables, model2.Variable{
 		Name:  constant.VAR_PATH_DOCKER_DIRECTORY,
-		Value: s.router.GetPathDockerDirectory(),
+		Value: s.pathService.GetPathDockerDirectory(),
 	})
 
 	for _, variable := range deployment.Variables.Global {
@@ -120,9 +114,4 @@ func (s *StoreService) GetVariablesGlobal(ctx context.Context, deployment *model
 		})
 	}
 	return variables, nil
-}
-
-func (s *StoreService) setError(message string, err error) {
-	s.logger.ErrorSystemMessage(message, err)
-	s.logger.Error(err)
 }

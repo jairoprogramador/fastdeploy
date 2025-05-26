@@ -7,25 +7,39 @@ import (
 	"time"
 )
 
-/* type FileLoggerInterface interface {
-	Log(entry LogEntry)
-	GetLogs() []LogEntry
-	Clear()
-	WriteToFile() error
-} */
-
 type FileLogger struct {
-	mu         sync.Mutex
-	logs []LogEntry
-	filePath   string
+	mu       sync.Mutex
+	logs     []LogEntry
+	filePath string
 }
 
-// NewFileLogger crea una nueva instancia de FileLogger
 func NewFileLogger(filePath string) *FileLogger {
 	return &FileLogger{
-		logs: make([]LogEntry, 0),
-		filePath:   filePath,
+		logs:     make([]LogEntry, 0),
+		filePath: filePath,
 	}
+}
+
+func (l *FileLogger) Error(err error) {
+	if err == nil {
+		return
+	}
+	var log = LogEntry{
+		Level: ERROR,
+		Error: err,
+	}
+	l.Log(log)
+}
+
+func (l *FileLogger) Info(message string) {
+	if message == "" {
+		return
+	}
+	var log = LogEntry{
+		Level:   INFO,
+		Message: message,
+	}
+	l.Log(log)
 }
 
 func (l *FileLogger) Log(entry LogEntry) {

@@ -1,72 +1,87 @@
 package repository
 
 import (
-	"deploy/internal/domain/model"
-	"deploy/internal/domain/repository"
-	"deploy/internal/domain/service"
-	"deploy/internal/infrastructure/adapter"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/model"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/model/logger"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/repository"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/port"
+	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/adapter"
+	"fmt"
+)
+
+const (
+	erroConfigNotFound = "file config not found in %s"
+
+	msgSuccessFileConfigExists = "file config exists in %s"
+	msgSuccessSaveConfig       = "save file %s successful"
 )
 
 type yamlConfigRepository struct {
 	yamlRepository adapter.YamlController
 	fileRepository adapter.FileController
-	router         *service.PathService
+	router         port.PathService
+	fileLogger     *logger.FileLogger
 }
 
-// NewYamlConfigRepository creates a new instance of ConfigRepository
 func NewYamlConfigRepository(
 	yamlRepository adapter.YamlController,
 	fileRepository adapter.FileController,
-	router *service.PathService,
+	router port.PathService,
+	fileLogger *logger.FileLogger,
 ) repository.ConfigRepository {
 	return &yamlConfigRepository{
 		yamlRepository: yamlRepository,
 		fileRepository: fileRepository,
 		router:         router,
+		fileLogger:     fileLogger,
 	}
 }
 
-// Load loads the configuration from storage
-func (r *yamlConfigRepository) Load() (*model.ConfigEntity, error) {
-	path := r.router.GetFullPathGlobalConfigFile()
+func (r *yamlConfigRepository) Load() model.InfraResultEntity {
+	path := r.router.GetFullPathConfigFile()
 
-	if err := r.exists(path); err != nil {
-		return &model.ConfigEntity{}, err
+	if result := r.exists(path); !result.IsSuccess() {
+		return result
 	}
 
-	var configEntity model.ConfigEntity
-	response := r.yamlRepository.Load(path, &configEntity)
-	if !response.IsSuccess() {
-		return &model.ConfigEntity{}, response.Error
+	var configEntity *model.ConfigEntity
+	if err := r.yamlRepository.Load(path, &configEntity); err != nil {
+		return model.NewError(err)
 	}
 
-	return &configEntity, nil
+	return model.NewResult(&configEntity)
 }
 
-// Save saves the configuration to storage
-func (r *yamlConfigRepository) Save(globalConfig *model.ConfigEntity) error {
-	path := r.router.GetFullPathGlobalConfigFile()
+func (r *yamlConfigRepository) Save(config *model.ConfigEntity) model.InfraResultEntity {
+	path := r.router.GetFullPathConfigFile()
 
-	if err := r.exists(path); err == nil {
+	if result := r.exists(path); result.IsSuccess() {
 		if err := r.fileRepository.DeleteFile(path); err != nil {
-			return err
+			return model.NewError(err)
 		}
 	}
 
-	if response := r.yamlRepository.Save(path, globalConfig); !response.IsSuccess() {
-		return response.Error
+	if err := r.yamlRepository.Save(path, config); err != nil {
+		return model.NewError(err)
 	}
 
-	return nil
+	return model.NewResult(fmt.Sprintf(msgSuccessSaveConfig, path))
 }
 
-func (r *yamlConfigRepository) exists(path string) error {
+func (r *yamlConfigRepository) exists(path string) model.InfraResultEntity {
 	exists, err := r.fileRepository.ExistsFile(path)
 	if err != nil {
-		return err
+		return model.NewError(err)
 	}
 	if !exists {
-		return service.ErrConfigNotFound
+		return r.logError(fmt.Errorf(erroConfigNotFound, path))
 	}
-	return nil
+	return model.NewResult(fmt.Sprintf(msgSuccessFileConfigExists, path))
+}
+
+func (r *yamlConfigRepository) logError(err error) model.InfraResultEntity {
+	if err != nil {
+		r.fileLogger.Error(err)
+	}
+	return model.NewError(err)
 }

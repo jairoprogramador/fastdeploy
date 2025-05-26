@@ -3,54 +3,57 @@ package adapter
 import (
 	"bytes"
 	"context"
-	"deploy/internal/domain/model"
-	"deploy/internal/domain/port"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/model"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/model/logger"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/port"
+	"errors"
 	"fmt"
 	"os/exec"
 	"strings"
 	"time"
 )
 
-// Constants for configuration
 const (
 	DefaultCommandTimeout = 10 * time.Minute
+
+	errCommandEmpty    = "the command is empty"
+	errTimeoutExceeded = "timeout (context deadline exceeded): %v"
+	errCommandCanceled = "command canceled: %v"
 )
 
-// osRunCommand implements the RunCommand interface
-type osRunCommand struct{}
-
-// NewOsRunCommand creates a new instance of the command executor
-func NewOsRunCommand() port.RunCommand {
-	return &osRunCommand{}
+type osRunCommand struct {
+	fileLogger *logger.FileLogger
 }
 
-// Run executes a command and returns its result
-func (r *osRunCommand) Run(ctx context.Context, cmdExec string) model.InfrastructureResponse {
+func NewOsRunCommand(fileLogger *logger.FileLogger) port.RunCommand {
+	return &osRunCommand{
+		fileLogger: fileLogger,
+	}
+}
+
+func (r *osRunCommand) Run(ctx context.Context, cmdExec string) model.InfraResultEntity {
 	if cmdExec == "" {
-		return model.NewErrorResponse(fmt.Errorf("the command is empty"))
+		return r.logError(fmt.Errorf(errCommandEmpty))
 	}
 
-	ctx = ensureContextTimeout(ctx)
-	command, args := parseCommand(cmdExec)
+	ctx = r.ensureContextTimeout(ctx)
+	command, args := r.parseCommand(cmdExec)
 
 	var stdoutBuf, stderrBuf bytes.Buffer
-	cmd := prepareCommand(ctx, command, args, &stdoutBuf, &stderrBuf)
+	cmd := r.prepareCommand(ctx, command, args, &stdoutBuf, &stderrBuf)
 
-	cmdDetails := formatCommandDetails(command, args)
+	formatCmd := r.formatCommand(command, args)
+	r.fileLogger.Info(formatCmd)
 
 	err := cmd.Run()
 	if err != nil {
-		return handleCommandError(ctx, err, cmdDetails, &stdoutBuf, &stderrBuf)
+		return r.handleCommandError(ctx, err, &stdoutBuf, &stderrBuf)
 	}
 
-	return model.NewResponseWithDetails(
-		strings.TrimSpace(stdoutBuf.String()), 
-		cmdDetails,
-	)
+	return model.NewResult(strings.TrimSpace(stdoutBuf.String()))
 }
 
-// ensureContextTimeout ensures the context has a timeout
-func ensureContextTimeout(ctx context.Context) context.Context {
+func (r *osRunCommand) ensureContextTimeout(ctx context.Context) context.Context {
 	if _, hasDeadline := ctx.Deadline(); !hasDeadline {
 		newCtx, _ := context.WithTimeout(ctx, DefaultCommandTimeout)
 		return newCtx
@@ -58,8 +61,7 @@ func ensureContextTimeout(ctx context.Context) context.Context {
 	return ctx
 }
 
-// parseCommand splits a command string into command and arguments
-func parseCommand(cmdExec string) (string, []string) {
+func (r *osRunCommand) parseCommand(cmdExec string) (string, []string) {
 	parts := strings.Fields(cmdExec)
 	command := parts[0]
 	var args []string
@@ -69,53 +71,47 @@ func parseCommand(cmdExec string) (string, []string) {
 	return command, args
 }
 
-// prepareCommand creates and configures an exec.Cmd instance
-func prepareCommand(ctx context.Context, command string, args []string, stdout, stderr *bytes.Buffer) *exec.Cmd {
+func (r *osRunCommand) prepareCommand(ctx context.Context, command string, args []string, stdout, stderr *bytes.Buffer) *exec.Cmd {
 	cmd := exec.CommandContext(ctx, command, args...)
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 	return cmd
 }
 
-// formatCommandDetails creates a string with command execution details
-func formatCommandDetails(command string, args []string) string {
-	return fmt.Sprintf("Running command: '%s %s'\n", command, strings.Join(args, " "))
+func (r *osRunCommand) formatCommand(command string, args []string) string {
+	return fmt.Sprintf("Running command: '%s %s'", command, strings.Join(args, " "))
 }
 
-// handleCommandError processes command execution errors
-func handleCommandError(ctx context.Context, err error, cmdDetails string, stdout, stderr *bytes.Buffer) model.InfrastructureResponse {
-	var message strings.Builder
-	message.WriteString(cmdDetails)
-	message.WriteString(fmt.Sprintf("Error running command: %v\n", err))
+func (r *osRunCommand) handleCommandError(ctx context.Context, err error, stdout, stderr *bytes.Buffer) model.InfraResultEntity {
+	r.appendStdMessage(stdout, stderr)
 
-	// Check for context errors first
 	if ctxErr := ctx.Err(); ctxErr != nil {
-		if ctxErr == context.DeadlineExceeded {
-			message.WriteString(fmt.Sprintf("Timeout (context deadline exceeded): %v\n", ctxErr))
-			return model.NewErrorResponseWithDetails(ctxErr, message.String())
+		if errors.Is(ctxErr, context.DeadlineExceeded) {
+			return r.logError(fmt.Errorf(errTimeoutExceeded, ctxErr))
 		}
 
-		if ctxErr == context.Canceled {
-			message.WriteString(fmt.Sprintf("Command canceled: %v\n", ctxErr))
-			return model.NewErrorResponseWithDetails(ctxErr, message.String())
+		if errors.Is(ctxErr, context.Canceled) {
+			return r.logError(fmt.Errorf(errCommandCanceled, ctxErr))
 		}
 	}
-
-	// Add output information if available
-	appendOutputToMessage(&message, stdout, stderr)
-
-	return model.NewErrorResponseWithDetails(err, message.String())
+	return r.logError(err)
 }
 
-// appendOutputToMessage adds command output to the error message
-func appendOutputToMessage(message *strings.Builder, stdout, stderr *bytes.Buffer) {
+func (r *osRunCommand) appendStdMessage(stdout, stderr *bytes.Buffer) {
 	stdOutput := strings.TrimSpace(stdout.String())
 	if stdOutput != "" {
-		message.WriteString(fmt.Sprintf("Standard Output:\n%s\n", stdOutput))
+		r.logError(fmt.Errorf("Standard Output:\n%s", stdOutput))
 	}
 
 	stdError := strings.TrimSpace(stderr.String())
 	if stdError != "" {
-		message.WriteString(fmt.Sprintf("Standard Error:\n%s\n", stdError))
+		r.logError(fmt.Errorf("Standard Error:\n%s\n", stdError))
 	}
+}
+
+func (r *osRunCommand) logError(err error) model.InfraResultEntity {
+	if err != nil {
+		r.fileLogger.Error(err)
+	}
+	return model.NewError(err)
 }

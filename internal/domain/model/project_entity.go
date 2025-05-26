@@ -1,7 +1,7 @@
 package model
 
 import (
-	"deploy/internal/domain/constant"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/constant"
 )
 
 type ProjectEntity struct {

@@ -1,15 +1,10 @@
 package logger
 
+/*
 import (
 	"sync"
 	"time"
 )
-
-/* type UserLoggerInterface interface {
-	Log(entry LogEntry)
-	GetLogs() []LogEntry
-	Clear()
-} */
 
 type ConsoleLogger struct {
 	mu   sync.Mutex
@@ -41,3 +36,4 @@ func (l *ConsoleLogger) Clear() {
 	defer l.mu.Unlock()
 	l.logs = make([]LogEntry, 0)
 }
+*/
