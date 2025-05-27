@@ -1,14 +1,14 @@
 package cmd
 
 import (
-	"github.com/jairoprogramador/fastdeploy/internal/domain/model"
+	"github.com/jairoprogramador/fastdeploy/pkg/common/result"
 	"github.com/spf13/cobra"
 	"os"
 )
 
 var deployCmdInstance *cobra.Command
 
-type DeployControllerFunc func() model.DomainResultEntity
+type DeployControllerFunc func() result.DomainResult
 
 func GetDeployCmd(deployControllerFunc DeployControllerFunc) *cobra.Command {
 	if deployCmdInstance != nil {

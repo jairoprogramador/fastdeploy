@@ -2,10 +2,10 @@ package executor
 
 import (
 	"context"
-	"github.com/jairoprogramador/fastdeploy/internal/domain/engine/condition"
-	"github.com/jairoprogramador/fastdeploy/internal/domain/engine/model"
-	"github.com/jairoprogramador/fastdeploy/internal/domain/port"
 	"fmt"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/deployment/entity"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/engine/condition"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/port"
 	"strings"
 )
 
@@ -19,12 +19,12 @@ type CommandExecutor struct {
 	baseExecutor     *StepExecutor
 	commandRunner    port.RunCommand
 	conditionFactory *condition.EvaluatorFactory
-	variables        *model.StoreEntity
+	variables        *entity.StoreEntity
 }
 
 func NewCommandExecutor(
 	baseExecutor *StepExecutor,
-	variables *model.StoreEntity,
+	variables *entity.StoreEntity,
 	commandRunner port.RunCommand,
 	conditionFactory *condition.EvaluatorFactory,
 ) Executor {
@@ -36,7 +36,7 @@ func NewCommandExecutor(
 	}
 }
 
-func (e *CommandExecutor) Execute(ctx context.Context, step model.Step) error {
+func (e *CommandExecutor) Execute(ctx context.Context, step entity.Step) error {
 	ctx, cancel := e.baseExecutor.prepareContext(ctx, step)
 	defer cancel()
 
@@ -57,7 +57,7 @@ func (e *CommandExecutor) Execute(ctx context.Context, step model.Step) error {
 	})
 }
 
-func (e *CommandExecutor) runCommand(ctx context.Context, step model.Step) (string, error) {
+func (e *CommandExecutor) runCommand(ctx context.Context, step entity.Step) (string, error) {
 	response := e.commandRunner.Run(ctx, step.Command)
 	if !response.IsSuccess() {
 		return "", response.Error
@@ -66,7 +66,7 @@ func (e *CommandExecutor) runCommand(ctx context.Context, step model.Step) (stri
 	return response.Result.(string), nil
 }
 
-func (e *CommandExecutor) processCondition(step model.Step, commandOutput string) error {
+func (e *CommandExecutor) processCondition(step entity.Step, commandOutput string) error {
 	conditionType := e.getConditionType(step.If)
 
 	if e.requiresEvaluate(conditionType) && commandOutput == "" {
@@ -96,7 +96,7 @@ func (e *CommandExecutor) createEmptyOutputError(conditionType, stepName string)
 	return fmt.Errorf(message)
 }
 
-func (e *CommandExecutor) evaluateCondition(conditionStr string, output string, step model.Step) error {
+func (e *CommandExecutor) evaluateCondition(conditionStr string, output string, step entity.Step) error {
 	evaluator := e.conditionFactory.CreateEvaluator(conditionStr)
 
 	if isCorrect := evaluator.Evaluate(output); !isCorrect {

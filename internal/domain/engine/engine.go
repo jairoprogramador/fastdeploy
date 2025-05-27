@@ -2,11 +2,12 @@ package engine
 
 import (
 	"context"
+	entity2 "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/entity"
 	"github.com/jairoprogramador/fastdeploy/internal/domain/engine/executor"
-	engineModel "github.com/jairoprogramador/fastdeploy/internal/domain/engine/model"
 	"github.com/jairoprogramador/fastdeploy/internal/domain/engine/store"
 	"github.com/jairoprogramador/fastdeploy/internal/domain/engine/validator"
-	"github.com/jairoprogramador/fastdeploy/internal/domain/model"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/project/entity"
+
 	//"deploy/internal/domain/service"
 	"fmt"
 	"sync"
@@ -25,13 +26,13 @@ const (
 type Engine struct {
 	validator     *validator.Validator
 	Executors     map[string]executor.Executor
-	variableStore *engineModel.StoreEntity
+	variableStore *entity2.StoreEntity
 	storeService  store.StoreServiceInterface
 }
 
 // NewEngine creates a new deployment engine instance
 func NewEngine(
-	variableStore *engineModel.StoreEntity,
+	variableStore *entity2.StoreEntity,
 	storeService store.StoreServiceInterface,
 	validator *validator.Validator,
 ) *Engine {
@@ -44,7 +45,7 @@ func NewEngine(
 }
 
 // Execute runs a deployment process with the given context and configuration
-func (e *Engine) Execute(ctx context.Context, deployment *engineModel.DeploymentEntity, project *model.ProjectEntity) error {
+func (e *Engine) Execute(ctx context.Context, deployment *entity2.DeploymentEntity, project *entity.ProjectEntity) error {
 	if err := e.validator.Validate(deployment); err != nil {
 		return fmt.Errorf(errDeploymentValidation, err)
 	}
@@ -71,7 +72,7 @@ func (e *Engine) Execute(ctx context.Context, deployment *engineModel.Deployment
 }
 
 // executeStep runs a single deployment step or parallel steps
-func (e *Engine) executeStep(ctx context.Context, step engineModel.Step) error {
+func (e *Engine) executeStep(ctx context.Context, step entity2.Step) error {
 	// Handle parallel steps if present
 	if len(step.Parallel) > 0 {
 		return e.executeParallelSteps(ctx, step.Parallel)
@@ -92,14 +93,14 @@ func (e *Engine) executeStep(ctx context.Context, step engineModel.Step) error {
 }
 
 // executeParallelSteps runs multiple steps concurrently
-func (e *Engine) executeParallelSteps(ctx context.Context, steps []engineModel.Step) error {
+func (e *Engine) executeParallelSteps(ctx context.Context, steps []entity2.Step) error {
 	var wg sync.WaitGroup
 	errChan := make(chan error, len(steps))
 
 	// Launch each step in its own goroutine
 	for _, step := range steps {
 		wg.Add(1)
-		go func(s engineModel.Step) {
+		go func(s entity2.Step) {
 			defer wg.Done()
 
 			if err := e.executeStep(ctx, s); err != nil {

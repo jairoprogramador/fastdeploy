@@ -1,15 +1,15 @@
 package handler
 
 import (
-	"github.com/jairoprogramador/fastdeploy/internal/domain/model"
 	"fmt"
+	"github.com/jairoprogramador/fastdeploy/pkg/common/result"
 )
 
 const (
 	errFuncStartNotImplement = "function controller start not implemented"
 )
 
-type StartAppFunc func() model.DomainResultEntity
+type StartAppFunc func() result.DomainResult
 
 type StartHandler struct {
 	startAppFn StartAppFunc
@@ -21,10 +21,10 @@ func NewStartHandler(startAppFn StartAppFunc) *StartHandler {
 	}
 }
 
-func (h *StartHandler) Controller() model.DomainResultEntity {
+func (h *StartHandler) Controller() result.DomainResult {
 	if h.startAppFn == nil {
 		err := fmt.Errorf(errFuncStartNotImplement)
-		return model.NewErrorApp(err)
+		return result.NewErrorApp(err)
 	}
 
 	return h.startAppFn()

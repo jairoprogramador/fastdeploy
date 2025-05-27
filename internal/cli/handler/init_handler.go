@@ -1,16 +1,16 @@
 package handler
 
 import (
-	"github.com/jairoprogramador/fastdeploy/internal/cli/presenter"
-	"github.com/jairoprogramador/fastdeploy/internal/domain/model"
 	"fmt"
+	"github.com/jairoprogramador/fastdeploy/internal/cli/presenter"
+	"github.com/jairoprogramador/fastdeploy/pkg/common/result"
 )
 
 const (
 	errFuncInitNotImplement = "function controller init not implemented"
 )
 
-type InitAppFunc func() model.DomainResultEntity
+type InitAppFunc func() result.DomainResult
 
 type InitHandler struct {
 	initAppFunc InitAppFunc
@@ -22,10 +22,10 @@ func NewInitHandler(initAppFunc InitAppFunc) *InitHandler {
 	}
 }
 
-func (h *InitHandler) Controller() model.DomainResultEntity {
+func (h *InitHandler) Controller() result.DomainResult {
 	if h.initAppFunc == nil {
 		err := fmt.Errorf(errFuncInitNotImplement)
-		return model.NewErrorApp(err)
+		return result.NewErrorApp(err)
 	}
 
 	presenter.ShowBanner()

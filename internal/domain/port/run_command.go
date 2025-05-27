@@ -2,9 +2,9 @@ package port
 
 import (
 	"context"
-	"github.com/jairoprogramador/fastdeploy/internal/domain/model"
+	"github.com/jairoprogramador/fastdeploy/pkg/common/result"
 )
 
 type RunCommand interface {
-	Run(ctx context.Context, command string) model.InfraResultEntity
+	Run(ctx context.Context, command string) result.InfraResult
 }

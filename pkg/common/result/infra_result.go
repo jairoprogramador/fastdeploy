@@ -1,28 +1,24 @@
 package result
 
-// InfraResultEntity represents the result of an infrastructure operation
-type InfraResultEntity struct {
+type InfraResult struct {
 	Result any
 	Error  error
 }
 
-// NewResult creates a new successful InfraResultEntity
-func NewResult(result any) InfraResultEntity {
-	return InfraResultEntity{
+func NewResult(result any) InfraResult {
+	return InfraResult{
 		Result: result,
 		Error:  nil,
 	}
 }
 
-// NewError creates a new error InfraResultEntity
-func NewError(err error) InfraResultEntity {
-	return InfraResultEntity{
+func NewError(err error) InfraResult {
+	return InfraResult{
 		Result: nil,
 		Error:  err,
 	}
 }
 
-// IsSuccess checks if the operation was successful
-func (r InfraResultEntity) IsSuccess() bool {
+func (r InfraResult) IsSuccess() bool {
 	return r.Error == nil
 }

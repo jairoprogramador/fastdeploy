@@ -1,12 +1,12 @@
 package cmd
 
 import (
-	"github.com/jairoprogramador/fastdeploy/internal/domain/model"
+	"github.com/jairoprogramador/fastdeploy/pkg/common/result"
 	"github.com/spf13/cobra"
 	"os"
 )
 
-type StartControllerFunc func() model.DomainResultEntity
+type StartControllerFunc func() result.DomainResult
 
 func NewStartCmd(startControllerFunc StartControllerFunc) *cobra.Command {
 	return &cobra.Command{

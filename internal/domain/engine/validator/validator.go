@@ -3,17 +3,16 @@ package validator
 import (
 	"errors"
 	"fmt"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/deployment/entity"
 	"regexp"
 	"strings"
 	"time"
-
-	"github.com/jairoprogramador/fastdeploy/internal/domain/engine/condition"
-	"github.com/jairoprogramador/fastdeploy/internal/domain/engine/model"
 
 	"github.com/go-playground/locales/es"
 	translator "github.com/go-playground/universal-translator"
 	"github.com/go-playground/validator/v10"
 	dictionary_es "github.com/go-playground/validator/v10/translations/es"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/engine/condition"
 )
 
 // validConditionTypes is a map of valid condition types
@@ -27,9 +26,9 @@ var validConditionTypes = map[string]bool{
 
 // validStepTypes is a map of valid step types
 var validStepTypes = map[string]bool{
-	string(model.Container): true,
-	string(model.Command):   true,
-	string(model.Setup):     true,
+	string(entity.Container): true,
+	string(entity.Command):   true,
+	string(entity.Setup):     true,
 }
 
 // Flow control constants
@@ -81,7 +80,7 @@ func NewValidator() *Validator {
 }
 
 // Validate validates a deployment entity
-func (v *Validator) Validate(deployment *model.DeploymentEntity) error {
+func (v *Validator) Validate(deployment *entity.DeploymentEntity) error {
 	if err := v.validate.Struct(deployment); err != nil {
 		return v.translateError(err)
 	}
@@ -89,7 +88,7 @@ func (v *Validator) Validate(deployment *model.DeploymentEntity) error {
 }
 
 // validateSteps validates all steps in a deployment
-func (v *Validator) validateSteps(steps []model.Step) error {
+func (v *Validator) validateSteps(steps []entity.Step) error {
 	stepNames := make(map[string]bool)
 	allStepNames := collectStepNames(steps)
 
@@ -120,7 +119,7 @@ func (v *Validator) validateSteps(steps []model.Step) error {
 }
 
 // collectStepNames collects all step names into a map for quick lookup
-func collectStepNames(steps []model.Step) map[string]bool {
+func collectStepNames(steps []entity.Step) map[string]bool {
 	names := make(map[string]bool)
 	for _, step := range steps {
 		names[step.Name] = true
@@ -141,7 +140,7 @@ func (v *Validator) validateStepName(name string, existingNames map[string]bool)
 }
 
 // validateStepType validates the step type
-func (v *Validator) validateStepType(step model.Step) error {
+func (v *Validator) validateStepType(step entity.Step) error {
 	if !v.isValidStepType(step.Type) {
 		return fmt.Errorf(ErrorInvalidStepType, ErrorPrefix, step.Type, step.Name)
 	}
@@ -154,7 +153,7 @@ func (v *Validator) isValidStepType(stepType string) bool {
 }
 
 // validateTimeout validates the timeout format
-func (v *Validator) validateTimeout(step model.Step) error {
+func (v *Validator) validateTimeout(step entity.Step) error {
 	if step.Timeout == "" {
 		return nil
 	}
@@ -166,7 +165,7 @@ func (v *Validator) validateTimeout(step model.Step) error {
 }
 
 // validateRetry validates retry configuration
-func (v *Validator) validateRetry(step model.Step) error {
+func (v *Validator) validateRetry(step entity.Step) error {
 	if step.Retry == nil {
 		return nil
 	}
@@ -183,7 +182,7 @@ func (v *Validator) validateRetry(step model.Step) error {
 }
 
 // validateConditions validates the conditions in a step
-func (v *Validator) validateConditions(step model.Step, stepNames map[string]bool) error {
+func (v *Validator) validateConditions(step entity.Step, stepNames map[string]bool) error {
 	if step.If == "" {
 		return nil
 	}
@@ -249,7 +248,7 @@ func (v *Validator) validateRegexPattern(condType string, parts []string, stepNa
 }
 
 // validateThenStep validates the Then step reference
-func (v *Validator) validateThenStep(step model.Step, stepNames map[string]bool) error {
+func (v *Validator) validateThenStep(step entity.Step, stepNames map[string]bool) error {
 	if step.Then == "" || stepNames[step.Then] {
 		return nil
 	}

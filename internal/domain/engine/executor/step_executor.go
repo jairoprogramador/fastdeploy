@@ -2,7 +2,7 @@ package executor
 
 import (
 	"context"
-	"github.com/jairoprogramador/fastdeploy/internal/domain/engine/model"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/deployment/entity"
 	"time"
 )
 
@@ -14,7 +14,7 @@ const (
 
 // Executor defines the contract for step executors
 type Executor interface {
-	Execute(ctx context.Context, step model.Step) error
+	Execute(ctx context.Context, step entity.Step) error
 }
 
 // StepExecutor provides common functionality for all step executors
@@ -29,7 +29,7 @@ func NewStepExecutor() *StepExecutor {
 // Returns the original context and a no-op cancel function if:
 // - No timeout is specified
 // - The timeout string cannot be parsed
-func (e *StepExecutor) prepareContext(ctx context.Context, step model.Step) (context.Context, context.CancelFunc) {
+func (e *StepExecutor) prepareContext(ctx context.Context, step entity.Step) (context.Context, context.CancelFunc) {
 	// Return early if no timeout specified
 	if step.Timeout == defaultEmptyTimeout {
 		return ctx, func() {}
@@ -47,7 +47,7 @@ func (e *StepExecutor) prepareContext(ctx context.Context, step model.Step) (con
 // handleRetry executes the provided function with retry logic based on step configuration
 // If retry is not configured, executes the function once
 // If retry is configured, attempts execution up to the specified number of times
-func (e *StepExecutor) handleRetry(step model.Step, executionFunc func() error) error {
+func (e *StepExecutor) handleRetry(step entity.Step, executionFunc func() error) error {
 	// Execute once if no retry configuration
 	if step.Retry == nil {
 		return executionFunc()

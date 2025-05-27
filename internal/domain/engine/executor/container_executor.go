@@ -2,21 +2,21 @@ package executor
 
 import (
 	"context"
-	"github.com/jairoprogramador/fastdeploy/internal/domain/engine/model"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/deployment/entity"
 	"github.com/jairoprogramador/fastdeploy/internal/domain/port"
 )
 
 // ContainerExecutor handles Docker container operations
 type ContainerExecutor struct {
 	baseExecutor    *StepExecutor
-	variables       *model.StoreEntity
+	variables       *entity.StoreEntity
 	dockerContainer port.DockerContainer
 }
 
 // NewContainerExecutor creates a new container executor instance
 func NewContainerExecutor(
 	baseExecutor *StepExecutor,
-	variables *model.StoreEntity,
+	variables *entity.StoreEntity,
 	dockerContainer port.DockerContainer,
 ) Executor {
 	return &ContainerExecutor{
@@ -27,7 +27,7 @@ func NewContainerExecutor(
 }
 
 // Execute runs the container operation defined in the step
-func (e *ContainerExecutor) Execute(ctx context.Context, step model.Step) error {
+func (e *ContainerExecutor) Execute(ctx context.Context, step entity.Step) error {
 	ctx, cancel := e.baseExecutor.prepareContext(ctx, step)
 	defer cancel()
 

@@ -2,20 +2,20 @@ package executor
 
 import (
 	"context"
-	"github.com/jairoprogramador/fastdeploy/internal/domain/constant"
-	"github.com/jairoprogramador/fastdeploy/internal/domain/engine/model"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/deployment/entity"
 	"github.com/jairoprogramador/fastdeploy/internal/domain/port"
+	"github.com/jairoprogramador/fastdeploy/pkg/constant"
 )
 
 type CheckExecutor struct {
 	dockerContainer port.DockerContainer
 	router          port.PathService
-	variables       *model.StoreEntity
+	variables       *entity.StoreEntity
 }
 
 func NewCheckExecutor(
 	dockerContainer port.DockerContainer,
-	variables *model.StoreEntity,
+	variables *entity.StoreEntity,
 	router port.PathService,
 ) Executor {
 	return &CheckExecutor{
@@ -25,7 +25,7 @@ func NewCheckExecutor(
 	}
 }
 
-func (e *CheckExecutor) Execute(ctx context.Context, step model.Step) error {
+func (e *CheckExecutor) Execute(ctx context.Context, step entity.Step) error {
 	containerExists, err := e.checkContainerExists(ctx)
 	if err != nil {
 		return err
@@ -39,8 +39,8 @@ func (e *CheckExecutor) Execute(ctx context.Context, step model.Step) error {
 }
 
 func (e *CheckExecutor) checkContainerExists(ctx context.Context) (bool, error) {
-	commitHash := e.variables.Get(constant.VAR_COMMIT_HASH)
-	projectVersion := e.variables.Get(constant.VAR_PROJECT_VERSION)
+	commitHash := e.variables.Get(constant.KeyCommitHash)
+	projectVersion := e.variables.Get(constant.KeyProjectVersion)
 
 	response := e.dockerContainer.Exists(ctx, commitHash, projectVersion)
 	if !response.IsSuccess() {
