@@ -19,35 +19,35 @@ const (
 )
 
 type yamlConfigRepository struct {
-	yamlRepository yaml.YamlController
-	fileRepository file.FileController
-	router         port.PathService
-	fileLogger     *logger.FileLogger
+	yamlPort   yaml.YamlPort
+	filePort   file.FilePort
+	pathPort   port.PathPort
+	fileLogger *logger.FileLogger
 }
 
-func NewYamlConfigRepository(
-	yamlRepository yaml.YamlController,
-	fileRepository file.FileController,
-	router port.PathService,
+func NewConfigRepository(
+	yamlPort yaml.YamlPort,
+	filePort file.FilePort,
+	pathPort port.PathPort,
 	fileLogger *logger.FileLogger,
 ) repository.ConfigRepository {
 	return &yamlConfigRepository{
-		yamlRepository: yamlRepository,
-		fileRepository: fileRepository,
-		router:         router,
-		fileLogger:     fileLogger,
+		yamlPort:   yamlPort,
+		filePort:   filePort,
+		pathPort:   pathPort,
+		fileLogger: fileLogger,
 	}
 }
 
 func (r *yamlConfigRepository) Load() result.InfraResult {
-	path := r.router.GetFullPathConfigFile()
+	path := r.pathPort.GetFullPathConfigFile()
 
 	if result := r.exists(path); !result.IsSuccess() {
 		return result
 	}
 
 	var configEntity *entity.ConfigEntity
-	if err := r.yamlRepository.Load(path, &configEntity); err != nil {
+	if err := r.yamlPort.Load(path, &configEntity); err != nil {
 		return result.NewError(err)
 	}
 
@@ -55,15 +55,15 @@ func (r *yamlConfigRepository) Load() result.InfraResult {
 }
 
 func (r *yamlConfigRepository) Save(config *entity.ConfigEntity) result.InfraResult {
-	path := r.router.GetFullPathConfigFile()
+	path := r.pathPort.GetFullPathConfigFile()
 
 	if response := r.exists(path); response.IsSuccess() {
-		if err := r.fileRepository.DeleteFile(path); err != nil {
+		if err := r.filePort.DeleteFile(path); err != nil {
 			return result.NewError(err)
 		}
 	}
 
-	if err := r.yamlRepository.Save(path, config); err != nil {
+	if err := r.yamlPort.Save(path, config); err != nil {
 		return result.NewError(err)
 	}
 
@@ -71,7 +71,7 @@ func (r *yamlConfigRepository) Save(config *entity.ConfigEntity) result.InfraRes
 }
 
 func (r *yamlConfigRepository) exists(path string) result.InfraResult {
-	exists, err := r.fileRepository.ExistsFile(path)
+	exists, err := r.filePort.ExistsFile(path)
 	if err != nil {
 		return result.NewError(err)
 	}

@@ -1,11 +1,11 @@
-package entity
+package model
 
 type TypeStep string
 
 const (
 	Command   TypeStep = "command"
 	Container TypeStep = "container"
-	Setup     TypeStep = "setup"
+	Check     TypeStep = "check"
 )
 
 type Step struct {

@@ -9,7 +9,7 @@ type MatchesEvaluator struct {
 	Pattern *regexp.Regexp
 }
 
-func NewMatchesEvaluator(pattern *regexp.Regexp) *MatchesEvaluator {
+func NewMatches(pattern *regexp.Regexp) Evaluator {
 	return &MatchesEvaluator{Pattern: pattern}
 }
 

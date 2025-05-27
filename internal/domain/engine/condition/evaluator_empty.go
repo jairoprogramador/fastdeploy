@@ -6,7 +6,7 @@ import (
 
 type EmptyEvaluator struct{}
 
-func NewEmptyEvaluator() *EmptyEvaluator {
+func NewEmpty() Evaluator {
 	return &EmptyEvaluator{}
 }
 

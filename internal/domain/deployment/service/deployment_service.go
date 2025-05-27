@@ -1,13 +1,13 @@
 package service
 
 import (
-	"github.com/jairoprogramador/fastdeploy/internal/domain/deployment/entity"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/deployment/model"
 	"github.com/jairoprogramador/fastdeploy/internal/domain/deployment/repository"
 	"github.com/jairoprogramador/fastdeploy/internal/domain/engine/validator"
 )
 
 type DeploymentService interface {
-	Load() (*entity.DeploymentEntity, error)
+	Load() (*model.DeploymentEntity, error)
 }
 
 type deploymentService struct {
@@ -22,26 +22,33 @@ func NewDeploymentService(
 	}
 }
 
-func (s *deploymentService) Load() (*entity.DeploymentEntity, error) {
+func (s *deploymentService) Load() (*model.DeploymentEntity, error) {
 	result := s.deploymentRepository.Load()
 	if result.IsSuccess() {
-		deployment := result.Result.(*entity.DeploymentEntity)
-		for i := range deployment.Steps {
-			if deployment.Steps[i].Type == "" {
-				deployment.Steps[i].Type = string(entity.Command)
-			}
-		}
-
-		if deployment.HasType(string(entity.Container)) {
-			setupStep := entity.Step{
-				Name:    string(entity.Setup),
-				Type:    string(entity.Setup),
-				Timeout: "30s",
-				Then:    validator.ThenFinish,
-			}
-			deployment.Steps = append([]entity.Step{setupStep}, deployment.Steps...)
-		}
+		deployment := result.Result.(*model.DeploymentEntity)
+		s.setDefaultType(deployment)
+		s.setCheckContainer(deployment)
 	}
 
-	return &entity.DeploymentEntity{}, result.Error
+	return &model.DeploymentEntity{}, result.Error
+}
+
+func (s *deploymentService) setDefaultType(deployment *model.DeploymentEntity) {
+	for i := range deployment.Steps {
+		if deployment.Steps[i].Type == "" {
+			deployment.Steps[i].Type = string(model.Command)
+		}
+	}
+}
+
+func (s *deploymentService) setCheckContainer(deployment *model.DeploymentEntity) {
+	if deployment.HasType(string(model.Container)) {
+		setupStep := model.Step{
+			Name:    string(model.Check),
+			Type:    string(model.Check),
+			Timeout: "30s",
+			Then:    validator.ThenFinish,
+		}
+		deployment.Steps = append([]model.Step{setupStep}, deployment.Steps...)
+	}
 }

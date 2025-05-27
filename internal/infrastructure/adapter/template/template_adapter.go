@@ -6,21 +6,21 @@ import (
 	"text/template"
 )
 
-type DockerTemplate interface {
+type DockerTemplatePort interface {
 	GetContent(pathTemplate string, params any) (string, error)
 }
 
-type TextDockerTemplate struct {
+type templateAdapter struct {
 	fileLogger *logger.FileLogger
 }
 
-func NewTextDockerTemplate(fileLogger *logger.FileLogger) DockerTemplate {
-	return &TextDockerTemplate{
+func NewTemplateAdapter(fileLogger *logger.FileLogger) DockerTemplatePort {
+	return &templateAdapter{
 		fileLogger: fileLogger,
 	}
 }
 
-func (t *TextDockerTemplate) GetContent(pathTemplate string, params any) (string, error) {
+func (t *templateAdapter) GetContent(pathTemplate string, params any) (string, error) {
 	templateFile, err := template.ParseFiles(pathTemplate)
 	if err != nil {
 		t.logError(err)
@@ -37,7 +37,7 @@ func (t *TextDockerTemplate) GetContent(pathTemplate string, params any) (string
 	return result.String(), nil
 }
 
-func (t *TextDockerTemplate) logError(err error) {
+func (t *templateAdapter) logError(err error) {
 	if err != nil {
 		t.fileLogger.Error(err)
 	}

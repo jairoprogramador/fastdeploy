@@ -2,7 +2,7 @@ package repository
 
 import (
 	"fmt"
-	modelEngine "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/entity"
+	modelEngine "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/model"
 	"github.com/jairoprogramador/fastdeploy/internal/domain/deployment/repository"
 	"github.com/jairoprogramador/fastdeploy/internal/domain/port"
 	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/adapter/file"
@@ -18,35 +18,35 @@ const (
 )
 
 type yamlDeploymentRepository struct {
-	yamlRepository yaml.YamlController
-	fileRepository file.FileController
-	router         port.PathService
-	fileLogger     *logger.FileLogger
+	yamlPort   yaml.YamlPort
+	filePort   file.FilePort
+	pathPort   port.PathPort
+	fileLogger *logger.FileLogger
 }
 
-func NewYamlDeploymentRepository(
-	yamlRepository yaml.YamlController,
-	fileRepository file.FileController,
-	router port.PathService,
+func NewDeploymentRepository(
+	yamlPort yaml.YamlPort,
+	filePort file.FilePort,
+	pathPort port.PathPort,
 	fileLogger *logger.FileLogger,
 ) repository.DeploymentRepository {
 	return &yamlDeploymentRepository{
-		yamlRepository: yamlRepository,
-		fileRepository: fileRepository,
-		router:         router,
-		fileLogger:     fileLogger,
+		yamlPort:   yamlPort,
+		filePort:   filePort,
+		pathPort:   pathPort,
+		fileLogger: fileLogger,
 	}
 }
 
 func (r *yamlDeploymentRepository) Load() result.InfraResult {
-	path := r.router.GetFullPathDeploymentFile()
+	path := r.pathPort.GetFullPathDeploymentFile()
 
 	if result := r.exists(path); !result.IsSuccess() {
 		return result
 	}
 
 	var deployment *modelEngine.DeploymentEntity
-	if err := r.yamlRepository.Load(path, &deployment); err != nil {
+	if err := r.yamlPort.Load(path, &deployment); err != nil {
 		return result.NewError(err)
 	}
 
@@ -54,7 +54,7 @@ func (r *yamlDeploymentRepository) Load() result.InfraResult {
 }
 
 func (r *yamlDeploymentRepository) exists(path string) result.InfraResult {
-	exists, err := r.fileRepository.ExistsFile(path)
+	exists, err := r.filePort.ExistsFile(path)
 	if err != nil {
 		return result.NewError(err)
 	}

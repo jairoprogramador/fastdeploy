@@ -13,8 +13,7 @@ var (
 )
 
 type ConfigService interface {
-	Load() (*entity.ConfigEntity, error)
-	Save(configEntity *entity.ConfigEntity) error
+	Get() (*entity.ConfigEntity, error)
 }
 
 type configService struct {
@@ -50,4 +49,26 @@ func (s *configService) Save(configEntity *entity.ConfigEntity) error {
 	}
 	result := s.configRepository.Save(configEntity)
 	return result.Error
+}
+
+func (s *configService) Get() (*entity.ConfigEntity, error) {
+	configEntity, err := s.Load()
+
+	if err != nil {
+		return s.create()
+	}
+
+	if !configEntity.IsComplete() {
+		return s.create()
+	}
+
+	return configEntity, nil
+}
+
+func (s *configService) create() (*entity.ConfigEntity, error) {
+	configEntity := entity.NewConfigEntity()
+	if err := s.Save(configEntity); err != nil {
+		return &entity.ConfigEntity{}, err
+	}
+	return configEntity, nil
 }

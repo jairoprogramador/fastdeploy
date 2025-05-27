@@ -5,6 +5,6 @@ import (
 	"github.com/jairoprogramador/fastdeploy/pkg/common/result"
 )
 
-type RunCommand interface {
+type CommandPort interface {
 	Run(ctx context.Context, command string) result.InfraResult
 }

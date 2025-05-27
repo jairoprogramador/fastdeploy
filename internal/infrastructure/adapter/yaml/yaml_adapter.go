@@ -13,25 +13,25 @@ const (
 	errFailedToEncode = "failed to encode data to YAML in file: %s, the error is %v"
 )
 
-type YamlController interface {
+type YamlPort interface {
 	Load(filePath string, out any) error
 	Save(filePath string, data any) error
 }
 
-type goPkgYamlController struct {
-	fileController file.FileController
-	fileLogger     *logger.FileLogger
+type yamlAdapter struct {
+	filePort   file.FilePort
+	fileLogger *logger.FileLogger
 }
 
-func NewGoPkgYamlController(fileController file.FileController, fileLogger *logger.FileLogger) YamlController {
-	return &goPkgYamlController{
-		fileController: fileController,
-		fileLogger:     fileLogger,
+func NewYamlAdapter(filePort file.FilePort, fileLogger *logger.FileLogger) YamlPort {
+	return &yamlAdapter{
+		filePort:   filePort,
+		fileLogger: fileLogger,
 	}
 }
 
-func (c *goPkgYamlController) Load(filePath string, out any) error {
-	file, err := c.fileController.OpenFile(filePath)
+func (c *yamlAdapter) Load(filePath string, out any) error {
+	file, err := c.filePort.OpenFile(filePath)
 	if err != nil {
 		return err
 	}
@@ -49,8 +49,8 @@ func (c *goPkgYamlController) Load(filePath string, out any) error {
 	return nil
 }
 
-func (c *goPkgYamlController) Save(filePath string, data any) error {
-	file, err := c.fileController.CreateFile(filePath)
+func (c *yamlAdapter) Save(filePath string, data any) error {
+	file, err := c.filePort.CreateFile(filePath)
 	if err != nil {
 		return err
 	}
@@ -70,7 +70,7 @@ func (c *goPkgYamlController) Save(filePath string, data any) error {
 	return nil
 }
 
-func (c *goPkgYamlController) logError(err error) error {
+func (c *yamlAdapter) logError(err error) error {
 	if err != nil {
 		c.fileLogger.Error(err)
 	}

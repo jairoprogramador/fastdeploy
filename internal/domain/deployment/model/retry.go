@@ -1,4 +1,4 @@
-package entity
+package model
 
 type Retry struct {
 	Attempts int    `yaml:"attempts"`

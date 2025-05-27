@@ -3,7 +3,7 @@ package validator
 import (
 	"errors"
 	"fmt"
-	"github.com/jairoprogramador/fastdeploy/internal/domain/deployment/entity"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/deployment/model"
 	"regexp"
 	"strings"
 	"time"
@@ -15,7 +15,6 @@ import (
 	"github.com/jairoprogramador/fastdeploy/internal/domain/engine/condition"
 )
 
-// validConditionTypes is a map of valid condition types
 var validConditionTypes = map[string]bool{
 	string(condition.NotEmpty): true,
 	string(condition.Empty):    true,
@@ -24,19 +23,16 @@ var validConditionTypes = map[string]bool{
 	string(condition.Matches):  true,
 }
 
-// validStepTypes is a map of valid step types
 var validStepTypes = map[string]bool{
-	string(entity.Container): true,
-	string(entity.Command):   true,
-	string(entity.Setup):     true,
+	string(model.Container): true,
+	string(model.Command):   true,
+	string(model.Check):     true,
 }
 
-// Flow control constants
 const (
 	ThenFinish = "finish"
 )
 
-// Error message constants
 const (
 	ErrorPrefix           = "invalid deployment"
 	ErrorEmptyStepName    = "%s: step name is empty"
@@ -52,19 +48,16 @@ const (
 	ErrorRetryDelay       = "%s: delay format: '%s' in step %s"
 )
 
-// Other constants
 const (
 	ConditionSeparator = ":"
 	MinRetryAttempts   = 1
 )
 
-// Validator validates deployment configurations
 type Validator struct {
 	validate *validator.Validate
 	trans    translator.Translator
 }
 
-// NewValidator creates a new deployment validator
 func NewValidator() *Validator {
 	locatorEs := es.New()
 	universalTranslator := translator.New(locatorEs, locatorEs)
@@ -79,16 +72,14 @@ func NewValidator() *Validator {
 	}
 }
 
-// Validate validates a deployment entity
-func (v *Validator) Validate(deployment *entity.DeploymentEntity) error {
+func (v *Validator) Validate(deployment *model.DeploymentEntity) error {
 	if err := v.validate.Struct(deployment); err != nil {
 		return v.translateError(err)
 	}
 	return v.validateSteps(deployment.Steps)
 }
 
-// validateSteps validates all steps in a deployment
-func (v *Validator) validateSteps(steps []entity.Step) error {
+func (v *Validator) validateSteps(steps []model.Step) error {
 	stepNames := make(map[string]bool)
 	allStepNames := collectStepNames(steps)
 
@@ -118,8 +109,7 @@ func (v *Validator) validateSteps(steps []entity.Step) error {
 	return nil
 }
 
-// collectStepNames collects all step names into a map for quick lookup
-func collectStepNames(steps []entity.Step) map[string]bool {
+func collectStepNames(steps []model.Step) map[string]bool {
 	names := make(map[string]bool)
 	for _, step := range steps {
 		names[step.Name] = true
@@ -127,7 +117,6 @@ func collectStepNames(steps []entity.Step) map[string]bool {
 	return names
 }
 
-// validateStepName validates a step name and checks for duplicates
 func (v *Validator) validateStepName(name string, existingNames map[string]bool) error {
 	if name == "" {
 		return fmt.Errorf(ErrorEmptyStepName, ErrorPrefix)
@@ -139,21 +128,14 @@ func (v *Validator) validateStepName(name string, existingNames map[string]bool)
 	return nil
 }
 
-// validateStepType validates the step type
-func (v *Validator) validateStepType(step entity.Step) error {
-	if !v.isValidStepType(step.Type) {
+func (v *Validator) validateStepType(step model.Step) error {
+	if !validStepTypes[step.Type] {
 		return fmt.Errorf(ErrorInvalidStepType, ErrorPrefix, step.Type, step.Name)
 	}
 	return nil
 }
 
-// isValidStepType checks if a step type is valid
-func (v *Validator) isValidStepType(stepType string) bool {
-	return validStepTypes[stepType]
-}
-
-// validateTimeout validates the timeout format
-func (v *Validator) validateTimeout(step entity.Step) error {
+func (v *Validator) validateTimeout(step model.Step) error {
 	if step.Timeout == "" {
 		return nil
 	}
@@ -164,8 +146,7 @@ func (v *Validator) validateTimeout(step entity.Step) error {
 	return nil
 }
 
-// validateRetry validates retry configuration
-func (v *Validator) validateRetry(step entity.Step) error {
+func (v *Validator) validateRetry(step model.Step) error {
 	if step.Retry == nil {
 		return nil
 	}
@@ -181,8 +162,7 @@ func (v *Validator) validateRetry(step entity.Step) error {
 	return nil
 }
 
-// validateConditions validates the conditions in a step
-func (v *Validator) validateConditions(step entity.Step, stepNames map[string]bool) error {
+func (v *Validator) validateConditions(step model.Step, allStepNames map[string]bool) error {
 	if step.If == "" {
 		return nil
 	}
@@ -205,10 +185,9 @@ func (v *Validator) validateConditions(step entity.Step, stepNames map[string]bo
 		return err
 	}
 
-	return v.validateThenStep(step, stepNames)
+	return v.validateThenStep(step, allStepNames)
 }
 
-// validateConditionType validates the condition type
 func (v *Validator) validateConditionType(condType string, stepName string) error {
 	if !validConditionTypes[condType] {
 		return fmt.Errorf(ErrorInvalidCondType, ErrorPrefix, condType, stepName)
@@ -217,7 +196,6 @@ func (v *Validator) validateConditionType(condType string, stepName string) erro
 	return nil
 }
 
-// validateConditionValue validates that conditions requiring values have them
 func (v *Validator) validateConditionValue(condType string, parts []string, stepName string) error {
 	needsValue := condType == string(condition.Equals) ||
 		condType == string(condition.Contains) ||
@@ -234,7 +212,6 @@ func (v *Validator) validateConditionValue(condType string, parts []string, step
 	return nil
 }
 
-// validateRegexPattern validates regex patterns for Matches condition
 func (v *Validator) validateRegexPattern(condType string, parts []string, stepName string) error {
 	if condType != string(condition.Matches) || len(parts) < 2 {
 		return nil
@@ -247,16 +224,14 @@ func (v *Validator) validateRegexPattern(condType string, parts []string, stepNa
 	return nil
 }
 
-// validateThenStep validates the Then step reference
-func (v *Validator) validateThenStep(step entity.Step, stepNames map[string]bool) error {
-	if step.Then == "" || stepNames[step.Then] {
+func (v *Validator) validateThenStep(step model.Step, allStepNames map[string]bool) error {
+	if step.Then == "" || allStepNames[step.Then] {
 		return nil
 	}
 
 	return fmt.Errorf(ErrorDestStepNotFound, ErrorPrefix, step.Name, step.Then)
 }
 
-// translateError translates validation errors to user-friendly messages
 func (v *Validator) translateError(err error) error {
 	var validationErrors validator.ValidationErrors
 	if errors.As(err, &validationErrors) {

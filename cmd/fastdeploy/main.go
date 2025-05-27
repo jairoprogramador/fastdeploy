@@ -2,19 +2,18 @@ package main
 
 import (
 	"github.com/jairoprogramador/fastdeploy/internal/application/project"
-	cmd "github.com/jairoprogramador/fastdeploy/internal/cli/command"
+	cmdCli "github.com/jairoprogramador/fastdeploy/internal/cli/command"
 	"github.com/jairoprogramador/fastdeploy/internal/cli/handler"
-	service3 "github.com/jairoprogramador/fastdeploy/internal/domain/config/service"
-	"github.com/jairoprogramador/fastdeploy/internal/domain/deployment/entity"
-	"github.com/jairoprogramador/fastdeploy/internal/domain/deployment/service"
+	serviceConfig "github.com/jairoprogramador/fastdeploy/internal/domain/config/service"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/deployment/model"
+	serviceDeploy "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/service"
 	"github.com/jairoprogramador/fastdeploy/internal/domain/engine"
 	"github.com/jairoprogramador/fastdeploy/internal/domain/engine/condition"
 	"github.com/jairoprogramador/fastdeploy/internal/domain/engine/executor"
-	"github.com/jairoprogramador/fastdeploy/internal/domain/engine/store"
+	serviceEngine "github.com/jairoprogramador/fastdeploy/internal/domain/engine/service"
 	"github.com/jairoprogramador/fastdeploy/internal/domain/engine/validator"
-	//domainModel "github.com/jairoprogramador/fastdeploy/internal/domain/model"
-	service2 "github.com/jairoprogramador/fastdeploy/internal/domain/project/service"
-	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/adapter/command"
+	serviceProject "github.com/jairoprogramador/fastdeploy/internal/domain/project/service"
+	cmdAdapter "github.com/jairoprogramador/fastdeploy/internal/infrastructure/adapter/command"
 	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/adapter/docker"
 	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/adapter/file"
 	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/adapter/git"
@@ -23,13 +22,12 @@ import (
 	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/adapter/yaml"
 	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/repository"
 	"github.com/jairoprogramador/fastdeploy/pkg/common/logger"
-	resultEntity "github.com/jairoprogramador/fastdeploy/pkg/common/result"
+	"github.com/jairoprogramador/fastdeploy/pkg/common/result"
 	"github.com/spf13/cobra"
 	"log"
 	"os"
 )
 
-// Log message constants
 const (
 	logPrefix                 = "FASTDEPLOY: "
 	msgInitCommon             = "Initializing common components..."
@@ -46,89 +44,82 @@ func main() {
 	mainLogger := log.New(os.Stdout, logPrefix, log.LstdFlags)
 
 	mainLogger.Println(msgInitCommon)
-	appRouter := path.NewOsPathService()
-	appLoggerFile := logger.NewFileLogger(appRouter.GetFullPathLoggerFile())
-	variableStore := entity.NewStoreEntity()
-
-	mainLogger.Println(msgInitRepo)
-	fileRepo := file.NewOsFileController(appLoggerFile)
-	yamlRepo := yaml.NewGoPkgYamlController(fileRepo, appLoggerFile)
-	configRepo := repository.NewYamlConfigRepository(yamlRepo, fileRepo, appRouter, appLoggerFile)
-	projectRepo := repository.NewYamlProjectRepository(yamlRepo, fileRepo, appRouter, appLoggerFile)
-	deploymentRepo := repository.NewYamlDeploymentRepository(yamlRepo, fileRepo, appRouter, appLoggerFile)
-
-	mainLogger.Println(msgInitDomainServices)
-	executorService := command.NewOsRunCommand(appLoggerFile)
-	conditionFactory := condition.NewEvaluatorFactory()
-	deploymentValidator := validator.NewValidator()
-	baseExecutor := executor.NewStepExecutor()
+	appPath := path.NewPathAdapter()
+	appLoggerFile := logger.NewFileLogger(appPath.GetFullPathLoggerFile())
+	store := model.NewStoreEntity()
 
 	// Initialize infrastructure services
-	gitService := git.NewLocalGitRequest(executorService, appLoggerFile)
-	templateService := template.NewTextDockerTemplate(appLoggerFile)
+	commandAdapter := cmdAdapter.NewCommandAdapter(appLoggerFile)
+	gitAdapter := git.NewGitAdapter(commandAdapter, appLoggerFile)
+	templateAdapter := template.NewTemplateAdapter(appLoggerFile)
+	fileAdapter := file.NewFileAdapter(appLoggerFile)
+	yamlAdapter := yaml.NewYamlAdapter(fileAdapter, appLoggerFile)
 
-	// Initialize domain services
-	deploymentService := service.NewDeploymentService(deploymentRepo)
-	configService := service3.NewConfigService(configRepo)
+	mainLogger.Println(msgInitRepo)
+	configRepository := repository.NewConfigRepository(yamlAdapter, fileAdapter, appPath, appLoggerFile)
+	projectRepository := repository.NewProjectRepository(yamlAdapter, fileAdapter, appPath, appLoggerFile)
+	deployRepository := repository.NewDeploymentRepository(yamlAdapter, fileAdapter, appPath, appLoggerFile)
 
-	storeService := store.NewStoreService(gitService, appRouter)
+	mainLogger.Println(msgInitDomainServices)
+	evaluatorFactory := condition.NewEvaluatorFactory()
+	validator := validator.NewValidator()
+	baseExecutor := executor.NewBaseExecutor()
+	deploymentService := serviceDeploy.NewDeploymentService(deployRepository)
+	configService := serviceConfig.NewConfigService(configRepository)
+	storeService := serviceEngine.NewStoreService(gitAdapter, appPath)
 
 	mainLogger.Println(msgInstantiatingEngine)
 	engineInstance := engine.NewEngine(
-		variableStore,
+		store,
 		storeService,
-		deploymentValidator,
+		validator,
 	)
-	projectService := service2.NewProjectService(projectRepo, deploymentService, engineInstance, configService, appRouter)
-
-	// Initialize docker image service
-	dockerImageService := docker.NewLocalDockerImage(fileRepo, templateService, projectService, appRouter, variableStore)
-
-	// Initialize docker container service with docker image dependency
-	dockerService := docker.NewLocalDockerContainer(executorService, fileRepo, templateService, dockerImageService, appRouter, variableStore, appLoggerFile)
+	projectService := serviceProject.NewProjectService(projectRepository, deploymentService, engineInstance, configService)
+	imageAdapter := docker.NewImageAdapter(fileAdapter, templateAdapter, projectRepository, appPath, store)
+	containerAdapter := docker.NewContainerAdapter(commandAdapter, fileAdapter, templateAdapter, imageAdapter, appPath, store, appLoggerFile)
 
 	mainLogger.Println(msgInstantiatingExecutors)
-	commandExecutor := executor.NewCommandExecutor(baseExecutor, variableStore, executorService, conditionFactory)
-	containerExecutor := executor.NewContainerExecutor(baseExecutor, variableStore, dockerService)
-	setupExecutor := executor.NewCheckExecutor(dockerService, variableStore, appRouter)
+	commandExecutor := executor.NewCommandExecutor(baseExecutor, commandAdapter, evaluatorFactory)
+	containerExecutor := executor.NewContainerExecutor(baseExecutor, containerAdapter)
+	checkExecutor := executor.NewCheckExecutor(baseExecutor, containerAdapter, store)
 
 	mainLogger.Println(msgRegisteringExecutors)
-	engineInstance.Executors[string(entity.Command)] = commandExecutor
-	engineInstance.Executors[string(entity.Container)] = containerExecutor
-	engineInstance.Executors[string(entity.Setup)] = setupExecutor
+	engineInstance.AddExecutor(model.Command, commandExecutor)
+	engineInstance.AddExecutor(model.Container, containerExecutor)
+	engineInstance.AddExecutor(model.Check, checkExecutor)
 
 	mainLogger.Println(msgInstantiatingCommands)
 	deployCmdFn := getDeployCmdFn()
 	initCmd := newInitCmd(projectService)
 	startCmd := newStartCmd(projectService)
-	cmd.SetupCommands(deployCmdFn, initCmd, startCmd)
+	cmdCli.SetupCommands(deployCmdFn, initCmd, startCmd)
 
 	mainLogger.Println(msgRunningCLI)
-	cmd.Execute()
+	cmdCli.Execute()
 }
 
 func getDeployCmdFn() func() *cobra.Command {
 	deployHandler := handler.NewDeployHandler()
 	getDeployCmdFn := func() *cobra.Command {
-		return cmd.GetDeployCmd(deployHandler.Controller)
+		return cmdCli.GetDeployCmd(deployHandler.Controller)
 	}
 	return getDeployCmdFn
 }
 
-func newInitCmd(projectService service2.ProjectService) *cobra.Command {
-	initAppFn := func() resultEntity.DomainResult {
+func newInitCmd(projectService serviceProject.ProjectService) *cobra.Command {
+	initAppFn := func() result.DomainResult {
 		return project.InitApp(projectService)
 	}
 	initHandler := handler.NewInitHandler(initAppFn)
-	return cmd.NewInitCmd(initHandler.Controller)
+	return cmdCli.NewInitCmd(initHandler.Controller)
 }
 
-func newStartCmd(projectService service2.ProjectService) *cobra.Command {
+func newStartCmd(projectService serviceProject.ProjectService) *cobra.Command {
 
-	startAppFn := func() resultEntity.DomainResult {
+	startAppFn := func() result.DomainResult {
 		return project.StartDeploy(projectService)
 	}
 
 	startHandler := handler.NewStartHandler(startAppFn)
-	return cmd.NewStartCmd(startHandler.Controller)
+	return cmdCli.NewStartCmd(startHandler.Controller)
 }

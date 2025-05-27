@@ -1,4 +1,4 @@
-package entity
+package model
 
 import (
 	"github.com/jairoprogramador/fastdeploy/pkg/constant"

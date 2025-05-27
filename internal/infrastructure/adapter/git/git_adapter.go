@@ -18,26 +18,26 @@ const (
 	errCommitHashShort = "commit hash %s is too short (minimum 7 characters)"
 )
 
-type localGitRequest struct {
-	commandRunner port.RunCommand
-	fileLogger    *logger.FileLogger
+type gitAdapter struct {
+	commandPort port.CommandPort
+	fileLogger  *logger.FileLogger
 }
 
-func NewLocalGitRequest(
-	commandRunner port.RunCommand,
+func NewGitAdapter(
+	commandPort port.CommandPort,
 	fileLogger *logger.FileLogger,
-) port.GitRequest {
-	return &localGitRequest{
-		commandRunner: commandRunner,
-		fileLogger:    fileLogger,
+) port.GitPort {
+	return &gitAdapter{
+		commandPort: commandPort,
+		fileLogger:  fileLogger,
 	}
 }
 
-func (git *localGitRequest) GetHash(ctx context.Context) result.InfraResult {
+func (git *gitAdapter) GetHash(ctx context.Context) result.InfraResult {
 	return git.executeCommand(ctx, cmdGetHash)
 }
 
-func (git *localGitRequest) GetAuthor(ctx context.Context, commitHash string) result.InfraResult {
+func (git *gitAdapter) GetAuthor(ctx context.Context, commitHash string) result.InfraResult {
 	if err := validateCommitHash(commitHash); err != nil {
 		return git.logError(err)
 	}
@@ -46,7 +46,7 @@ func (git *localGitRequest) GetAuthor(ctx context.Context, commitHash string) re
 	return git.executeCommand(ctx, authorFormatCmd)
 }
 
-func (git *localGitRequest) GetMessage(ctx context.Context, commitHash string) result.InfraResult {
+func (git *gitAdapter) GetMessage(ctx context.Context, commitHash string) result.InfraResult {
 	if err := validateCommitHash(commitHash); err != nil {
 		return git.logError(err)
 	}
@@ -55,8 +55,8 @@ func (git *localGitRequest) GetMessage(ctx context.Context, commitHash string) r
 	return git.executeCommand(ctx, messageFormatCmd)
 }
 
-func (git *localGitRequest) executeCommand(ctx context.Context, command string) result.InfraResult {
-	return git.commandRunner.Run(ctx, command)
+func (git *gitAdapter) executeCommand(ctx context.Context, command string) result.InfraResult {
+	return git.commandPort.Run(ctx, command)
 }
 
 func validateCommitHash(hash string) error {
@@ -72,7 +72,7 @@ func validateCommitHash(hash string) error {
 	return nil
 }
 
-func (git *localGitRequest) logError(err error) result.InfraResult {
+func (git *gitAdapter) logError(err error) result.InfraResult {
 	if err != nil {
 		git.fileLogger.Error(err)
 	}

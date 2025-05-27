@@ -2,18 +2,16 @@ package engine
 
 import (
 	"context"
-	entity2 "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/entity"
+	modelDeploy "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/model"
 	"github.com/jairoprogramador/fastdeploy/internal/domain/engine/executor"
-	"github.com/jairoprogramador/fastdeploy/internal/domain/engine/store"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/engine/service"
 	"github.com/jairoprogramador/fastdeploy/internal/domain/engine/validator"
-	"github.com/jairoprogramador/fastdeploy/internal/domain/project/entity"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/project/model"
 
-	//"deploy/internal/domain/service"
 	"fmt"
 	"sync"
 )
 
-// Error message constants
 const (
 	errDeploymentValidation  = "deployment file with errors: %v"
 	errStepExecution         = "error in step %s: %v"
@@ -22,30 +20,27 @@ const (
 	errMultipleParallelSteps = "errors in parallel steps: %v"
 )
 
-// Engine handles the execution of deployment steps
 type Engine struct {
-	validator     *validator.Validator
-	Executors     map[string]executor.Executor
-	variableStore *entity2.StoreEntity
-	storeService  store.StoreServiceInterface
+	validator    *validator.Validator
+	executors    map[string]executor.Executor
+	variables    *modelDeploy.StoreEntity
+	storeService service.StoreServiceInterface
 }
 
-// NewEngine creates a new deployment engine instance
 func NewEngine(
-	variableStore *entity2.StoreEntity,
-	storeService store.StoreServiceInterface,
+	storeVariable *modelDeploy.StoreEntity,
+	storeService service.StoreServiceInterface,
 	validator *validator.Validator,
 ) *Engine {
 	return &Engine{
-		validator:     validator,
-		Executors:     make(map[string]executor.Executor),
-		variableStore: variableStore,
-		storeService:  storeService,
+		validator:    validator,
+		executors:    make(map[string]executor.Executor),
+		variables:    storeVariable,
+		storeService: storeService,
 	}
 }
 
-// Execute runs a deployment process with the given context and configuration
-func (e *Engine) Execute(ctx context.Context, deployment *entity2.DeploymentEntity, project *entity.ProjectEntity) error {
+func (e *Engine) Execute(ctx context.Context, deployment *modelDeploy.DeploymentEntity, project *model.ProjectEntity) error {
 	if err := e.validator.Validate(deployment); err != nil {
 		return fmt.Errorf(errDeploymentValidation, err)
 	}
@@ -55,7 +50,7 @@ func (e *Engine) Execute(ctx context.Context, deployment *entity2.DeploymentEnti
 		return err
 	}
 
-	e.variableStore.Initialize(globalVars)
+	e.variables.Initialize(globalVars)
 
 	for _, step := range deployment.Steps {
 
@@ -71,36 +66,29 @@ func (e *Engine) Execute(ctx context.Context, deployment *entity2.DeploymentEnti
 	return nil
 }
 
-// executeStep runs a single deployment step or parallel steps
-func (e *Engine) executeStep(ctx context.Context, step entity2.Step) error {
-	// Handle parallel steps if present
+func (e *Engine) executeStep(ctx context.Context, step modelDeploy.Step) error {
 	if len(step.Parallel) > 0 {
 		return e.executeParallelSteps(ctx, step.Parallel)
 	}
 
-	// Find the appropriate executor for this step type
-	executor, exists := e.Executors[step.Type]
+	executor, exists := e.executors[step.Type]
 	if !exists {
 		return fmt.Errorf(errUnsupportedStepType, step.Type)
 	}
 
-	// Manage variable scope for this step
-	e.variableStore.PushScope(step.Variables)
-	defer e.variableStore.PopScope()
+	e.variables.PushScope(step.Variables)
+	defer e.variables.PopScope()
 
-	// Execute the step
 	return executor.Execute(ctx, step)
 }
 
-// executeParallelSteps runs multiple steps concurrently
-func (e *Engine) executeParallelSteps(ctx context.Context, steps []entity2.Step) error {
+func (e *Engine) executeParallelSteps(ctx context.Context, steps []modelDeploy.Step) error {
 	var wg sync.WaitGroup
 	errChan := make(chan error, len(steps))
 
-	// Launch each step in its own goroutine
 	for _, step := range steps {
 		wg.Add(1)
-		go func(s entity2.Step) {
+		go func(s modelDeploy.Step) {
 			defer wg.Done()
 
 			if err := e.executeStep(ctx, s); err != nil {
@@ -109,11 +97,9 @@ func (e *Engine) executeParallelSteps(ctx context.Context, steps []entity2.Step)
 		}(step)
 	}
 
-	// Wait for all steps to complete
 	wg.Wait()
 	close(errChan)
 
-	// Collect any errors
 	var errors []error
 	for err := range errChan {
 		errors = append(errors, err)
@@ -124,4 +110,8 @@ func (e *Engine) executeParallelSteps(ctx context.Context, steps []entity2.Step)
 	}
 
 	return nil
+}
+
+func (e *Engine) AddExecutor(stepType modelDeploy.TypeStep, executor executor.Executor) {
+	e.executors[string(stepType)] = executor
 }

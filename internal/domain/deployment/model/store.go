@@ -1,4 +1,4 @@
-package entity
+package model
 
 type StoreEntity struct {
 	global map[string]string

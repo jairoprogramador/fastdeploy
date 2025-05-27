@@ -1,4 +1,4 @@
-package entity
+package model
 
 type DeploymentEntity struct {
 	Version     string    `yaml:"version"`

@@ -21,17 +21,17 @@ const (
 	errCommandCanceled = "command canceled: %v"
 )
 
-type osRunCommand struct {
+type commandAdapter struct {
 	fileLogger *logger.FileLogger
 }
 
-func NewOsRunCommand(fileLogger *logger.FileLogger) port.RunCommand {
-	return &osRunCommand{
+func NewCommandAdapter(fileLogger *logger.FileLogger) port.CommandPort {
+	return &commandAdapter{
 		fileLogger: fileLogger,
 	}
 }
 
-func (r *osRunCommand) Run(ctx context.Context, cmdExec string) result.InfraResult {
+func (r *commandAdapter) Run(ctx context.Context, cmdExec string) result.InfraResult {
 	if cmdExec == "" {
 		return r.logError(fmt.Errorf(errCommandEmpty))
 	}
@@ -53,7 +53,7 @@ func (r *osRunCommand) Run(ctx context.Context, cmdExec string) result.InfraResu
 	return result.NewResult(strings.TrimSpace(stdoutBuf.String()))
 }
 
-func (r *osRunCommand) ensureContextTimeout(ctx context.Context) context.Context {
+func (r *commandAdapter) ensureContextTimeout(ctx context.Context) context.Context {
 	if _, hasDeadline := ctx.Deadline(); !hasDeadline {
 		newCtx, _ := context.WithTimeout(ctx, DefaultCommandTimeout)
 		return newCtx
@@ -61,7 +61,7 @@ func (r *osRunCommand) ensureContextTimeout(ctx context.Context) context.Context
 	return ctx
 }
 
-func (r *osRunCommand) parseCommand(cmdExec string) (string, []string) {
+func (r *commandAdapter) parseCommand(cmdExec string) (string, []string) {
 	parts := strings.Fields(cmdExec)
 	command := parts[0]
 	var args []string
@@ -71,18 +71,18 @@ func (r *osRunCommand) parseCommand(cmdExec string) (string, []string) {
 	return command, args
 }
 
-func (r *osRunCommand) prepareCommand(ctx context.Context, command string, args []string, stdout, stderr *bytes.Buffer) *exec.Cmd {
+func (r *commandAdapter) prepareCommand(ctx context.Context, command string, args []string, stdout, stderr *bytes.Buffer) *exec.Cmd {
 	cmd := exec.CommandContext(ctx, command, args...)
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 	return cmd
 }
 
-func (r *osRunCommand) formatCommand(command string, args []string) string {
+func (r *commandAdapter) formatCommand(command string, args []string) string {
 	return fmt.Sprintf("Running command: '%s %s'", command, strings.Join(args, " "))
 }
 
-func (r *osRunCommand) handleCommandError(ctx context.Context, err error, stdout, stderr *bytes.Buffer) result.InfraResult {
+func (r *commandAdapter) handleCommandError(ctx context.Context, err error, stdout, stderr *bytes.Buffer) result.InfraResult {
 	r.appendStdMessage(stdout, stderr)
 
 	if ctxErr := ctx.Err(); ctxErr != nil {
@@ -97,7 +97,7 @@ func (r *osRunCommand) handleCommandError(ctx context.Context, err error, stdout
 	return r.logError(err)
 }
 
-func (r *osRunCommand) appendStdMessage(stdout, stderr *bytes.Buffer) {
+func (r *commandAdapter) appendStdMessage(stdout, stderr *bytes.Buffer) {
 	stdOutput := strings.TrimSpace(stdout.String())
 	if stdOutput != "" {
 		r.logError(fmt.Errorf("Standard Output:\n%s", stdOutput))
@@ -109,7 +109,7 @@ func (r *osRunCommand) appendStdMessage(stdout, stderr *bytes.Buffer) {
 	}
 }
 
-func (r *osRunCommand) logError(err error) result.InfraResult {
+func (r *commandAdapter) logError(err error) result.InfraResult {
 	if err != nil {
 		r.fileLogger.Error(err)
 	}

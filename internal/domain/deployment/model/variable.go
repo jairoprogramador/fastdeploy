@@ -1,4 +1,4 @@
-package entity
+package model
 
 type Variable struct {
 	Name  string `yaml:"name"`

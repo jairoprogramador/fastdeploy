@@ -5,8 +5,6 @@ import (
 	"github.com/jairoprogramador/fastdeploy/pkg/common/result"
 )
 
-func StartDeploy(projectService service.ProjectService,
-
-) result.DomainResult {
+func StartDeploy(projectService service.ProjectService) result.DomainResult {
 	return projectService.Start()
 }

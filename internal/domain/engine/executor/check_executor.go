@@ -2,40 +2,45 @@ package executor
 
 import (
 	"context"
-	"github.com/jairoprogramador/fastdeploy/internal/domain/deployment/entity"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/deployment/model"
 	"github.com/jairoprogramador/fastdeploy/internal/domain/port"
 	"github.com/jairoprogramador/fastdeploy/pkg/constant"
 )
 
 type CheckExecutor struct {
-	dockerContainer port.DockerContainer
-	router          port.PathService
-	variables       *entity.StoreEntity
+	baseExecutor    *BaseExecutor
+	dockerContainer port.ContainerPort
+	variables       *model.StoreEntity
 }
 
 func NewCheckExecutor(
-	dockerContainer port.DockerContainer,
-	variables *entity.StoreEntity,
-	router port.PathService,
+	baseExecutor *BaseExecutor,
+	dockerContainer port.ContainerPort,
+	variables *model.StoreEntity,
 ) Executor {
 	return &CheckExecutor{
+		baseExecutor:    baseExecutor,
 		dockerContainer: dockerContainer,
-		router:          router,
 		variables:       variables,
 	}
 }
 
-func (e *CheckExecutor) Execute(ctx context.Context, step entity.Step) error {
-	containerExists, err := e.checkContainerExists(ctx)
-	if err != nil {
-		return err
-	}
+func (e *CheckExecutor) Execute(ctx context.Context, step model.Step) error {
+	ctx, cancel := e.baseExecutor.prepareContext(ctx, step)
+	defer cancel()
 
-	if !containerExists {
-		return nil
-	}
+	return e.baseExecutor.handleRetry(step, func() error {
+		containerExists, err := e.checkContainerExists(ctx)
+		if err != nil {
+			return err
+		}
 
-	return e.startContainer(ctx)
+		if !containerExists {
+			return nil
+		}
+
+		return e.startContainer(ctx)
+	})
 }
 
 func (e *CheckExecutor) checkContainerExists(ctx context.Context) (bool, error) {
@@ -51,11 +56,9 @@ func (e *CheckExecutor) checkContainerExists(ctx context.Context) (bool, error) 
 }
 
 func (e *CheckExecutor) startContainer(ctx context.Context) error {
-
 	response := e.dockerContainer.Up(ctx)
 	if !response.IsSuccess() {
 		return response.Error
 	}
-
 	return nil
 }

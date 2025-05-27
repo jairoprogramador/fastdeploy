@@ -1,4 +1,3 @@
-// Package adapter provides implementations of domain interfaces for external dependencies.
 package path
 
 import (
@@ -8,16 +7,13 @@ import (
 	"path/filepath"
 )
 
-// OsPathService implements the port.PathService interface using the os package.
-type OsPathService struct{}
+type pathAdapter struct{}
 
-// NewOsPathService creates a new OsPathService instance.
-func NewOsPathService() port.PathService {
-	return &OsPathService{}
+func NewPathAdapter() port.PathPort {
+	return &pathAdapter{}
 }
 
-// GetFullPathDockerComposeTemplate returns the full path to the Docker Compose template file.
-func (s *OsPathService) GetFullPathDockerComposeTemplate() string {
+func (s *pathAdapter) GetFullPathDockerComposeTemplate() string {
 	projectName, err := s.GetProjectName()
 	if err != nil {
 		return ""
@@ -26,8 +22,7 @@ func (s *OsPathService) GetFullPathDockerComposeTemplate() string {
 		projectName, constant.DockerRootDirectory, constant.DockerComposeTemplateFileName)
 }
 
-// GetFullPathDockerCompose returns the full path to the Docker Compose file.
-func (s *OsPathService) GetFullPathDockerCompose() string {
+func (s *pathAdapter) GetFullPathDockerCompose() string {
 	projectName, err := s.GetProjectName()
 	if err != nil {
 		return ""
@@ -36,8 +31,7 @@ func (s *OsPathService) GetFullPathDockerCompose() string {
 		projectName, constant.DockerRootDirectory, constant.DockerComposeFileName)
 }
 
-// GetFullPathDockerfileTemplate returns the full path to the Dockerfile template.
-func (s *OsPathService) GetFullPathDockerfileTemplate() string {
+func (s *pathAdapter) GetFullPathDockerfileTemplate() string {
 	projectName, err := s.GetProjectName()
 	if err != nil {
 		return ""
@@ -46,8 +40,7 @@ func (s *OsPathService) GetFullPathDockerfileTemplate() string {
 		projectName, constant.DockerRootDirectory, constant.DockerfileTemplateFileName)
 }
 
-// GetFullPathDockerfile returns the full path to the Dockerfile.
-func (s *OsPathService) GetFullPathDockerfile() string {
+func (s *pathAdapter) GetFullPathDockerfile() string {
 	projectName, err := s.GetProjectName()
 	if err != nil {
 		return ""
@@ -56,8 +49,7 @@ func (s *OsPathService) GetFullPathDockerfile() string {
 		projectName, constant.DockerRootDirectory, constant.DockerfileFileName)
 }
 
-// GetPathDockerDirectory returns the path to the Docker directory.
-func (s *OsPathService) GetPathDockerDirectory() string {
+func (s *pathAdapter) GetPathDockerDirectory() string {
 	projectName, err := s.GetProjectName()
 	if err != nil {
 		return ""
@@ -66,25 +58,21 @@ func (s *OsPathService) GetPathDockerDirectory() string {
 		projectName, constant.DockerRootDirectory)
 }
 
-// GetPathProjectFile returns the path to the project file.
-func (s *OsPathService) GetPathProjectFile() string {
+func (s *pathAdapter) GetPathProjectFile() string {
 	return filepath.Join(constant.ProjectRootDirectory, constant.ProjectFileName)
 }
 
-// GetFullPathConfigFile returns the full path to the configuration file.
-func (s *OsPathService) GetFullPathConfigFile() string {
+func (s *pathAdapter) GetFullPathConfigFile() string {
 	return filepath.Join(s.GetHomeDirectory(),
 		constant.FastDeployRootDirectory, constant.ConfigFileName)
 }
 
-// GetFullPathDeploymentFile returns the full path to the deployment file.
-func (s *OsPathService) GetFullPathDeploymentFile() string {
+func (s *pathAdapter) GetFullPathDeploymentFile() string {
 	return filepath.Join(s.GetHomeDirectory(),
 		constant.FastDeployRootDirectory, constant.DeploymentFileName)
 }
 
-// GetFullPathLoggerFile returns the full path to the logger file.
-func (s *OsPathService) GetFullPathLoggerFile() string {
+func (s *pathAdapter) GetFullPathLoggerFile() string {
 	projectName, err := s.GetProjectName()
 	if err != nil {
 		return ""
@@ -93,8 +81,7 @@ func (s *OsPathService) GetFullPathLoggerFile() string {
 		constant.FastDeployRootDirectory, projectName, constant.LoggerFileName)
 }
 
-// GetProjectName returns the name of the current project.
-func (s *OsPathService) GetProjectName() (string, error) {
+func (s *pathAdapter) GetProjectName() (string, error) {
 	currentDir, err := os.Getwd()
 	if err != nil {
 		return "", err
@@ -102,8 +89,7 @@ func (s *OsPathService) GetProjectName() (string, error) {
 	return filepath.Base(currentDir), nil
 }
 
-// GetHomeDirectory returns the home directory of the current user.
-func (s *OsPathService) GetHomeDirectory() string {
+func (s *pathAdapter) GetHomeDirectory() string {
 	homeDirectory, err := os.UserHomeDir()
 	if err != nil {
 		return ""
@@ -111,8 +97,7 @@ func (s *OsPathService) GetHomeDirectory() string {
 	return homeDirectory
 }
 
-// GetRelativePathFromHome returns the relative path from the home directory.
-func (s *OsPathService) GetRelativePathFromHome(absolutePath string) string {
+func (s *pathAdapter) GetRelativePathFromHome(absolutePath string) string {
 	homeDir := s.GetHomeDirectory()
 	if homeDir == "" {
 		return absolutePath

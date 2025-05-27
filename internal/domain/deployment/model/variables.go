@@ -1,4 +1,4 @@
-package entity
+package model
 
 type Variables struct {
 	Global []Variable `yaml:"global"`
