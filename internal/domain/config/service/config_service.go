@@ -31,10 +31,11 @@ func NewConfigService(
 func (s *configService) Load() (*entity.ConfigEntity, error) {
 	result := s.configRepository.Load()
 	if result.IsSuccess() {
-		config := result.Result.(*entity.ConfigEntity)
+		config := result.Result.(entity.ConfigEntity)
 		if !config.IsComplete() {
 			return &entity.ConfigEntity{}, ErrConfigNotComplete
 		}
+		return &config, nil
 	}
 	return &entity.ConfigEntity{}, result.Error
 }

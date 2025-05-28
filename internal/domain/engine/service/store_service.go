@@ -15,7 +15,7 @@ const (
 )
 
 type StoreServiceInterface interface {
-	GetVariablesGlobal(ctx context.Context, deployment *modelDeploy.DeploymentEntity, project *model.ProjectEntity) ([]modelDeploy.Variable, error)
+	GetVariables(ctx context.Context, project *model.ProjectEntity) ([]modelDeploy.Variable, error)
 }
 
 type StoreService struct {
@@ -33,13 +33,9 @@ func NewStoreService(
 	}
 }
 
-func (s *StoreService) GetVariablesGlobal(ctx context.Context, deployment *modelDeploy.DeploymentEntity, project *model.ProjectEntity) ([]modelDeploy.Variable, error) {
+func (s *StoreService) GetVariables(ctx context.Context, project *model.ProjectEntity) ([]modelDeploy.Variable, error) {
 	if project == nil {
 		return []modelDeploy.Variable{}, errors.New(errorProjectIsNil)
-	}
-
-	if deployment == nil {
-		return []modelDeploy.Variable{}, errors.New(errorDeploymentIsNil)
 	}
 
 	response := s.gitService.GetHash(ctx)
@@ -112,11 +108,11 @@ func (s *StoreService) GetVariablesGlobal(ctx context.Context, deployment *model
 		Value: s.pathService.GetPathDockerDirectory(),
 	})
 
-	for _, variable := range deployment.Variables.Global {
+	/*for _, variable := range deployment.Variables.Global {
 		variables = append(variables, modelDeploy.Variable{
 			Name:  variable.Name,
 			Value: variable.Value,
 		})
-	}
+	}*/
 	return variables, nil
 }

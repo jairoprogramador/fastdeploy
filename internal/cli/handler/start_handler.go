@@ -23,9 +23,7 @@ func NewStartHandler(startAppFn StartAppFunc) *StartHandler {
 
 func (h *StartHandler) Controller() result.DomainResult {
 	if h.startAppFn == nil {
-		err := fmt.Errorf(errFuncStartNotImplement)
-		return result.NewErrorApp(err)
+		return result.NewErrorApp(fmt.Errorf(errFuncStartNotImplement))
 	}
-
 	return h.startAppFn()
 }

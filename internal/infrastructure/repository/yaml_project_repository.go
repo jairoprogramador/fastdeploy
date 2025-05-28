@@ -46,8 +46,8 @@ func NewProjectRepository(
 func (r *yamlProjectRepository) Load() result.InfraResult {
 	path := r.pathPort.GetPathProjectFile()
 
-	if result := r.exists(path); !result.IsSuccess() {
-		return result
+	if _, err := r.exists(path); err != nil {
+		return r.logError(err)
 	}
 
 	var project model.ProjectEntity
@@ -55,13 +55,13 @@ func (r *yamlProjectRepository) Load() result.InfraResult {
 		return result.NewError(err)
 	}
 
-	return result.NewResult(&project)
+	return result.NewResult(project)
 }
 
 func (r *yamlProjectRepository) Save(project *model.ProjectEntity) result.InfraResult {
 	path := r.pathPort.GetPathProjectFile()
 
-	if response := r.exists(path); response.IsSuccess() {
+	if exists, _ := r.exists(path); exists {
 		if err := r.filePort.DeleteFile(path); err != nil {
 			return result.NewError(err)
 		}
@@ -125,15 +125,12 @@ func (r *yamlProjectRepository) getFullPathResources(pathDirectory string) ([]st
 	return pathFiles, nil
 }
 
-func (r *yamlProjectRepository) exists(path string) result.InfraResult {
+func (r *yamlProjectRepository) exists(path string) (bool, error) {
 	exists, err := r.filePort.ExistsFile(path)
-	if err != nil {
-		return result.NewError(err)
-	}
 	if !exists {
-		return r.logError(fmt.Errorf(erroProjectNotFound, path))
+		return exists, fmt.Errorf(erroProjectNotFound, path)
 	}
-	return result.NewResult(fmt.Sprintf(msgSuccessFileProjectExists, path))
+	return exists, err
 }
 
 func (r *yamlProjectRepository) logError(err error) result.InfraResult {

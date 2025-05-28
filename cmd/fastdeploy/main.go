@@ -24,77 +24,68 @@ import (
 	"github.com/jairoprogramador/fastdeploy/pkg/common/logger"
 	"github.com/jairoprogramador/fastdeploy/pkg/common/result"
 	"github.com/spf13/cobra"
-	"log"
-	"os"
 )
 
 const (
-	logPrefix                 = "FASTDEPLOY: "
-	msgInitCommon             = "Initializing common components..."
-	msgInitRepo               = "Initializing repositories..."
-	msgInitDomainServices     = "Initializing domain services..."
-	msgInstantiatingExecutors = "Instantiating step executors..."
-	msgInstantiatingEngine    = "Instantiating engine..."
-	msgRegisteringExecutors   = "Registering step executors..."
-	msgInstantiatingCommands  = "Instantiating commands..."
-	msgRunningCLI             = "--- Running CLI Application ---"
+	msgInitCommon           = "Common components initialized"
+	msgInitInfrastructure   = "Initialized infrastructure services"
+	msgInitDomainServices   = "Domain services Initialized"
+	msgInitExecutors        = "Initialized executors"
+	msgRegisteredExecutors  = "Registered executors"
+	msgInstantiatedCommands = "Instantiated commands"
 )
 
 func main() {
-	mainLogger := log.New(os.Stdout, logPrefix, log.LstdFlags)
-
-	mainLogger.Println(msgInitCommon)
 	appPath := path.NewPathAdapter()
 	appLoggerFile := logger.NewFileLogger(appPath.GetFullPathLoggerFile())
 	store := model.NewStoreEntity()
 
-	// Initialize infrastructure services
+	appLoggerFile.Info(msgInitCommon)
+
 	commandAdapter := cmdAdapter.NewCommandAdapter(appLoggerFile)
 	gitAdapter := git.NewGitAdapter(commandAdapter, appLoggerFile)
 	templateAdapter := template.NewTemplateAdapter(appLoggerFile)
 	fileAdapter := file.NewFileAdapter(appLoggerFile)
 	yamlAdapter := yaml.NewYamlAdapter(fileAdapter, appLoggerFile)
+	appLoggerFile.Info(msgInitInfrastructure)
 
-	mainLogger.Println(msgInitRepo)
 	configRepository := repository.NewConfigRepository(yamlAdapter, fileAdapter, appPath, appLoggerFile)
 	projectRepository := repository.NewProjectRepository(yamlAdapter, fileAdapter, appPath, appLoggerFile)
 	deployRepository := repository.NewDeploymentRepository(yamlAdapter, fileAdapter, appPath, appLoggerFile)
 
-	mainLogger.Println(msgInitDomainServices)
 	evaluatorFactory := condition.NewEvaluatorFactory()
 	validator := validator.NewValidator()
 	baseExecutor := executor.NewBaseExecutor()
-	deploymentService := serviceDeploy.NewDeploymentService(deployRepository)
 	configService := serviceConfig.NewConfigService(configRepository)
 	storeService := serviceEngine.NewStoreService(gitAdapter, appPath)
 
-	mainLogger.Println(msgInstantiatingEngine)
 	engineInstance := engine.NewEngine(
 		store,
-		storeService,
 		validator,
 	)
-	projectService := serviceProject.NewProjectService(projectRepository, deploymentService, engineInstance, configService)
 	imageAdapter := docker.NewImageAdapter(fileAdapter, templateAdapter, projectRepository, appPath, store)
 	containerAdapter := docker.NewContainerAdapter(commandAdapter, fileAdapter, templateAdapter, imageAdapter, appPath, store, appLoggerFile)
+	deploymentService := serviceDeploy.NewDeploymentService(deployRepository, containerAdapter, store)
+	projectService := serviceProject.NewProjectService(projectRepository, deploymentService, engineInstance, configService, containerAdapter, store, storeService)
 
-	mainLogger.Println(msgInstantiatingExecutors)
+	appLoggerFile.Info(msgInitDomainServices)
+
 	commandExecutor := executor.NewCommandExecutor(baseExecutor, commandAdapter, evaluatorFactory)
-	containerExecutor := executor.NewContainerExecutor(baseExecutor, containerAdapter)
-	checkExecutor := executor.NewCheckExecutor(baseExecutor, containerAdapter, store)
+	containerExecutor := executor.NewContainerExecutor(baseExecutor, containerAdapter, store)
+	checkExecutor := executor.NewCheckExecutor(baseExecutor, containerAdapter)
+	appLoggerFile.Info(msgInitExecutors)
 
-	mainLogger.Println(msgRegisteringExecutors)
 	engineInstance.AddExecutor(model.Command, commandExecutor)
 	engineInstance.AddExecutor(model.Container, containerExecutor)
 	engineInstance.AddExecutor(model.Check, checkExecutor)
+	appLoggerFile.Info(msgRegisteredExecutors)
 
-	mainLogger.Println(msgInstantiatingCommands)
 	deployCmdFn := getDeployCmdFn()
-	initCmd := newInitCmd(projectService)
-	startCmd := newStartCmd(projectService)
+	initCmd := newInitCmd(projectService, appLoggerFile)
+	startCmd := newStartCmd(projectService, appLoggerFile)
 	cmdCli.SetupCommands(deployCmdFn, initCmd, startCmd)
+	appLoggerFile.Info(msgInstantiatedCommands)
 
-	mainLogger.Println(msgRunningCLI)
 	cmdCli.Execute()
 }
 
@@ -106,20 +97,20 @@ func getDeployCmdFn() func() *cobra.Command {
 	return getDeployCmdFn
 }
 
-func newInitCmd(projectService serviceProject.ProjectService) *cobra.Command {
+func newInitCmd(projectService serviceProject.ProjectService, fileLogger *logger.FileLogger) *cobra.Command {
 	initAppFn := func() result.DomainResult {
-		return project.InitApp(projectService)
+		return project.InitApp(projectService, fileLogger)
 	}
 	initHandler := handler.NewInitHandler(initAppFn)
-	return cmdCli.NewInitCmd(initHandler.Controller)
+	return cmdCli.NewInitCmd(initHandler.Controller, fileLogger)
 }
 
-func newStartCmd(projectService serviceProject.ProjectService) *cobra.Command {
+func newStartCmd(projectService serviceProject.ProjectService, fileLogger *logger.FileLogger) *cobra.Command {
 
 	startAppFn := func() result.DomainResult {
-		return project.StartDeploy(projectService)
+		return project.StartDeploy(projectService, fileLogger)
 	}
 
 	startHandler := handler.NewStartHandler(startAppFn)
-	return cmdCli.NewStartCmd(startHandler.Controller)
+	return cmdCli.NewStartCmd(startHandler.Controller, fileLogger)
 }

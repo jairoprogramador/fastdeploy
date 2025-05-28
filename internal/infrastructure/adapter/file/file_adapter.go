@@ -53,7 +53,7 @@ func (fc *fileAdapter) WriteFile(filePath string, content string) error {
 func (fc *fileAdapter) CreateFile(filePath string) (*os.File, error) {
 	dirPath := filepath.Dir(filePath)
 
-	exists, err := fc.ExistsDirectory(dirPath)
+	exists, _, err := fc.existsPath(dirPath)
 	if err != nil {
 		return nil, err
 	}
@@ -81,15 +81,16 @@ func (fc *fileAdapter) OpenFile(filePath string) (*os.File, error) {
 }
 
 func (fc *fileAdapter) ExistsFile(filePath string) (bool, error) {
-	isDirectory, err := fc.ExistsDirectory(filePath)
+	exists, _, err := fc.existsPath(filePath)
 	if err != nil {
 		return false, err
 	}
-	return !isDirectory, nil
+	return exists, nil
 }
 
 func (fc *fileAdapter) ExistsDirectory(dirPath string) (bool, error) {
-	return fc.isPathDirectory(dirPath)
+	exists, isDirectory, err := fc.existsPath(dirPath)
+	return exists && isDirectory, err
 }
 
 func (fc *fileAdapter) DeleteFile(filePath string) error {
@@ -137,16 +138,16 @@ func (fc *fileAdapter) GetPath(paths ...string) string {
 	return filepath.Join(paths...)
 }
 
-func (fc *fileAdapter) isPathDirectory(path string) (bool, error) {
+func (fc *fileAdapter) existsPath(path string) (bool, bool, error) {
 	fileInfo, err := os.Stat(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return false, nil
+			return false, false, nil
 		}
 		fc.logError(err)
-		return false, err
+		return false, false, err
 	}
-	return fileInfo.IsDir(), nil
+	return true, fileInfo.IsDir(), nil
 }
 
 func (fc *fileAdapter) logError(err error) {

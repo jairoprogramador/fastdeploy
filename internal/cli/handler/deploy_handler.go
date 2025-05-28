@@ -9,5 +9,5 @@ func NewDeployHandler() *DeployHandler {
 }
 
 func (h *DeployHandler) Controller() result.DomainResult {
-	return result.NewResultApp("controller deploy not implemented")
+	return result.NewMessageApp("controller deploy not implemented")
 }

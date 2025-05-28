@@ -7,6 +7,8 @@ import (
 
 type LogLevel int
 
+const LogTimeFormat = "2006-01-02 15:04:05"
+
 const (
 	DEBUG LogLevel = iota
 	INFO
@@ -36,7 +38,7 @@ func (l *logEntry) format() string {
 	}
 
 	logLine := fmt.Sprintf("[%s] %s: %s",
-		l.Timestamp.Format("2006-01-02 15:04:05"),
+		l.Timestamp.Format(LogTimeFormat),
 		levelStr,
 		l.Message)
 

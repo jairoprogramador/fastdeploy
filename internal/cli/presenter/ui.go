@@ -2,6 +2,8 @@ package presenter
 
 import (
 	"fmt"
+	"github.com/jairoprogramador/fastdeploy/pkg/common/logger"
+	"github.com/jairoprogramador/fastdeploy/pkg/common/result"
 )
 
 const (
@@ -27,17 +29,35 @@ func ShowBanner() {
 	fmt.Println(banner)
 }
 
-func ShowStart(message string) {
-	output := fmt.Sprintf("%s[START] 🚚%s %s", ColorPurple, ColorReset, message)
+func ShowError(err error) {
+	output := fmt.Sprintf("%s[ERROR]%s: %v", ColorRed, ColorReset, err)
 	fmt.Println(output)
 }
 
-func ShowError(stepName string, err error) {
-	output := fmt.Sprintf("%s[ERROR]%s %s: %v", ColorRed, ColorReset, stepName, err)
+func ShowSuccess(message string) {
+	output := fmt.Sprintf("%s[SUCCESS]%s %s", ColorGreen, ColorReset, message)
 	fmt.Println(output)
 }
 
-func ShowSuccess(stepName string, message string) {
-	output := fmt.Sprintf("%s[SUCCESS]%s %s: %s", ColorGreen, ColorReset, stepName, message)
-	fmt.Println(output)
+func Show(response result.DomainResult, fileLogger *logger.FileLogger) {
+	if response.IsSuccess() {
+		ShowSuccess(response.Message)
+	} else {
+		ShowError(response.Error)
+		showFileLogger(fileLogger)
+	}
+}
+
+func showFileLogger(fileLogger *logger.FileLogger) {
+	logs, err := fileLogger.ReadFromFile()
+	if err != nil {
+		ShowError(err)
+	}
+	for _, log := range logs {
+		if log.Level == logger.ERROR {
+			ShowError(log.Error)
+		} else {
+			ShowSuccess(log.Message)
+		}
+	}
 }

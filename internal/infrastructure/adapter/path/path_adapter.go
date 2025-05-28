@@ -68,8 +68,12 @@ func (s *pathAdapter) GetFullPathConfigFile() string {
 }
 
 func (s *pathAdapter) GetFullPathDeploymentFile() string {
+	projectName, err := s.GetProjectName()
+	if err != nil {
+		return ""
+	}
 	return filepath.Join(s.GetHomeDirectory(),
-		constant.FastDeployRootDirectory, constant.DeploymentFileName)
+		constant.FastDeployRootDirectory, projectName, constant.DeploymentFileName)
 }
 
 func (s *pathAdapter) GetFullPathLoggerFile() string {

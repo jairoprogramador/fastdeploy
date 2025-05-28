@@ -7,7 +7,8 @@ import (
 
 type ContainerPort interface {
 	Up(ctx context.Context) result.InfraResult
-	Exists(ctx context.Context, commitHash, version string) result.InfraResult
 	GetURLsUp(ctx context.Context, commitHash, version string) result.InfraResult
-	Start(ctx context.Context) result.InfraResult
+	Start(ctx context.Context, commitHash, version string) result.InfraResult
+	Exists(ctx context.Context, commitHash, version string) result.InfraResult
+	ExistsFileCompose() result.InfraResult
 }

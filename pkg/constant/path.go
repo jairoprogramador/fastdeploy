@@ -2,7 +2,7 @@ package constant
 
 const FastDeployRootDirectory = ".fastDeploy"
 
-const ConfigFileName = "global-config.yml"
+const ConfigFileName = "config.yml"
 
 const ProjectRootDirectory = ".deploy"
 const ProjectFileName = "project.yml"

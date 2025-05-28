@@ -2,9 +2,13 @@ package project
 
 import (
 	"github.com/jairoprogramador/fastdeploy/internal/domain/project/service"
+	"github.com/jairoprogramador/fastdeploy/pkg/common/logger"
 	"github.com/jairoprogramador/fastdeploy/pkg/common/result"
 )
 
-func InitApp(projectService service.ProjectService) result.DomainResult {
-	return projectService.Initialize()
+func InitApp(projectService service.ProjectService, fileLogger *logger.FileLogger) result.DomainResult {
+	result := projectService.Initialize()
+
+	fileLogger.WriteToFile()
+	return result
 }

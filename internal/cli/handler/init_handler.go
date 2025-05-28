@@ -24,10 +24,8 @@ func NewInitHandler(initAppFunc InitAppFunc) *InitHandler {
 
 func (h *InitHandler) Controller() result.DomainResult {
 	if h.initAppFunc == nil {
-		err := fmt.Errorf(errFuncInitNotImplement)
-		return result.NewErrorApp(err)
+		return result.NewErrorApp(fmt.Errorf(errFuncInitNotImplement))
 	}
-
 	presenter.ShowBanner()
 	return h.initAppFunc()
 }

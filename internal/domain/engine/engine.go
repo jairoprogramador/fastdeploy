@@ -2,13 +2,10 @@ package engine
 
 import (
 	"context"
+	"fmt"
 	modelDeploy "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/model"
 	"github.com/jairoprogramador/fastdeploy/internal/domain/engine/executor"
-	"github.com/jairoprogramador/fastdeploy/internal/domain/engine/service"
 	"github.com/jairoprogramador/fastdeploy/internal/domain/engine/validator"
-	"github.com/jairoprogramador/fastdeploy/internal/domain/project/model"
-
-	"fmt"
 	"sync"
 )
 
@@ -21,36 +18,26 @@ const (
 )
 
 type Engine struct {
-	validator    *validator.Validator
-	executors    map[string]executor.Executor
-	variables    *modelDeploy.StoreEntity
-	storeService service.StoreServiceInterface
+	validator *validator.Validator
+	executors map[string]executor.Executor
+	variables *modelDeploy.StoreEntity
 }
 
 func NewEngine(
 	storeVariable *modelDeploy.StoreEntity,
-	storeService service.StoreServiceInterface,
 	validator *validator.Validator,
 ) *Engine {
 	return &Engine{
-		validator:    validator,
-		executors:    make(map[string]executor.Executor),
-		variables:    storeVariable,
-		storeService: storeService,
+		validator: validator,
+		executors: make(map[string]executor.Executor),
+		variables: storeVariable,
 	}
 }
 
-func (e *Engine) Execute(ctx context.Context, deployment *modelDeploy.DeploymentEntity, project *model.ProjectEntity) error {
+func (e *Engine) Execute(ctx context.Context, deployment *modelDeploy.DeploymentEntity) error {
 	if err := e.validator.Validate(deployment); err != nil {
 		return fmt.Errorf(errDeploymentValidation, err)
 	}
-
-	globalVars, err := e.storeService.GetVariablesGlobal(ctx, deployment, project)
-	if err != nil {
-		return err
-	}
-
-	e.variables.Initialize(globalVars)
 
 	for _, step := range deployment.Steps {
 

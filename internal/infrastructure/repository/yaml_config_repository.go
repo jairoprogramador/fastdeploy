@@ -12,10 +12,8 @@ import (
 )
 
 const (
-	erroConfigNotFound = "file config not found in %s"
-
-	msgSuccessFileConfigExists = "file config exists in %s"
-	msgSuccessSaveConfig       = "save file %s successful"
+	erroConfigNotFound   = "file config not found in %s"
+	msgSuccessSaveConfig = "save file %s successful"
 )
 
 type yamlConfigRepository struct {
@@ -42,22 +40,22 @@ func NewConfigRepository(
 func (r *yamlConfigRepository) Load() result.InfraResult {
 	path := r.pathPort.GetFullPathConfigFile()
 
-	if result := r.exists(path); !result.IsSuccess() {
-		return result
+	if _, err := r.exists(path); err != nil {
+		return r.logError(err)
 	}
 
-	var configEntity *entity.ConfigEntity
+	var configEntity entity.ConfigEntity
 	if err := r.yamlPort.Load(path, &configEntity); err != nil {
 		return result.NewError(err)
 	}
 
-	return result.NewResult(&configEntity)
+	return result.NewResult(configEntity)
 }
 
 func (r *yamlConfigRepository) Save(config *entity.ConfigEntity) result.InfraResult {
 	path := r.pathPort.GetFullPathConfigFile()
 
-	if response := r.exists(path); response.IsSuccess() {
+	if exists, _ := r.exists(path); exists {
 		if err := r.filePort.DeleteFile(path); err != nil {
 			return result.NewError(err)
 		}
@@ -70,15 +68,12 @@ func (r *yamlConfigRepository) Save(config *entity.ConfigEntity) result.InfraRes
 	return result.NewResult(fmt.Sprintf(msgSuccessSaveConfig, path))
 }
 
-func (r *yamlConfigRepository) exists(path string) result.InfraResult {
+func (r *yamlConfigRepository) exists(path string) (bool, error) {
 	exists, err := r.filePort.ExistsFile(path)
-	if err != nil {
-		return result.NewError(err)
-	}
 	if !exists {
-		return r.logError(fmt.Errorf(erroConfigNotFound, path))
+		return exists, fmt.Errorf(erroConfigNotFound, path)
 	}
-	return result.NewResult(fmt.Sprintf(msgSuccessFileConfigExists, path))
+	return exists, err
 }
 
 func (r *yamlConfigRepository) logError(err error) result.InfraResult {
