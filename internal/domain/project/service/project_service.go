@@ -31,7 +31,7 @@ type ProjectService interface {
 type projectService struct {
 	projectRepository repository.ProjectRepository
 	configService     serviceConfig.ConfigService
-	dockerContainer   port.ContainerPort
+	containerPort     port.ContainerPort
 	engine            *engine.Engine
 	deploymentService serviceDeploy.DeploymentService
 	storeService      service.StoreServicePort
@@ -42,7 +42,7 @@ func NewProjectService(
 	deploymentService serviceDeploy.DeploymentService,
 	engine *engine.Engine,
 	configService serviceConfig.ConfigService,
-	dockerContainer port.ContainerPort,
+	containerPort port.ContainerPort,
 	storeService service.StoreServicePort,
 ) ProjectService {
 	return &projectService{
@@ -50,7 +50,7 @@ func NewProjectService(
 		configService:     configService,
 		deploymentService: deploymentService,
 		engine:            engine,
-		dockerContainer:   dockerContainer,
+		containerPort:     containerPort,
 		storeService:      storeService,
 	}
 }
@@ -65,12 +65,22 @@ func (s *projectService) Start(ctx context.Context) result.DomainResult {
 		return result.NewErrorApp(err)
 	}
 
-	if err := s.engine.Execute(ctx, deployment); err != nil {
+	exists, err := s.existsContainer(ctx)
+	if err != nil {
 		return result.NewErrorApp(err)
 	}
 
-	response := s.getUrlContainer(ctx)
-	if response.IsSuccess() {
+	if exists {
+		if response := s.containerPort.Up(ctx); !response.IsSuccess() {
+			return result.NewErrorApp(response.Error)
+		}
+	} else {
+		if err := s.engine.Execute(ctx, deployment); err != nil {
+			return result.NewErrorApp(err)
+		}
+	}
+
+	if response := s.getUrlContainer(ctx); response.IsSuccess() {
 		message := fmt.Sprintf(constant.SuccessStartProjectUrl, response.Result.([]string))
 		return result.NewMessageApp(message)
 	}
@@ -150,5 +160,16 @@ func (s *projectService) generateID(prefix string) string {
 func (s *projectService) getUrlContainer(ctx context.Context) result.InfraResult {
 	commitHash := s.storeService.GetStore().Get(constant.KeyCommitHash)
 	projectVersion := s.storeService.GetStore().Get(constant.KeyProjectVersion)
-	return s.dockerContainer.GetURLsUp(ctx, commitHash, projectVersion)
+	return s.containerPort.GetURLsUp(ctx, commitHash, projectVersion)
+}
+
+func (s *projectService) existsContainer(ctx context.Context) (bool, error) {
+	commitHash := s.storeService.GetStore().Get(constant.KeyCommitHash)
+	projectVersion := s.storeService.GetStore().Get(constant.KeyProjectVersion)
+
+	response := s.containerPort.Exists(ctx, commitHash, projectVersion)
+	if response.IsSuccess() {
+		return response.Result.(bool), nil
+	}
+	return false, response.Error
 }

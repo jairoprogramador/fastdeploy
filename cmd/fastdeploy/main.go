@@ -67,19 +67,17 @@ func main() {
 	)
 	imageAdapter := docker.NewImageAdapter(fileAdapter, templateAdapter, projectRepository, appPath, store)
 	containerAdapter := docker.NewContainerAdapter(commandAdapter, fileAdapter, templateAdapter, imageAdapter, appPath, store, appLoggerFile)
-	deploymentService := serviceDeploy.NewDeploymentService(deployRepository, containerAdapter, storeService)
+	deploymentService := serviceDeploy.NewDeploymentService(deployRepository, storeService)
 	projectService := serviceProject.NewProjectService(projectRepository, deploymentService, engineInstance, configService, containerAdapter, storeService)
 
 	appLoggerFile.Info(msgInitDomainServices)
 
 	commandExecutor := executor.NewCommandExecutor(baseExecutor, commandAdapter, evaluatorFactory)
 	containerExecutor := executor.NewContainerExecutor(baseExecutor, containerAdapter, store)
-	checkExecutor := executor.NewCheckExecutor(baseExecutor, containerAdapter)
 	appLoggerFile.Info(msgInitExecutors)
 
 	engineInstance.AddExecutor(model.Command, commandExecutor)
 	engineInstance.AddExecutor(model.Container, containerExecutor)
-	engineInstance.AddExecutor(model.Check, checkExecutor)
 	appLoggerFile.Info(msgRegisteredExecutors)
 
 	deployCmdFn := getDeployCmdFn()

@@ -39,6 +39,11 @@ func ShowSuccess(message string) {
 	fmt.Println(output)
 }
 
+func ShowMessage(message string) {
+	output := fmt.Sprintf("%s", message)
+	fmt.Println(output)
+}
+
 func Show(response result.DomainResult, fileLogger *logger.FileLogger) {
 	if response.IsSuccess() {
 		ShowSuccess(response.Message)

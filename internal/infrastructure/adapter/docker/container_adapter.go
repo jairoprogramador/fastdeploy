@@ -100,7 +100,7 @@ func (d *containerAdapter) Start(ctx context.Context, commitHash, version string
 	return result.NewResult(successStart)
 }
 
-func (d *containerAdapter) ExistsFileCompose() result.InfraResult {
+func (d *containerAdapter) existsFileCompose() result.InfraResult {
 	pathCompose := d.pathPort.GetFullPathDockerCompose()
 	exists, err := d.filePort.ExistsFile(pathCompose)
 	if err != nil {
@@ -135,13 +135,24 @@ func (d *containerAdapter) GetURLsUp(ctx context.Context, commitHash, version st
 }
 
 func (d *containerAdapter) Exists(ctx context.Context, commitHash, version string) result.InfraResult {
-	response := d.getContainerIDsAll(ctx, commitHash, version)
-
-	if response.IsSuccess() {
-		containerIds := response.Result.([]string)
-		return result.NewResult(len(containerIds) > 0)
+	responseIDs := d.getContainerIDsAll(ctx, commitHash, version)
+	if !responseIDs.IsSuccess() {
+		return responseIDs
 	}
-	return response
+
+	responseFileCompose := d.existsFileCompose()
+	if !responseFileCompose.IsSuccess() {
+		return responseFileCompose
+	}
+
+	if responseIDs.IsSuccess() && responseFileCompose.IsSuccess() {
+		containerIds := responseIDs.Result.([]string)
+		existsContainer := len(containerIds) > 0
+
+		existsFileCompose := responseFileCompose.Result.(bool)
+		return result.NewResult(existsContainer && existsFileCompose)
+	}
+	return result.NewResult(false)
 }
 
 func (d *containerAdapter) upBuild(ctx context.Context) result.InfraResult {
