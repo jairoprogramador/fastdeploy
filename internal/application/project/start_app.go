@@ -9,8 +9,12 @@ import (
 )
 
 func StartDeploy(projectService service.ProjectService, fileLogger *logger.FileLogger, ctx context.Context) result.DomainResult {
-	presenter.ShowMessage("Starting deploy")
+	presenter.ShowMessage("environment: local")
+	spinner := presenter.ShowMessageSpinner("implementation in progress")
+
 	result := projectService.Start(ctx)
 	fileLogger.WriteToFile()
+
+	defer spinner.Stop()
 	return result
 }

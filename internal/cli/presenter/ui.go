@@ -2,8 +2,10 @@ package presenter
 
 import (
 	"fmt"
+	"github.com/briandowns/spinner"
 	"github.com/jairoprogramador/fastdeploy/pkg/common/logger"
 	"github.com/jairoprogramador/fastdeploy/pkg/common/result"
+	"time"
 )
 
 const (
@@ -47,6 +49,14 @@ func ShowInfo(message string) {
 func ShowMessage(message string) {
 	output := fmt.Sprintf("%s", message)
 	fmt.Println(output)
+}
+
+func ShowMessageSpinner(message string) *spinner.Spinner {
+	output := fmt.Sprintf("%s 🔨 : ", message)
+	sp := spinner.New(spinner.CharSets[33], 100*time.Millisecond)
+	sp.Prefix = output
+	sp.Start()
+	return sp
 }
 
 func Show(response result.DomainResult, fileLogger *logger.FileLogger) {

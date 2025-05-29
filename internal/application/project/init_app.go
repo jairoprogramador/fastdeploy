@@ -8,9 +8,11 @@ import (
 )
 
 func InitApp(projectService service.ProjectService, fileLogger *logger.FileLogger) result.DomainResult {
-	presenter.ShowMessage("Initializing project")
-	result := projectService.Initialize()
+	spinner := presenter.ShowMessageSpinner("implementation in progress")
 
+	result := projectService.Initialize()
 	fileLogger.WriteToFile()
+
+	defer spinner.Stop()
 	return result
 }
