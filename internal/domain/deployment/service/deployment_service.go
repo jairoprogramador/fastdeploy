@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/jairoprogramador/fastdeploy/internal/domain/deployment/model"
 	"github.com/jairoprogramador/fastdeploy/internal/domain/deployment/repository"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/engine/service"
 	"github.com/jairoprogramador/fastdeploy/internal/domain/engine/validator"
 	"github.com/jairoprogramador/fastdeploy/internal/domain/port"
 	"github.com/jairoprogramador/fastdeploy/pkg/constant"
@@ -17,18 +18,18 @@ type DeploymentService interface {
 type deploymentService struct {
 	deploymentRepository repository.DeploymentRepository
 	containerPort        port.ContainerPort
-	variables            *model.StoreEntity
+	storeService         service.StoreServicePort
 }
 
 func NewDeploymentService(
 	deploymentRepository repository.DeploymentRepository,
 	containerPort port.ContainerPort,
-	variables *model.StoreEntity,
+	storeService service.StoreServicePort,
 ) DeploymentService {
 	return &deploymentService{
 		deploymentRepository: deploymentRepository,
 		containerPort:        containerPort,
-		variables:            variables,
+		storeService:         storeService,
 	}
 }
 
@@ -38,11 +39,16 @@ func (s *deploymentService) Load() (*model.DeploymentEntity, error) {
 	if result.IsSuccess() {
 		deployment := result.Result.(model.DeploymentEntity)
 		s.setDefaultType(&deployment)
-		s.setCheckContainer(&deployment)
+		if err := s.setCheckContainer(&deployment); err != nil {
+			return &model.DeploymentEntity{}, err
+		}
+
+		if err := s.storeService.AddDataDeployment(&deployment); err != nil {
+			return &model.DeploymentEntity{}, err
+		}
 
 		return &deployment, nil
 	}
-
 	return &model.DeploymentEntity{}, result.Error
 }
 
@@ -82,8 +88,8 @@ func (s *deploymentService) existsContainer() (bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
 	defer cancel()
 
-	commitHash := s.variables.Get(constant.KeyCommitHash)
-	projectVersion := s.variables.Get(constant.KeyProjectVersion)
+	commitHash := s.storeService.GetStore().Get(constant.KeyCommitHash)
+	projectVersion := s.storeService.GetStore().Get(constant.KeyProjectVersion)
 
 	response := s.containerPort.Exists(ctx, commitHash, projectVersion)
 	if response.IsSuccess() {

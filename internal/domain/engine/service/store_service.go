@@ -14,47 +14,90 @@ const (
 	errorDeploymentIsNil = "deployment cannot be nil"
 )
 
-type StoreServiceInterface interface {
-	GetVariables(ctx context.Context, project *model.ProjectEntity) ([]modelDeploy.Variable, error)
+type StoreServicePort interface {
+	InitStore(ctx context.Context) error
+	AddDataProject(project *model.ProjectEntity) error
+	AddDataDeployment(deployment *modelDeploy.DeploymentEntity) error
+	GetStore() *modelDeploy.StoreEntity
 }
 
 type StoreService struct {
 	gitService  port.GitPort
 	pathService port.PathPort
+	store       *modelDeploy.StoreEntity
 }
 
 func NewStoreService(
 	gitService port.GitPort,
 	pathService port.PathPort,
-) StoreServiceInterface {
+	store *modelDeploy.StoreEntity,
+) StoreServicePort {
 	return &StoreService{
 		gitService:  gitService,
 		pathService: pathService,
+		store:       store,
 	}
 }
 
-func (s *StoreService) GetVariables(ctx context.Context, project *model.ProjectEntity) ([]modelDeploy.Variable, error) {
-	if project == nil {
-		return []modelDeploy.Variable{}, errors.New(errorProjectIsNil)
-	}
+func (s *StoreService) GetStore() *modelDeploy.StoreEntity {
+	return s.store
+}
+
+func (s *StoreService) InitStore(ctx context.Context) error {
 
 	response := s.gitService.GetHash(ctx)
 	if !response.IsSuccess() {
-		return []modelDeploy.Variable{}, response.Error
+		return response.Error
 	}
 	commitHash := response.Result.(string)
 
 	response = s.gitService.GetAuthor(ctx, commitHash)
 	if !response.IsSuccess() {
-		return []modelDeploy.Variable{}, response.Error
+		return response.Error
 	}
 	commitAuthor := response.Result.(string)
 
 	response = s.gitService.GetMessage(ctx, commitHash)
 	if !response.IsSuccess() {
-		return []modelDeploy.Variable{}, response.Error
+		return response.Error
 	}
 	commitMessage := response.Result.(string)
+
+	var variables []modelDeploy.Variable
+
+	variables = append(variables, modelDeploy.Variable{
+		Name:  constant.KeyCommitHash,
+		Value: commitHash,
+	})
+
+	variables = append(variables, modelDeploy.Variable{
+		Name:  constant.KeyCommitAuthor,
+		Value: commitAuthor,
+	})
+
+	variables = append(variables, modelDeploy.Variable{
+		Name:  constant.KeyCommitMessage,
+		Value: commitMessage,
+	})
+
+	variables = append(variables, modelDeploy.Variable{
+		Name:  constant.KeyPathHomeDirectory,
+		Value: s.pathService.GetHomeDirectory(),
+	})
+
+	variables = append(variables, modelDeploy.Variable{
+		Name:  constant.KeyPathDockerDirectory,
+		Value: s.pathService.GetPathDockerDirectory(),
+	})
+
+	s.store.Initialize(variables)
+	return nil
+}
+
+func (s *StoreService) AddDataProject(project *model.ProjectEntity) error {
+	if project == nil {
+		return errors.New(errorProjectIsNil)
+	}
 
 	var variables []modelDeploy.Variable
 
@@ -83,36 +126,27 @@ func (s *StoreService) GetVariables(ctx context.Context, project *model.ProjectE
 		Value: project.TeamName,
 	})
 
-	variables = append(variables, modelDeploy.Variable{
-		Name:  constant.KeyCommitHash,
-		Value: commitHash,
-	})
+	s.store.AddVariables(variables)
+	return nil
+}
 
-	variables = append(variables, modelDeploy.Variable{
-		Name:  constant.KeyCommitAuthor,
-		Value: commitAuthor,
-	})
+func (s *StoreService) AddDataDeployment(deployment *modelDeploy.DeploymentEntity) error {
+	if deployment == nil {
+		return errors.New(errorDeploymentIsNil)
+	}
 
-	variables = append(variables, modelDeploy.Variable{
-		Name:  constant.KeyCommitMessage,
-		Value: commitMessage,
-	})
+	if deployment.Variables.Global != nil {
+		var variables []modelDeploy.Variable
 
-	variables = append(variables, modelDeploy.Variable{
-		Name:  constant.KeyPathHomeDirectory,
-		Value: s.pathService.GetHomeDirectory(),
-	})
+		for _, variable := range deployment.Variables.Global {
+			variables = append(variables, modelDeploy.Variable{
+				Name:  variable.Name,
+				Value: variable.Value,
+			})
+		}
 
-	variables = append(variables, modelDeploy.Variable{
-		Name:  constant.KeyPathDockerDirectory,
-		Value: s.pathService.GetPathDockerDirectory(),
-	})
+		s.store.AddVariables(variables)
+	}
 
-	/*for _, variable := range deployment.Variables.Global {
-		variables = append(variables, modelDeploy.Variable{
-			Name:  variable.Name,
-			Value: variable.Value,
-		})
-	}*/
-	return variables, nil
+	return nil
 }

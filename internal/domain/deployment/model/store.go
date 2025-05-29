@@ -14,13 +14,16 @@ func NewStoreEntity() *StoreEntity {
 
 func (s *StoreEntity) Initialize(variables []Variable) {
 	s.global = make(map[string]string)
+	s.AddVariables(variables)
+}
 
+func (s *StoreEntity) AddVariables(variables []Variable) {
 	for _, v := range variables {
-		s.global[v.Name] = v.Value
+		s.AddVariable(v.Name, v.Value)
 	}
 }
 
-func (s *StoreEntity) AddVariableGlobal(name, value string) {
+func (s *StoreEntity) AddVariable(name, value string) {
 	if s.global == nil {
 		s.global = make(map[string]string)
 	}

@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	serviceConfig "github.com/jairoprogramador/fastdeploy/internal/domain/config/service"
-	modelDeploy "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/model"
 	serviceDeploy "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/service"
 	"github.com/jairoprogramador/fastdeploy/internal/domain/engine"
 	"github.com/jairoprogramador/fastdeploy/internal/domain/engine/service"
@@ -26,17 +25,16 @@ var (
 
 type ProjectService interface {
 	Initialize() result.DomainResult
-	Start() result.DomainResult
+	Start(ctx context.Context) result.DomainResult
 }
 
 type projectService struct {
 	projectRepository repository.ProjectRepository
 	configService     serviceConfig.ConfigService
 	dockerContainer   port.ContainerPort
-	variables         *modelDeploy.StoreEntity
 	engine            *engine.Engine
 	deploymentService serviceDeploy.DeploymentService
-	storeService      service.StoreServiceInterface
+	storeService      service.StoreServicePort
 }
 
 func NewProjectService(
@@ -45,8 +43,7 @@ func NewProjectService(
 	engine *engine.Engine,
 	configService serviceConfig.ConfigService,
 	dockerContainer port.ContainerPort,
-	variables *modelDeploy.StoreEntity,
-	storeService service.StoreServiceInterface,
+	storeService service.StoreServicePort,
 ) ProjectService {
 	return &projectService{
 		projectRepository: projectRepository,
@@ -54,49 +51,31 @@ func NewProjectService(
 		deploymentService: deploymentService,
 		engine:            engine,
 		dockerContainer:   dockerContainer,
-		variables:         variables,
 		storeService:      storeService,
 	}
 }
 
-func (s *projectService) Start() result.DomainResult {
-	if project, err := s.Load(); err == nil {
-
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
-		defer cancel()
-
-		if err := s.setVariables(ctx, project); err != nil {
-			return result.NewErrorApp(err)
-		}
-
-		deployment, err := s.deploymentService.Load()
-		if err != nil {
-			return result.NewErrorApp(err)
-		}
-
-		if err := s.engine.Execute(ctx, deployment); err != nil {
-			return result.NewErrorApp(err)
-		}
-
-		response := s.getUrlContainer(ctx)
-		if response.IsSuccess() {
-			message := fmt.Sprintf(constant.SuccessStartProjectUrl, response.Result.([]string))
-			return result.NewMessageApp(message)
-		}
-
-		return result.NewMessageApp(constant.SuccessStartProject)
+func (s *projectService) Start(ctx context.Context) result.DomainResult {
+	if _, err := s.Load(); err != nil {
+		return result.NewMessageApp(constant.ErrorProjectLoad)
 	}
-	return result.NewMessageApp(constant.ErrorProjectLoad)
-}
 
-func (s *projectService) setVariables(ctx context.Context, project *model.ProjectEntity) error {
-	globalVars, err := s.storeService.GetVariables(ctx, project)
+	deployment, err := s.deploymentService.Load()
 	if err != nil {
-		return err
+		return result.NewErrorApp(err)
 	}
 
-	s.variables.Initialize(globalVars)
-	return nil
+	if err := s.engine.Execute(ctx, deployment); err != nil {
+		return result.NewErrorApp(err)
+	}
+
+	response := s.getUrlContainer(ctx)
+	if response.IsSuccess() {
+		message := fmt.Sprintf(constant.SuccessStartProjectUrl, response.Result.([]string))
+		return result.NewMessageApp(message)
+	}
+
+	return result.NewMessageApp(constant.SuccessStartProject)
 }
 
 func (s *projectService) Initialize() result.DomainResult {
@@ -120,6 +99,9 @@ func (s *projectService) Load() (*model.ProjectEntity, error) {
 		project := result.Result.(model.ProjectEntity)
 		if !project.IsComplete() {
 			return &model.ProjectEntity{}, ErrProjectNotComplete
+		}
+		if err := s.storeService.AddDataProject(&project); err != nil {
+			return &model.ProjectEntity{}, err
 		}
 		return &project, nil
 	}
@@ -166,7 +148,7 @@ func (s *projectService) generateID(prefix string) string {
 }
 
 func (s *projectService) getUrlContainer(ctx context.Context) result.InfraResult {
-	commitHash := s.variables.Get(constant.KeyCommitHash)
-	projectVersion := s.variables.Get(constant.KeyProjectVersion)
+	commitHash := s.storeService.GetStore().Get(constant.KeyCommitHash)
+	projectVersion := s.storeService.GetStore().Get(constant.KeyProjectVersion)
 	return s.dockerContainer.GetURLsUp(ctx, commitHash, projectVersion)
 }

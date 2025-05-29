@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"github.com/jairoprogramador/fastdeploy/internal/application/project"
 	cmdCli "github.com/jairoprogramador/fastdeploy/internal/cli/command"
 	"github.com/jairoprogramador/fastdeploy/internal/cli/handler"
@@ -24,6 +25,7 @@ import (
 	"github.com/jairoprogramador/fastdeploy/pkg/common/logger"
 	"github.com/jairoprogramador/fastdeploy/pkg/common/result"
 	"github.com/spf13/cobra"
+	"time"
 )
 
 const (
@@ -57,7 +59,7 @@ func main() {
 	validator := validator.NewValidator()
 	baseExecutor := executor.NewBaseExecutor()
 	configService := serviceConfig.NewConfigService(configRepository)
-	storeService := serviceEngine.NewStoreService(gitAdapter, appPath)
+	storeService := serviceEngine.NewStoreService(gitAdapter, appPath, store)
 
 	engineInstance := engine.NewEngine(
 		store,
@@ -65,8 +67,8 @@ func main() {
 	)
 	imageAdapter := docker.NewImageAdapter(fileAdapter, templateAdapter, projectRepository, appPath, store)
 	containerAdapter := docker.NewContainerAdapter(commandAdapter, fileAdapter, templateAdapter, imageAdapter, appPath, store, appLoggerFile)
-	deploymentService := serviceDeploy.NewDeploymentService(deployRepository, containerAdapter, store)
-	projectService := serviceProject.NewProjectService(projectRepository, deploymentService, engineInstance, configService, containerAdapter, store, storeService)
+	deploymentService := serviceDeploy.NewDeploymentService(deployRepository, containerAdapter, storeService)
+	projectService := serviceProject.NewProjectService(projectRepository, deploymentService, engineInstance, configService, containerAdapter, storeService)
 
 	appLoggerFile.Info(msgInitDomainServices)
 
@@ -82,7 +84,7 @@ func main() {
 
 	deployCmdFn := getDeployCmdFn()
 	initCmd := newInitCmd(projectService, appLoggerFile)
-	startCmd := newStartCmd(projectService, appLoggerFile)
+	startCmd := newStartCmd(projectService, appLoggerFile, storeService)
 	cmdCli.SetupCommands(deployCmdFn, initCmd, startCmd)
 	appLoggerFile.Info(msgInstantiatedCommands)
 
@@ -105,10 +107,14 @@ func newInitCmd(projectService serviceProject.ProjectService, fileLogger *logger
 	return cmdCli.NewInitCmd(initHandler.Controller, fileLogger)
 }
 
-func newStartCmd(projectService serviceProject.ProjectService, fileLogger *logger.FileLogger) *cobra.Command {
-
+func newStartCmd(projectService serviceProject.ProjectService, fileLogger *logger.FileLogger, storeService serviceEngine.StoreServicePort) *cobra.Command {
 	startAppFn := func() result.DomainResult {
-		return project.StartDeploy(projectService, fileLogger)
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
+		defer cancel()
+
+		storeService.InitStore(ctx)
+
+		return project.StartDeploy(projectService, fileLogger, ctx)
 	}
 
 	startHandler := handler.NewStartHandler(startAppFn)
