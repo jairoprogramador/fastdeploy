@@ -39,6 +39,11 @@ func ShowSuccess(message string) {
 	fmt.Println(output)
 }
 
+func ShowInfo(message string) {
+	output := fmt.Sprintf("%s[INFO]%s %s", ColorBlue, ColorReset, message)
+	fmt.Println(output)
+}
+
 func ShowMessage(message string) {
 	output := fmt.Sprintf("%s", message)
 	fmt.Println(output)
@@ -61,8 +66,14 @@ func showFileLogger(fileLogger *logger.FileLogger) {
 	for _, log := range logs {
 		if log.Level == logger.ERROR {
 			ShowError(log.Error)
-		} else {
+		}
+		if log.Level == logger.SUCCESS {
 			ShowSuccess(log.Message)
+		}
+		if log.Level == logger.INFO {
+			ShowInfo(log.Message)
+		} else {
+			ShowMessage(log.Message)
 		}
 	}
 }

@@ -42,7 +42,7 @@ func (git *gitAdapter) GetAuthor(ctx context.Context, commitHash string) result.
 		return git.logError(err)
 	}
 
-	authorFormatCmd := fmt.Sprintf(cmdShowFormat, "%%an<%%ae>", commitHash)
+	authorFormatCmd := fmt.Sprintf(cmdShowFormat, "%an<%ae>", commitHash)
 	return git.executeCommand(ctx, authorFormatCmd)
 }
 
@@ -51,7 +51,7 @@ func (git *gitAdapter) GetMessage(ctx context.Context, commitHash string) result
 		return git.logError(err)
 	}
 
-	messageFormatCmd := fmt.Sprintf(cmdShowFormat, "%%s", commitHash)
+	messageFormatCmd := fmt.Sprintf(cmdShowFormat, "%s", commitHash)
 	return git.executeCommand(ctx, messageFormatCmd)
 }
 

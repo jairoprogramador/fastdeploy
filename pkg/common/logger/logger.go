@@ -2,12 +2,9 @@ package logger
 
 import (
 	"fmt"
-	"time"
 )
 
 type LogLevel int
-
-const LogTimeFormat = "2006-01-02 15:04:05"
 
 const (
 	DEBUG LogLevel = iota
@@ -15,13 +12,13 @@ const (
 	SUCCESS
 	WARNING
 	ERROR
+	UNKNOWN
 )
 
 type logEntry struct {
-	Level     LogLevel
-	Message   string
-	Error     error
-	Timestamp time.Time
+	Level   LogLevel
+	Message string
+	Error   error
 }
 
 func (l *logEntry) format() string {
@@ -37,13 +34,12 @@ func (l *logEntry) format() string {
 		levelStr = "ERROR"
 	}
 
-	logLine := fmt.Sprintf("[%s] %s: %s",
-		l.Timestamp.Format(LogTimeFormat),
+	logLine := fmt.Sprintf("%s: %s",
 		levelStr,
 		l.Message)
 
 	if l.Error != nil {
-		logLine += fmt.Sprintf(" - Error: %v", l.Error)
+		logLine += fmt.Sprintf("%s", l.Error)
 	}
 
 	return logLine

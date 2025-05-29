@@ -29,11 +29,6 @@ import (
 )
 
 const (
-	msgInitCommon           = "Common components initialized"
-	msgInitInfrastructure   = "Initialized infrastructure services"
-	msgInitDomainServices   = "Domain services Initialized"
-	msgInitExecutors        = "Initialized executors"
-	msgRegisteredExecutors  = "Registered executors"
 	msgInstantiatedCommands = "Instantiated commands"
 )
 
@@ -42,14 +37,11 @@ func main() {
 	appLoggerFile := logger.NewFileLogger(appPath.GetFullPathLoggerFile())
 	store := model.NewStoreEntity()
 
-	appLoggerFile.Info(msgInitCommon)
-
 	commandAdapter := cmdAdapter.NewCommandAdapter(appLoggerFile)
 	gitAdapter := git.NewGitAdapter(commandAdapter, appLoggerFile)
 	templateAdapter := template.NewTemplateAdapter(appLoggerFile)
 	fileAdapter := file.NewFileAdapter(appLoggerFile)
 	yamlAdapter := yaml.NewYamlAdapter(fileAdapter, appLoggerFile)
-	appLoggerFile.Info(msgInitInfrastructure)
 
 	configRepository := repository.NewConfigRepository(yamlAdapter, fileAdapter, appPath, appLoggerFile)
 	projectRepository := repository.NewProjectRepository(yamlAdapter, fileAdapter, appPath, appLoggerFile)
@@ -70,15 +62,11 @@ func main() {
 	deploymentService := serviceDeploy.NewDeploymentService(deployRepository, storeService)
 	projectService := serviceProject.NewProjectService(projectRepository, deploymentService, engineInstance, configService, containerAdapter, storeService)
 
-	appLoggerFile.Info(msgInitDomainServices)
-
 	commandExecutor := executor.NewCommandExecutor(baseExecutor, commandAdapter, evaluatorFactory)
 	containerExecutor := executor.NewContainerExecutor(baseExecutor, containerAdapter, store)
-	appLoggerFile.Info(msgInitExecutors)
 
 	engineInstance.AddExecutor(model.Command, commandExecutor)
 	engineInstance.AddExecutor(model.Container, containerExecutor)
-	appLoggerFile.Info(msgRegisteredExecutors)
 
 	deployCmdFn := getDeployCmdFn()
 	initCmd := newInitCmd(projectService, appLoggerFile)

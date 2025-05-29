@@ -2,7 +2,7 @@ package template
 
 const DockerfileTemplate = `FROM eclipse-temurin:17-jre-alpine
 LABEL description='{{.CommitMessage}}'
-LABEL created.by='fastdeploy'
+LABEL created.by='fastDeploy'
 LABEL maintainer='{{.CommitAuthor}}'
 LABEL commit='{{.CommitHash}}'
 LABEL team='{{.Team}}'
