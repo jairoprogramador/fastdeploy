@@ -54,6 +54,10 @@ El sistema está compuesto por los siguientes componentes:
 
 ## Instalación y Configuración
 
+go build -o fd ./cmd/fast
+
+in Mac: ./fd init
+
 *(Por completar con instrucciones de instalación y configuración)*
 
 ## Licencia
