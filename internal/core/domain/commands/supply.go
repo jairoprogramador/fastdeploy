@@ -1,14 +1,26 @@
 package commands
 
-import "fmt"
+import (
+	"fmt"
+	"github.com/jairoprogramador/fastdeploy/internal/core/domain/strategies/supply"
+)
 
-type SupplyCommand struct {}
+type SupplyCommand struct {
+	BaseCommand
+	supplyStrategy supply.SupplyStrategy
+}
 
-func NewSupplyCommand() Command {
-	return &SupplyCommand{}
+func NewSupplyCommand(strategy supply.SupplyStrategy) Command {
+	return &SupplyCommand{
+		supplyStrategy: strategy,
+	}
 }
 
 func (s *SupplyCommand) Execute() error {
-    fmt.Println("Ejecutando el comando: SUPPLY")
-    return nil
+	fmt.Println("Ejecutando el comando: SUPPLY")
+	if err := s.supplyStrategy.ExecuteSupply(); err != nil {
+		return err
+	}
+	s.ExecuteNext()
+	return nil
 }

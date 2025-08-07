@@ -1,9 +1,10 @@
 package main
 
 import (
-	"log"
+	"github.com/jairoprogramador/fastdeploy/internal/adapters/cli"
 	"github.com/jairoprogramador/fastdeploy/internal/core/domain/commands"
 	"github.com/spf13/cobra"
+	"log"
 )
 
 func NewTestCmd() *cobra.Command {
@@ -13,8 +14,17 @@ func NewTestCmd() *cobra.Command {
 		Long: `Este comando ejecuta pruebas unitarias, de integración, escaneos de seguridad y otros análisis estáticos
 			para asegurar la calidad del código.`,
 		Run: func(cmd *cobra.Command, args []string) {
-			command := commands.NewTestCommand()
-			if err := command.Execute(); err != nil {
+			projectTechnology := "java" // o "node"
+
+			factory, err := cli.GetStrategyFactory(projectTechnology)
+			if err != nil {
+				log.Fatalf("Error al obtener la fábrica de estrategias: %v", err)
+			}
+
+			testStrategy := factory.CreateTestStrategy()
+
+			testCommand := commands.NewTestCommand(testStrategy)
+			if err := testCommand.Execute(); err != nil {
 				log.Fatalf("Error al ejecutar el comando test: %v", err)
 			}
 		},

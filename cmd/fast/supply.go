@@ -1,19 +1,34 @@
 package main
 
 import (
-	"log"
+	"github.com/jairoprogramador/fastdeploy/internal/adapters/cli"
 	"github.com/jairoprogramador/fastdeploy/internal/core/domain/commands"
 	"github.com/spf13/cobra"
+	"log"
 )
 
 func NewSupplyCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "supply",
 		Short: "Ejecuta el suministro de la aplicación.",
-		Long: `Este comando ejecuta el suministro de la aplicación.`,
+		Long:  `Este comando ejecuta el suministro de la aplicación.`,
 		Run: func(cmd *cobra.Command, args []string) {
-			command := commands.NewSupplyCommand()
-			if err := command.Execute(); err != nil {
+			projectTechnology := "java" // o "node"
+
+			factory, err := cli.GetStrategyFactory(projectTechnology)
+			if err != nil {
+				log.Fatalf("Error al obtener la fábrica de estrategias: %v", err)
+			}
+
+			testStrategy := factory.CreateTestStrategy()
+			supplyStrategy := factory.CreateSupplyStrategy()
+
+			testCommand := commands.NewTestCommand(testStrategy)
+			supplyCommand := commands.NewSupplyCommand(supplyStrategy)
+
+			testCommand.SetNext(supplyCommand)
+
+			if err := testCommand.Execute(); err != nil {
 				log.Fatalf("Error al ejecutar el comando supply: %v", err)
 			}
 		},
