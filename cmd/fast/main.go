@@ -31,12 +31,14 @@ import (
 const (
 	msgInstantiatedCommands = "Instantiated commands"
 )
+
 func main() {
 	rootCmd := NewRootCmd()
 	rootCmd.AddCommand(NewTestCmd())
 	rootCmd.AddCommand(NewSupplyCmd())
 	rootCmd.AddCommand(NewPackageCmd())
 	rootCmd.AddCommand(NewDeployCmd())
+	rootCmd.AddCommand(NewInitCmd())
 	rootCmd.Execute()
 }
 
