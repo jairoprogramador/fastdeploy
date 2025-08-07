@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"github.com/jairoprogramador/fastdeploy/internal/core/domain/context"
 	"github.com/jairoprogramador/fastdeploy/internal/core/domain/strategies/packet"
 )
 
@@ -16,11 +17,11 @@ func NewPackageCommand(strategy packet.PacketStrategy) Command {
 	}
 }
 
-func (p *PackageCommand) Execute() error {
+func (p *PackageCommand) Execute(ctx context.Context) error {
 	fmt.Println("Ejecutando el comando: PACKAGE")
 	if err := p.packetStrategy.ExecutePacket(); err != nil {
 		return err
 	}
-	p.ExecuteNext()
+	p.ExecuteNext(ctx)
 	return nil
 }

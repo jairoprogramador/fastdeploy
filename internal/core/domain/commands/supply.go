@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"github.com/jairoprogramador/fastdeploy/internal/core/domain/context"
 	"github.com/jairoprogramador/fastdeploy/internal/core/domain/strategies/supply"
 )
 
@@ -16,11 +17,11 @@ func NewSupplyCommand(strategy supply.SupplyStrategy) Command {
 	}
 }
 
-func (s *SupplyCommand) Execute() error {
+func (s *SupplyCommand) Execute(ctx context.Context) error {
 	fmt.Println("Ejecutando el comando: SUPPLY")
 	if err := s.supplyStrategy.ExecuteSupply(); err != nil {
 		return err
 	}
-	s.ExecuteNext()
+	s.ExecuteNext(ctx)
 	return nil
 }

@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/jairoprogramador/fastdeploy/internal/adapters/cli"
 	"github.com/jairoprogramador/fastdeploy/internal/core/domain/commands"
+	"github.com/jairoprogramador/fastdeploy/internal/core/domain/context"
 	"github.com/spf13/cobra"
 	"log"
 )
@@ -34,7 +35,9 @@ func NewDeployCmd() *cobra.Command {
 			supplyCommand.SetNext(packageCommand)
 			packageCommand.SetNext(deployCommand)
 
-			if err := testCommand.Execute(); err != nil {
+			pipelineContext := context.NewPipelineContext()
+
+			if err := testCommand.Execute(pipelineContext); err != nil {
 				log.Fatalf("Error al ejecutar el comando: %v", err)
 			}
 		},

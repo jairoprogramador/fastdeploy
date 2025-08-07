@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"github.com/jairoprogramador/fastdeploy/internal/core/domain/context"
 	"github.com/jairoprogramador/fastdeploy/internal/core/domain/strategies/deploy"
 )
 
@@ -16,11 +17,22 @@ func NewDeployCommand(strategy deploy.DeployStrategy) Command {
 	}
 }
 
-func (d *DeployCommand) Execute() error {
+func (d *DeployCommand) Execute(ctx context.Context) error {
 	fmt.Println("Ejecutando el comando: DEPLOY")
 	if err := d.deployStrategy.ExecuteDeploy(); err != nil {
 		return err
 	}
-	d.ExecuteNext()
+	/* packageName, err := ctx.Get("package.name")
+	if err != nil {
+		return err
+	}
+	packageVersion, err := ctx.Get("package.version")
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("  Desplegando paquete: %s:%s\n", packageName, packageVersion) */
+
+	d.ExecuteNext(ctx)
 	return nil
 }
