@@ -18,7 +18,7 @@ func NewInitCmd() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			initializer := project.NewInitializer()
 
-			if initializer.CheckIfAlreadyInitialized() {
+			if project.CheckIfAlreadyInitialized() {
 				fmt.Println("¡El proyecto ya ha sido inicializado!")
 				return
 			}

@@ -21,7 +21,7 @@ func NewInitializer() *Initializer {
 	return &Initializer{}
 }
 
-func (i *Initializer) CheckIfAlreadyInitialized() bool {
+func CheckIfAlreadyInitialized() bool {
 	info, err := os.Stat(defaultYAMLFile)
 	if os.IsNotExist(err) {
 		return false
