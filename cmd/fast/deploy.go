@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"github.com/jairoprogramador/fastdeploy/internal/adapters/cli"
+	"github.com/jairoprogramador/fastdeploy/internal/constants"
 	"github.com/jairoprogramador/fastdeploy/internal/core/domain/commands"
 	"github.com/jairoprogramador/fastdeploy/internal/core/domain/context"
 	"github.com/spf13/cobra"
@@ -9,7 +11,9 @@ import (
 )
 
 func NewDeployCmd() *cobra.Command {
-	return &cobra.Command{
+	skippableSteps := []string{constants.StepTest, constants.StepSupply}
+
+	cmd := &cobra.Command{
 		Use:   "deploy",
 		Short: "Ejecuta el despliegue de la aplicación.",
 		Long:  `Este comando ejecuta el despliegue de la aplicación.`,
@@ -21,25 +25,33 @@ func NewDeployCmd() *cobra.Command {
 				log.Fatalf("Error al obtener la fábrica de estrategias: %v", err)
 			}
 
-			testStrategy := factory.CreateTestStrategy()
-			supplyStrategy := factory.CreateSupplyStrategy()
-			packetStrategy := factory.CreatePackageStrategy()
-			deployStrategy := factory.CreateDeployStrategy()
+			allCommands := map[string]commands.Command{
+				constants.StepTest:    commands.NewTestCommand(factory.CreateTestStrategy()),
+				constants.StepSupply:  commands.NewSupplyCommand(factory.CreateSupplyStrategy()),
+				constants.StepPackage: commands.NewPackageCommand(factory.CreatePackageStrategy()),
+				constants.StepDeploy:  commands.NewDeployCommand(factory.CreateDeployStrategy()),
+			}
 
-			testCommand := commands.NewTestCommand(testStrategy)
-			supplyCommand := commands.NewSupplyCommand(supplyStrategy)
-			packageCommand := commands.NewPackageCommand(packetStrategy)
-			deployCommand := commands.NewDeployCommand(deployStrategy)
+			skipFlags := cli.GetSkipFlags(cmd, skippableSteps)
 
-			testCommand.SetNext(supplyCommand)
-			supplyCommand.SetNext(packageCommand)
-			packageCommand.SetNext(deployCommand)
+			executionOrder := []string{constants.StepTest, constants.StepSupply, constants.StepPackage, constants.StepDeploy}
 
-			pipelineContext := context.NewPipelineContext()
+			firstCommand, err := cli.BuildDynamicChain(allCommands, skipFlags, executionOrder)
+			if err != nil {
+				log.Fatalf("Error al construir la cadena de comandos: %v", err)
+			}
 
-			if err := testCommand.Execute(pipelineContext); err != nil {
-				log.Fatalf("Error al ejecutar el comando: %v", err)
+			if firstCommand != nil {
+				pipelineContext := context.NewPipelineContext()
+
+				if err := firstCommand.Execute(pipelineContext); err != nil {
+					log.Fatalf("Error al ejecutar el comando: %v", err)
+				}
+			} else {
+				fmt.Println("No se seleccionaron pasos para ejecutar. Saliendo...")
 			}
 		},
 	}
+	cli.AddSkipFlags(cmd, skippableSteps)
+	return cmd
 }

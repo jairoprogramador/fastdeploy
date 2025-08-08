@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"github.com/jairoprogramador/fastdeploy/internal/adapters/cli"
+	"github.com/jairoprogramador/fastdeploy/internal/constants"
 	"github.com/jairoprogramador/fastdeploy/internal/core/domain/commands"
 	"github.com/jairoprogramador/fastdeploy/internal/core/domain/context"
 	"github.com/spf13/cobra"
@@ -9,7 +11,9 @@ import (
 )
 
 func NewSupplyCmd() *cobra.Command {
-	return &cobra.Command{
+	skippableSteps := []string{constants.StepTest}
+
+	cmd := &cobra.Command{
 		Use:   "supply",
 		Short: "Ejecuta el suministro de la aplicación.",
 		Long:  `Este comando ejecuta el suministro de la aplicación.`,
@@ -21,19 +25,31 @@ func NewSupplyCmd() *cobra.Command {
 				log.Fatalf("Error al obtener la fábrica de estrategias: %v", err)
 			}
 
-			testStrategy := factory.CreateTestStrategy()
-			supplyStrategy := factory.CreateSupplyStrategy()
+			allCommands := map[string]commands.Command{
+				constants.StepTest:   commands.NewTestCommand(factory.CreateTestStrategy()),
+				constants.StepSupply: commands.NewSupplyCommand(factory.CreateSupplyStrategy()),
+			}
 
-			testCommand := commands.NewTestCommand(testStrategy)
-			supplyCommand := commands.NewSupplyCommand(supplyStrategy)
+			skipFlags := cli.GetSkipFlags(cmd, skippableSteps)
 
-			testCommand.SetNext(supplyCommand)
+			executionOrder := []string{constants.StepTest, constants.StepSupply}
 
-			pipelineContext := context.NewPipelineContext()
+			firstCommand, err := cli.BuildDynamicChain(allCommands, skipFlags, executionOrder)
+			if err != nil {
+				log.Fatalf("Error al construir la cadena de comandos: %v", err)
+			}
 
-			if err := testCommand.Execute(pipelineContext); err != nil {
-				log.Fatalf("Error al ejecutar el comando supply: %v", err)
+			if firstCommand != nil {
+				pipelineContext := context.NewPipelineContext()
+
+				if err := firstCommand.Execute(pipelineContext); err != nil {
+					log.Fatalf("Error al ejecutar el comando: %v", err)
+				}
+			} else {
+				fmt.Println("No se seleccionaron pasos para ejecutar. Saliendo...")
 			}
 		},
 	}
+	cli.AddSkipFlags(cmd, skippableSteps)
+	return cmd
 }

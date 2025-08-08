@@ -22,9 +22,7 @@ func NewTestCmd() *cobra.Command {
 				log.Fatalf("Error al obtener la fábrica de estrategias: %v", err)
 			}
 
-			testStrategy := factory.CreateTestStrategy()
-
-			testCommand := commands.NewTestCommand(testStrategy)
+			testCommand := commands.NewTestCommand(factory.CreateTestStrategy())
 
 			pipelineContext := context.NewPipelineContext()
 
