@@ -39,6 +39,7 @@ func main() {
 	rootCmd.AddCommand(NewPackageCmd())
 	rootCmd.AddCommand(NewDeployCmd())
 	rootCmd.AddCommand(NewInitCmd())
+	rootCmd.AddCommand(NewConfigCmd())
 	rootCmd.Execute()
 }
 

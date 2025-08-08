@@ -4,6 +4,7 @@ import (
 	"crypto/sha1"
 	"fmt"
 	"github.com/jairoprogramador/fastdeploy/internal/core/domain/config"
+	"github.com/jairoprogramador/fastdeploy/internal/core/domain/globalconfig"
 	"os"
 	"os/exec"
 	"os/user"
@@ -40,14 +41,33 @@ func (i *Initializer) InitializeProject(projectName string) (*config.Config, err
 		return nil, fmt.Errorf("error al generar ID único: %w", err)
 	}
 
+	globalCfg, err := globalconfig.Load()
+	if err != nil {
+		return nil, fmt.Errorf("error al cargar la configuración global: %w", err)
+	}
+
+	org := defaultOrganization
+	repo := defaultRepositoryURL
+	team := defaultTeamName
+
+	if globalCfg.Organization != "" {
+		org = globalCfg.Organization
+	}
+	if globalCfg.Repository != "" {
+		repo = globalCfg.Repository
+	}
+	if globalCfg.TeamName != "" {
+		team = globalCfg.TeamName
+	}
+
 	cfg := &config.Config{
-		Organization: defaultOrganization,
+		Organization: org,
 		ProjectID:    projectID,
 		ProjectName:  projectName,
-		Repository:   defaultRepositoryURL,
+		Repository:   repo,
 		Technology:   "java",
 		Version:      defaultVersion,
-		TeamName:     defaultTeamName,
+		TeamName:     team,
 	}
 
 	if err := i.cloneRepository(cfg.Repository); err != nil {

@@ -20,7 +20,7 @@ func NewRootCmd() *cobra.Command {
 		Short: "CLI para gestionar despliegues de aplicaciones",
 		Long:  `Una herramienta de línea de comandos para gestionar el despliegue de aplicaciones en diferentes ambientes con dependencias configurables.`,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-			if cmd.Name() == "init" {
+			if cmd.Name() == "init" || cmd.Name() == "config" {
 				return
 			}
 			if !project.CheckIfAlreadyInitialized() {
