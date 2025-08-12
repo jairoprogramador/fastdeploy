@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/jairoprogramador/fastdeploy/internal/core/domain/globalconfig"
+	"github.com/jairoprogramador/fastdeploy/internal/core/domain/config"
 	"github.com/spf13/cobra"
 	"log"
 )
@@ -21,7 +21,7 @@ func NewConfigCmd() *cobra.Command {
 		Long:  `Este comando te permite establecer valores por defecto para la organización, el equipo y el repositorio, que se usarán al inicializar nuevos proyectos.`,
 		Run: func(cmd *cobra.Command, args []string) {
 
-			cfg, err := globalconfig.Load()
+			cfg, err := config.Load()
 			if err != nil {
 				log.Fatalf("Error al cargar la configuración existente: %v", err)
 			}
@@ -45,7 +45,7 @@ func NewConfigCmd() *cobra.Command {
 					cfg.Repository = repositoryConfig
 				}
 
-				if err := cfg.Save(); err != nil {
+				if err := config.Save(*cfg); err != nil {
 					log.Fatalf("Error al guardar la configuración: %v", err)
 				}
 

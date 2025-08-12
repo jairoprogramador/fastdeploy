@@ -1,9 +1,8 @@
 package constants
 
 const (
-	StepTest       = "test"
-	StepSupply     = "supply"
-	StepPackage    = "package"
-	StepDeploy     = "deploy"
-	SkipFlagPrefix = "skip-"
+	StepTest    = "test"
+	StepSupply  = "supply"
+	StepPackage = "package"
+	StepDeploy  = "deploy"
 )

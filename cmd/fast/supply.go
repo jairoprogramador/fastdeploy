@@ -2,12 +2,15 @@ package main
 
 import (
 	"fmt"
+	"log"
+
 	"github.com/jairoprogramador/fastdeploy/internal/adapters/cli"
+	"github.com/jairoprogramador/fastdeploy/internal/adapters/cli/utils"
 	"github.com/jairoprogramador/fastdeploy/internal/constants"
 	"github.com/jairoprogramador/fastdeploy/internal/core/domain/commands"
 	"github.com/jairoprogramador/fastdeploy/internal/core/domain/context"
+	"github.com/jairoprogramador/fastdeploy/internal/core/domain/project"
 	"github.com/spf13/cobra"
-	"log"
 )
 
 func NewSupplyCmd() *cobra.Command {
@@ -20,7 +23,17 @@ func NewSupplyCmd() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			projectTechnology := "java" // o "node"
 
-			factory, err := cli.GetStrategyFactory(projectTechnology)
+			projectEntity, err := project.Load()
+			if err != nil {
+				log.Fatalf("Error al leer datos del proyecto: %v", err)
+			}
+
+			repositoryFilePath, err := utils.GetRepositoryPath(*projectEntity)
+			if err != nil {
+				log.Fatalf("Error al obtener ruta del repositorio: %v", err)
+			}
+
+			factory, err := cli.GetStrategyFactory(projectTechnology, repositoryFilePath)
 			if err != nil {
 				log.Fatalf("Error al obtener la fábrica de estrategias: %v", err)
 			}
@@ -30,17 +43,18 @@ func NewSupplyCmd() *cobra.Command {
 				constants.StepSupply: commands.NewSupplyCommand(factory.CreateSupplyStrategy()),
 			}
 
-			skipFlags := cli.GetSkipFlags(cmd, skippableSteps)
+			skipFlags := utils.GetSkipFlags(cmd, skippableSteps)
 
 			executionOrder := []string{constants.StepTest, constants.StepSupply}
 
-			firstCommand, err := cli.BuildDynamicChain(allCommands, skipFlags, executionOrder)
+			firstCommand, err := utils.BuildDynamicChain(allCommands, skipFlags, executionOrder)
 			if err != nil {
 				log.Fatalf("Error al construir la cadena de comandos: %v", err)
 			}
 
 			if firstCommand != nil {
 				pipelineContext := context.NewPipelineContext()
+				pipelineContext.Set(constants.Technology, projectEntity.Technology)
 
 				if err := firstCommand.Execute(pipelineContext); err != nil {
 					log.Fatalf("Error al ejecutar el comando: %v", err)
@@ -50,6 +64,6 @@ func NewSupplyCmd() *cobra.Command {
 			}
 		},
 	}
-	cli.AddSkipFlags(cmd, skippableSteps)
+	utils.AddSkipFlags(cmd, skippableSteps)
 	return cmd
 }

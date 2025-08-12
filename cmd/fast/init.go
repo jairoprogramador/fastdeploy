@@ -5,8 +5,6 @@ import (
 	"github.com/jairoprogramador/fastdeploy/internal/core/domain/project"
 	"github.com/spf13/cobra"
 	"log"
-	"os"
-	"path/filepath"
 )
 
 func NewInitCmd() *cobra.Command {
@@ -23,12 +21,7 @@ func NewInitCmd() *cobra.Command {
 				return
 			}
 
-			projectName, err := getProjectName()
-			if err != nil {
-				log.Fatalf("Error: %v", err)
-			}
-
-			cfg, err := initializer.InitializeProject(projectName)
+			cfg, err := initializer.InitializeProject()
 			if err != nil {
 				log.Fatalf("Error al inicializar el proyecto: %v", err)
 			}
@@ -37,12 +30,4 @@ func NewInitCmd() *cobra.Command {
 			fmt.Printf("Archivo de configuración '%s' creado.\n", "fastDeploy.yaml")
 		},
 	}
-}
-
-func getProjectName() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", fmt.Errorf("no se pudo obtener el directorio de trabajo: %w", err)
-	}
-	return filepath.Base(dir), nil
 }

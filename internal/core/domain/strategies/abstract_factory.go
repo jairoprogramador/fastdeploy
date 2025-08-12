@@ -1,15 +1,12 @@
 package strategies
 
 import (
-	"github.com/jairoprogramador/fastdeploy/internal/core/domain/strategies/deploy"
-	"github.com/jairoprogramador/fastdeploy/internal/core/domain/strategies/packet"
-	"github.com/jairoprogramador/fastdeploy/internal/core/domain/strategies/supply"
-	"github.com/jairoprogramador/fastdeploy/internal/core/domain/strategies/test"
+	"github.com/jairoprogramador/fastdeploy/internal/core/domain/strategies/steps"
 )
 
 type StrategyFactory interface {
-	CreateTestStrategy() test.TestStrategy
-	CreateSupplyStrategy() supply.SupplyStrategy
-	CreatePackageStrategy() packet.PacketStrategy
-	CreateDeployStrategy() deploy.DeployStrategy
+	CreateTestStrategy() steps.TestStrategy
+	CreateSupplyStrategy() steps.SupplyStrategy
+	CreatePackageStrategy() steps.PacketStrategy
+	CreateDeployStrategy() steps.DeployStrategy
 }
