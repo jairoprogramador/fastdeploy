@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
-	"github.com/jairoprogramador/fastdeploy/internal/core/domain/config"
-	"github.com/spf13/cobra"
 	"log"
+
+	"github.com/jairoprogramador/fastdeploy/internal/adapters/config"
+	"github.com/spf13/cobra"
 )
 
 var (
@@ -20,17 +21,19 @@ func NewConfigCmd() *cobra.Command {
 		Short: "Configura los valores globales de la herramienta.",
 		Long:  `Este comando te permite establecer valores por defecto para la organización, el equipo y el repositorio, que se usarán al inicializar nuevos proyectos.`,
 		Run: func(cmd *cobra.Command, args []string) {
+			// Crear las dependencias
+			configService := config.NewConfigFactory().CreateService()
 
-			cfg, err := config.Load()
+			cfg, err := configService.Load()
 			if err != nil {
 				log.Fatalf("Error al cargar la configuración existente: %v", err)
 			}
 
 			if listConfig {
 				fmt.Println("Configuración global de FastDeploy:")
-				fmt.Printf("  Organización = %s\n", cfg.Organization)
-				fmt.Printf("  Nombre del Equipo = %s\n", cfg.TeamName)
-				fmt.Printf("  Repositorio = %s\n", cfg.Repository)
+				fmt.Printf("  Organización: %s\n", cfg.Organization)
+				fmt.Printf("  Nombre del Equipo: %s\n", cfg.TeamName)
+				fmt.Printf("  Repositorio: %s\n", cfg.Repository)
 				return
 			}
 
@@ -45,7 +48,7 @@ func NewConfigCmd() *cobra.Command {
 					cfg.Repository = repositoryConfig
 				}
 
-				if err := config.Save(*cfg); err != nil {
+				if err := configService.Save(*cfg); err != nil {
 					log.Fatalf("Error al guardar la configuración: %v", err)
 				}
 

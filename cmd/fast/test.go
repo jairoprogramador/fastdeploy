@@ -2,11 +2,11 @@ package main
 
 import (
 	"github.com/jairoprogramador/fastdeploy/internal/adapters/cli"
-	"github.com/jairoprogramador/fastdeploy/internal/adapters/cli/utils"
+	"github.com/jairoprogramador/fastdeploy/internal/adapters/git"
+	"github.com/jairoprogramador/fastdeploy/internal/adapters/project"
 	"github.com/jairoprogramador/fastdeploy/internal/constants"
 	"github.com/jairoprogramador/fastdeploy/internal/core/domain/commands"
 	"github.com/jairoprogramador/fastdeploy/internal/core/domain/context"
-	"github.com/jairoprogramador/fastdeploy/internal/core/domain/project"
 	"github.com/spf13/cobra"
 	"log"
 )
@@ -20,12 +20,12 @@ func NewTestCmd() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			projectTechnology := "java" // o "node"
 
-			projectEntity, err := project.Load()
+			projectEntity, err := project.NewProjectFactory().CreateService().Load()
 			if err != nil {
 				log.Fatalf("Error al leer datos del proyecto: %v", err)
 			}
 
-			repositoryFilePath, err := utils.GetRepositoryPath(*projectEntity)
+			repositoryFilePath, err := git.NewGitFactory().CreatePathResolver().GetDirectoryPath(projectEntity.Repository)
 			if err != nil {
 				log.Fatalf("Error al obtener ruta del repositorio: %v", err)
 			}
