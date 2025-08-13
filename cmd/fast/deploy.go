@@ -2,16 +2,14 @@ package main
 
 import (
 	"fmt"
-	"log"
-
-	"github.com/jairoprogramador/fastdeploy/internal/adapters/cli"
-	"github.com/jairoprogramador/fastdeploy/internal/adapters/cli/utils"
-	"github.com/jairoprogramador/fastdeploy/internal/adapters/git"
-	"github.com/jairoprogramador/fastdeploy/internal/adapters/project"
+	factory "github.com/jairoprogramador/fastdeploy/internal/adapters/factory/impl"
+	"github.com/jairoprogramador/fastdeploy/internal/adapters/strategies"
+	"github.com/jairoprogramador/fastdeploy/internal/adapters/utils"
 	"github.com/jairoprogramador/fastdeploy/internal/constants"
 	"github.com/jairoprogramador/fastdeploy/internal/core/domain/commands"
 	"github.com/jairoprogramador/fastdeploy/internal/core/domain/context"
 	"github.com/spf13/cobra"
+	"log"
 )
 
 func NewDeployCmd() *cobra.Command {
@@ -24,17 +22,17 @@ func NewDeployCmd() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			projectTechnology := "java" // o "node"
 
-			projectEntity, err := project.NewProjectFactory().CreateService().Load()
+			projectEntity, err := factory.NewServiceFactory().CreateProjectService().Load()
 			if err != nil {
 				log.Fatalf("Error al leer datos del proyecto: %v", err)
 			}
 
-			repositoryFilePath, err := git.NewGitFactory().CreatePathResolver().GetDirectoryPath(projectEntity.Repository)
+			repositoryFilePath, err := factory.NewPathFactory().CreateGitPathResolver().GetDirectoryPath(projectEntity.Repository)
 			if err != nil {
 				log.Fatalf("Error al obtener ruta del repositorio: %v", err)
 			}
 
-			factory, err := cli.GetStrategyFactory(projectTechnology, repositoryFilePath)
+			factory, err := strategies.GetStrategyFactory(projectTechnology, repositoryFilePath)
 			if err != nil {
 				log.Fatalf("Error al obtener la fábrica de estrategias: %v", err)
 			}

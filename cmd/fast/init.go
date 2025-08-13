@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/jairoprogramador/fastdeploy/internal/adapters/project"
+	factory "github.com/jairoprogramador/fastdeploy/internal/adapters/factory/impl"
 	"github.com/spf13/cobra"
 )
 
@@ -15,7 +15,7 @@ func NewInitCmd() *cobra.Command {
 		Long: `Este comando crea el archivo fastDeploy.yaml en el directorio actual 
 	con las configuraciones por defecto, como el nombre del proyecto, ID y versión.`,
 		Run: func(cmd *cobra.Command, args []string) {
-			initializer := project.NewProjectFactory().CreateInitialize()
+			initializer := factory.NewInitializeFactory().CreateInitialize()
 
 			if initializer.IsInitialized() {
 				fmt.Println("¡El proyecto ya ha sido inicializado!")

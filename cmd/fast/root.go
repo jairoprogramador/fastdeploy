@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/jairoprogramador/fastdeploy/internal/adapters/project"
+	factory "github.com/jairoprogramador/fastdeploy/internal/adapters/factory/impl"
 	"github.com/spf13/cobra"
 )
 
@@ -23,7 +23,7 @@ func NewRootCmd() *cobra.Command {
 			if cmd.Name() == "init" || cmd.Name() == "config" {
 				return
 			}
-			if !project.NewProjectFactory().CreateInitialize().IsInitialized() {
+			if !factory.NewInitializeFactory().CreateInitialize().IsInitialized() {
 				fmt.Println("El despliegue del proyecto no ha sido inicializado.")
 				fmt.Println("Por favor, ejecuta 'init' para comenzar.")
 				os.Exit(1)

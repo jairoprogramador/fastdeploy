@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/jairoprogramador/fastdeploy/internal/adapters/config"
+	factory "github.com/jairoprogramador/fastdeploy/internal/adapters/factory/impl"
 	"github.com/spf13/cobra"
 )
 
@@ -22,7 +22,7 @@ func NewConfigCmd() *cobra.Command {
 		Long:  `Este comando te permite establecer valores por defecto para la organización, el equipo y el repositorio, que se usarán al inicializar nuevos proyectos.`,
 		Run: func(cmd *cobra.Command, args []string) {
 			// Crear las dependencias
-			configService := config.NewConfigFactory().CreateService()
+			configService := factory.NewServiceFactory().CreateConfigService()
 
 			cfg, err := configService.Load()
 			if err != nil {
