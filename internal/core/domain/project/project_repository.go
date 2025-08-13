@@ -1,8 +1,16 @@
 package project
 
-type ProjectRepository interface {
-	Save(projectEntity ProjectEntity) error
+type RepositoryReader interface {
 	Load() (*ProjectEntity, error)
 	Exists() bool
+}
+
+type RepositoryWriter interface {
+	Save(projectEntity ProjectEntity) error
 	Delete() error
+}
+
+type ProjectRepository interface {
+	RepositoryReader
+	RepositoryWriter
 }

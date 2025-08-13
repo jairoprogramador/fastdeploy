@@ -8,18 +8,18 @@ import (
 
 type PackageCommand struct {
 	BaseCommand
-	packetStrategy strategies.Strategy
+	strategy strategies.Strategy
 }
 
 func NewPackageCommand(strategy strategies.Strategy) Command {
 	return &PackageCommand{
-		packetStrategy: strategy,
+		strategy: strategy,
 	}
 }
 
 func (p *PackageCommand) Execute(ctx context.Context) error {
 	fmt.Println("Ejecutando el comando: PACKAGE")
-	if err := p.packetStrategy.Execute(ctx); err != nil {
+	if err := p.strategy.Execute(ctx); err != nil {
 		return err
 	}
 	p.ExecuteNext(ctx)

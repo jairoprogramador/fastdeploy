@@ -23,6 +23,7 @@ func NewRootCmd() *cobra.Command {
 			if cmd.Name() == "init" || cmd.Name() == "config" {
 				return
 			}
+
 			if !factory.NewInitializeFactory().CreateInitialize().IsInitialized() {
 				fmt.Println("El despliegue del proyecto no ha sido inicializado.")
 				fmt.Println("Por favor, ejecuta 'init' para comenzar.")

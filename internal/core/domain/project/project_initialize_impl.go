@@ -68,7 +68,7 @@ func (pis *ProjectInitializeImpl) Initialize() (*ProjectEntity, error) {
 	projectEntity.Repository = repository
 	projectEntity.TeamName = teamName
 
-	if err := git.CloneRepository(projectEntity.Repository); err != nil {
+	if err := pis.gitService.Clone(projectEntity.Repository); err != nil {
 		return nil, fmt.Errorf("error al clonar el repositorio: %w", err)
 	}
 

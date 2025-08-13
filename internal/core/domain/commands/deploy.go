@@ -8,18 +8,18 @@ import (
 
 type DeployCommand struct {
 	BaseCommand
-	deployStrategy strategies.Strategy
+	strategy strategies.Strategy
 }
 
 func NewDeployCommand(strategy strategies.Strategy) Command {
 	return &DeployCommand{
-		deployStrategy: strategy,
+		strategy: strategy,
 	}
 }
 
 func (d *DeployCommand) Execute(ctx context.Context) error {
 	fmt.Println("Ejecutando el comando: DEPLOY")
-	if err := d.deployStrategy.Execute(ctx); err != nil {
+	if err := d.strategy.Execute(ctx); err != nil {
 		return err
 	}
 	d.ExecuteNext(ctx)

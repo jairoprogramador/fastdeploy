@@ -1,8 +1,16 @@
 package config
 
-type ConfigService interface {
-	Save(configEntity ConfigEntity) error
+type ServiceReader interface {
 	Load() (*ConfigEntity, error)
 	Exists() bool
+}
+
+type ServiceWriter interface {
+	Save(configEntity ConfigEntity) error
 	Delete() error
+}
+
+type ConfigService interface {
+	ServiceReader
+	ServiceWriter
 }
