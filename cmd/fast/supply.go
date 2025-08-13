@@ -5,7 +5,7 @@ import (
 	"log"
 
 	factory "github.com/jairoprogramador/fastdeploy/internal/adapters/factory/impl"
-	"github.com/jairoprogramador/fastdeploy/internal/adapters/strategies"
+	"github.com/jairoprogramador/fastdeploy/internal/adapters/strategies/manager"
 	"github.com/jairoprogramador/fastdeploy/internal/adapters/utils"
 	"github.com/jairoprogramador/fastdeploy/internal/constants"
 	"github.com/jairoprogramador/fastdeploy/internal/core/domain/commands"
@@ -28,12 +28,12 @@ func NewSupplyCmd() *cobra.Command {
 				log.Fatalf("Error al leer datos del proyecto: %v", err)
 			}
 
-			repositoryFilePath, err := factory.NewPathFactory().CreateGitPathResolver().GetDirectoryPath(projectEntity.Repository)
+			repositoryPath, err := factory.NewPathFactory().CreateGitPathResolver().GetDirectoryPath(projectEntity.Repository)
 			if err != nil {
 				log.Fatalf("Error al obtener ruta del repositorio: %v", err)
 			}
 
-			factory, err := strategies.GetStrategyFactory(projectTechnology, repositoryFilePath)
+			factory, err := manager.NewFactoryManager().GetFactory(projectTechnology, repositoryPath)
 			if err != nil {
 				log.Fatalf("Error al obtener la fábrica de estrategias: %v", err)
 			}
