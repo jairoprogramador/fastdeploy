@@ -3,15 +3,15 @@ package commands
 import (
 	"fmt"
 	"github.com/jairoprogramador/fastdeploy/internal/core/domain/context"
-	"github.com/jairoprogramador/fastdeploy/internal/core/domain/strategies/steps"
+	"github.com/jairoprogramador/fastdeploy/internal/core/domain/strategies"
 )
 
 type SupplyCommand struct {
 	BaseCommand
-	supplyStrategy steps.SupplyStrategy
+	supplyStrategy strategies.Strategy
 }
 
-func NewSupplyCommand(strategy steps.SupplyStrategy) Command {
+func NewSupplyCommand(strategy strategies.Strategy) Command {
 	return &SupplyCommand{
 		supplyStrategy: strategy,
 	}
@@ -19,7 +19,7 @@ func NewSupplyCommand(strategy steps.SupplyStrategy) Command {
 
 func (s *SupplyCommand) Execute(ctx context.Context) error {
 	fmt.Println("Ejecutando el comando: SUPPLY")
-	if err := s.supplyStrategy.ExecuteSupply(ctx); err != nil {
+	if err := s.supplyStrategy.Execute(ctx); err != nil {
 		return err
 	}
 	s.ExecuteNext(ctx)

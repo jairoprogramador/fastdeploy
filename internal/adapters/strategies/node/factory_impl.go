@@ -4,7 +4,7 @@ import (
 	"github.com/jairoprogramador/fastdeploy/internal/adapters/executor"
 	"github.com/jairoprogramador/fastdeploy/internal/adapters/strategies"
 	"github.com/jairoprogramador/fastdeploy/internal/adapters/strategies/node/steps"
-	domain "github.com/jairoprogramador/fastdeploy/internal/core/domain/strategies/steps"
+	domain "github.com/jairoprogramador/fastdeploy/internal/core/domain/strategies"
 )
 
 type NodeFactory struct {
@@ -20,18 +20,18 @@ func (f *NodeFactory) SetRepositoryPath(repositoryPath string) {
 	f.repositoryPath = repositoryPath
 }
 
-func (f *NodeFactory) CreateTestStrategy() domain.TestStrategy {
+func (f *NodeFactory) CreateTestStrategy() domain.Strategy {
 	return steps.NewNodeTest(f.repositoryPath, f.executor)
 }
 
-func (f *NodeFactory) CreateSupplyStrategy() domain.SupplyStrategy {
+func (f *NodeFactory) CreateSupplyStrategy() domain.Strategy {
 	return steps.NewNodeSupply(f.repositoryPath, f.executor)
 }
 
-func (f *NodeFactory) CreatePackageStrategy() domain.PacketStrategy {
+func (f *NodeFactory) CreatePackageStrategy() domain.Strategy {
 	return steps.NewNodePacket(f.repositoryPath, f.executor)
 }
 
-func (f *NodeFactory) CreateDeployStrategy() domain.DeployStrategy {
+func (f *NodeFactory) CreateDeployStrategy() domain.Strategy {
 	return steps.NewNodeDeploy(f.repositoryPath, f.executor)
 }

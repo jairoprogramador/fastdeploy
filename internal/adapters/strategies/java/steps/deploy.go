@@ -4,25 +4,30 @@ import (
 	"fmt"
 
 	"github.com/jairoprogramador/fastdeploy/internal/adapters/executor"
+	"github.com/jairoprogramador/fastdeploy/internal/adapters/strategies"
 	"github.com/jairoprogramador/fastdeploy/internal/adapters/utils"
 	"github.com/jairoprogramador/fastdeploy/internal/constants"
 	"github.com/jairoprogramador/fastdeploy/internal/core/domain/context"
-	"github.com/jairoprogramador/fastdeploy/internal/core/domain/strategies/steps"
+	domain "github.com/jairoprogramador/fastdeploy/internal/core/domain/strategies"
 )
 
 type JavaDeploy struct {
-	repositoryPath string
-	executor       executor.ExecutorCmd
+	strategies.BaseStrategy
 }
 
-func NewJavaDeploy(repositoryPath string, executor executor.ExecutorCmd) steps.DeployStrategy {
-	return &JavaDeploy{repositoryPath: repositoryPath, executor: executor}
+func NewJavaDeploy(repositoryPath string, executor executor.ExecutorCmd) domain.Strategy {
+	return &JavaDeploy{
+		BaseStrategy: strategies.BaseStrategy{
+			RepositoryPath: repositoryPath,
+			Executor:       executor,
+		},
+	}
 }
 
-func (s *JavaDeploy) ExecuteDeploy(ctx context.Context) error {
+func (s *JavaDeploy) Execute(ctx context.Context) error {
 	fmt.Println("  [Estrategia] Ejecutando deploy para un proyecto Java")
 
-	if err := utils.ExecuteStepFromFile(ctx, s.repositoryPath, constants.StepDeploy, s.executor); err != nil {
+	if err := utils.ExecuteStepFromFile(ctx, s.RepositoryPath, constants.StepDeploy, s.Executor); err != nil {
 		return err
 	}
 

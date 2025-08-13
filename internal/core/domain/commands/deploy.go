@@ -3,15 +3,15 @@ package commands
 import (
 	"fmt"
 	"github.com/jairoprogramador/fastdeploy/internal/core/domain/context"
-	"github.com/jairoprogramador/fastdeploy/internal/core/domain/strategies/steps"
+	"github.com/jairoprogramador/fastdeploy/internal/core/domain/strategies"
 )
 
 type DeployCommand struct {
 	BaseCommand
-	deployStrategy steps.DeployStrategy
+	deployStrategy strategies.Strategy
 }
 
-func NewDeployCommand(strategy steps.DeployStrategy) Command {
+func NewDeployCommand(strategy strategies.Strategy) Command {
 	return &DeployCommand{
 		deployStrategy: strategy,
 	}
@@ -19,7 +19,7 @@ func NewDeployCommand(strategy steps.DeployStrategy) Command {
 
 func (d *DeployCommand) Execute(ctx context.Context) error {
 	fmt.Println("Ejecutando el comando: DEPLOY")
-	if err := d.deployStrategy.ExecuteDeploy(ctx); err != nil {
+	if err := d.deployStrategy.Execute(ctx); err != nil {
 		return err
 	}
 	d.ExecuteNext(ctx)

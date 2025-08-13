@@ -4,25 +4,30 @@ import (
 	"fmt"
 
 	"github.com/jairoprogramador/fastdeploy/internal/adapters/executor"
+	"github.com/jairoprogramador/fastdeploy/internal/adapters/strategies"
 	"github.com/jairoprogramador/fastdeploy/internal/adapters/utils"
 	"github.com/jairoprogramador/fastdeploy/internal/constants"
 	"github.com/jairoprogramador/fastdeploy/internal/core/domain/context"
-	"github.com/jairoprogramador/fastdeploy/internal/core/domain/strategies/steps"
+	domain "github.com/jairoprogramador/fastdeploy/internal/core/domain/strategies"
 )
 
 type JavaSupply struct {
-	repositoryPath string
-	executor       executor.ExecutorCmd
+	strategies.BaseStrategy
 }
 
-func NewJavaSupply(repositoryPath string, executor executor.ExecutorCmd) steps.SupplyStrategy {
-	return &JavaSupply{repositoryPath: repositoryPath, executor: executor}
+func NewJavaSupply(repositoryPath string, executor executor.ExecutorCmd) domain.Strategy {
+	return &JavaSupply{
+		BaseStrategy: strategies.BaseStrategy{
+			RepositoryPath: repositoryPath,
+			Executor:       executor,
+		},
+	}
 }
 
-func (s *JavaSupply) ExecuteSupply(ctx context.Context) error {
+func (s *JavaSupply) Execute(ctx context.Context) error {
 	fmt.Println("  [Estrategia] Ejecutando supply para un proyecto Java (ej. infraestructura)")
 
-	if err := utils.ExecuteStepFromFile(ctx, s.repositoryPath, constants.StepSupply, s.executor); err != nil {
+	if err := utils.ExecuteStepFromFile(ctx, s.RepositoryPath, constants.StepSupply, s.Executor); err != nil {
 		return err
 	}
 

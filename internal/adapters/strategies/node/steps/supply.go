@@ -2,21 +2,27 @@ package steps
 
 import (
 	"fmt"
+
 	"github.com/jairoprogramador/fastdeploy/internal/adapters/executor"
+	"github.com/jairoprogramador/fastdeploy/internal/adapters/strategies"
 	"github.com/jairoprogramador/fastdeploy/internal/core/domain/context"
-	"github.com/jairoprogramador/fastdeploy/internal/core/domain/strategies/steps"
+	domain "github.com/jairoprogramador/fastdeploy/internal/core/domain/strategies"
 )
 
 type NodeSupply struct {
-	repositoryPath string
-	executor       executor.ExecutorCmd
+	strategies.BaseStrategy
 }
 
-func NewNodeSupply(repositoryPath string, executor executor.ExecutorCmd) steps.SupplyStrategy {
-	return &NodeSupply{repositoryPath: repositoryPath, executor: executor}
+func NewNodeSupply(repositoryPath string, executor executor.ExecutorCmd) domain.Strategy {
+	return &NodeSupply{
+		BaseStrategy: strategies.BaseStrategy{
+			RepositoryPath: repositoryPath,
+			Executor:       executor,
+		},
+	}
 }
 
-func (s *NodeSupply) ExecuteSupply(ctx context.Context) error {
+func (s *NodeSupply) Execute(ctx context.Context) error {
 	fmt.Println("  [Estrategia] Ejecutando supply para un proyecto Node.js (ej. infraestructura)")
 	return nil
 }
