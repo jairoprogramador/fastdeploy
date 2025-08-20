@@ -1,6 +1,10 @@
 package values
 
-import shared "github.com/jairoprogramador/fastdeploy/internal/domain/shared/values"
+import (
+	"strings"
+
+	shared "github.com/jairoprogramador/fastdeploy/internal/domain/shared/values"
+)
 
 const TECHNOLOGY_VERSION_DEFAULT_VALUE = "3.5.4"
 
@@ -9,6 +13,11 @@ type VersionTechnology struct {
 }
 
 func NewVersionTechnology(value string) (VersionTechnology, error) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return NewDefaultVersionTechnology(), nil
+	}
+	
 	valueSafe := shared.MakeSafeForFileSystem(value)
 	base, err := shared.NewBaseString(valueSafe, "TechnologyVersion")
 	if err != nil {

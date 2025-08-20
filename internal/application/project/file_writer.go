@@ -1,16 +1,19 @@
 package project
 
 import (
-	"github.com/jairoprogramador/fastdeploy/internal/application/project/ports"
 	"github.com/jairoprogramador/fastdeploy/internal/domain/project/entities"
-	domainPort "github.com/jairoprogramador/fastdeploy/internal/domain/project/ports"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/project/ports"
 )
 
-type FileWriter struct {
-	repository domainPort.Repository
+type Writer interface {
+	Write(entities.Project) error
 }
 
-func NewWriter(repository domainPort.Repository) ports.Writer {
+type FileWriter struct {
+	repository ports.Repository
+}
+
+func NewWriter(repository ports.Repository) Writer {
 	return &FileWriter{
 		repository: repository,
 	}

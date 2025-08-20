@@ -1,6 +1,8 @@
 package values
 
 import (
+	"strings"
+
 	shared "github.com/jairoprogramador/fastdeploy/internal/domain/shared/values"
 )
 
@@ -11,6 +13,11 @@ type NameOrganization struct {
 }
 
 func NewNameOrganization(value string) (NameOrganization, error) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return NewDefaultNameOrganization(), nil
+	}
+	
 	valueSafe := shared.MakeSafeForFileSystem(value)
 	base, err := shared.NewBaseString(valueSafe, "Organization")
 	if err != nil {

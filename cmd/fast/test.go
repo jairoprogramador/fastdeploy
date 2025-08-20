@@ -1,13 +1,15 @@
 package main
 
 import (
-	factory "github.com/jairoprogramador/fastdeploy/internal/adapters/factory/impl"
-	"github.com/jairoprogramador/fastdeploy/internal/adapters/strategies/manager"
-	"github.com/jairoprogramador/fastdeploy/internal/constants"
-	"github.com/jairoprogramador/fastdeploy/internal/core/domain/commands"
-	"github.com/jairoprogramador/fastdeploy/internal/core/domain/context"
+	"fmt"
+	//"log"
+
+	//factory "github.com/jairoprogramador/fastdeploy/internal/adapters/factory/impl"
+	//"github.com/jairoprogramador/fastdeploy/internal/adapters/strategies/manager"
+	//"github.com/jairoprogramador/fastdeploy/internal/constants"
+	//"github.com/jairoprogramador/fastdeploy/internal/core/domain/commands"
+	//"github.com/jairoprogramador/fastdeploy/internal/core/domain/context"
 	"github.com/spf13/cobra"
-	"log"
 )
 
 func NewTestCmd() *cobra.Command {
@@ -17,7 +19,8 @@ func NewTestCmd() *cobra.Command {
 		Long: `Este comando ejecuta pruebas unitarias, de integración, escaneos de seguridad y otros análisis estáticos
 			para asegurar la calidad del código.`,
 		Run: func(cmd *cobra.Command, args []string) {
-			projectTechnology := "java" // o "node"
+			fmt.Println("Test command")
+			/* projectTechnology := "java" // o "node"
 
 			projectEntity, err := factory.NewServiceFactory().CreateProjectService().Load()
 			if err != nil {
@@ -41,7 +44,7 @@ func NewTestCmd() *cobra.Command {
 
 			if err := testCommand.Execute(pipelineContext); err != nil {
 				log.Fatalf("Error al ejecutar el comando test: %v", err)
-			}
+			} */
 		},
 	}
 }

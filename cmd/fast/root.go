@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"os"
 
-	appConfig "github.com/jairoprogramador/fastdeploy/internal/application/configuration"
+	appConfig "github.com/jairoprogramador/fastdeploy/internal/application/configuration/service"
 	appProject "github.com/jairoprogramador/fastdeploy/internal/application/project"
 	domainFactoryProject "github.com/jairoprogramador/fastdeploy/internal/domain/project/factories"
-	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/configuration"
-	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/project"
+	infConfigService "github.com/jairoprogramador/fastdeploy/internal/infrastructure/configuration/service"
+	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/project/service"
 	"github.com/spf13/cobra"
 )
 
@@ -28,8 +28,8 @@ func NewRootCmd() *cobra.Command {
 				return
 			}
 
-			projectRepository := project.NewFileRepository()
-			configRepository := configuration.NewFileRepository()
+			projectRepository := service.NewFileRepository()
+			configRepository := infConfigService.NewFileRepository()
 
 			readerConfig := appConfig.NewReader(configRepository)
 
@@ -37,9 +37,9 @@ func NewRootCmd() *cobra.Command {
 			writerProject := appProject.NewWriter(projectRepository)
 
 			projectFactory := domainFactoryProject.NewProjectFactory()
-			projectGit := project.NewGit()
-			projectIdentifier := project.NewHashIdentifier()
-			projectName := project.NewProjectName()
+			projectGit := service.NewGitManager()
+			projectIdentifier := service.NewHashIdentifier()
+			projectName := service.NewProjectName()
 
 			projectInitializer := appProject.NewInitializer(readerConfig, readerProject, writerProject, projectFactory, projectGit, projectIdentifier, projectName)
 

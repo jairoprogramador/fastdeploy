@@ -17,6 +17,11 @@ type VersionDeployment struct {
 }
 
 func NewVersionDeployment(value string) (VersionDeployment, error) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return NewDefaultVersionDeployment(), nil
+	}
+	
 	err := validateVersion(value)
 	if err != nil {
 		return VersionDeployment{}, err

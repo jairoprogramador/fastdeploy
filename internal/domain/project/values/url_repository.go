@@ -17,6 +17,10 @@ type UrlRepository struct {
 }
 
 func NewUrlRepository(value string) (UrlRepository, error) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return NewDefaultUrlRepository(), nil
+	}
 	err := validateUrl(value)
 	if err != nil {
 		return UrlRepository{}, err

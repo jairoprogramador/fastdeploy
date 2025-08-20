@@ -3,40 +3,39 @@ package project
 import (
 	"fmt"
 
-	appConfig "github.com/jairoprogramador/fastdeploy/internal/application/configuration/ports"
-	appProject "github.com/jairoprogramador/fastdeploy/internal/application/project/ports"
+	appConfig "github.com/jairoprogramador/fastdeploy/internal/application/configuration/service"
 	"github.com/jairoprogramador/fastdeploy/internal/domain/project/entities"
 	"github.com/jairoprogramador/fastdeploy/internal/domain/project/factories"
 	"github.com/jairoprogramador/fastdeploy/internal/domain/project/ports"
 )
 
 type Initializer struct {
-	readerConfig appConfig.Reader
-	readerProject appProject.Reader
-	writerProject appProject.Writer
-	factory      factories.ProjectFactory
-	git          ports.Git
-	identifier   ports.Identifier
-	name         ports.Name
+	readerConfig  appConfig.Reader
+	readerProject Reader
+	writerProject Writer
+	factory       factories.ProjectFactory
+	git           ports.GitManager
+	identifier    ports.Identifier
+	name          ports.Name
 }
 
 func NewInitializer(
 	readerConfig appConfig.Reader,
-	readerProject appProject.Reader,
-	writerProject appProject.Writer,
+	readerProject Reader,
+	writerProject Writer,
 	factory factories.ProjectFactory,
-	git ports.Git,
+	git ports.GitManager,
 	identifier ports.Identifier,
 	name ports.Name,
 ) *Initializer {
 	return &Initializer{
-		readerConfig: readerConfig,
+		readerConfig:  readerConfig,
 		readerProject: readerProject,
 		writerProject: writerProject,
-		git:          git,
-		identifier:   identifier,
-		name:         name,
-		factory:      factory,
+		git:           git,
+		identifier:    identifier,
+		name:          name,
+		factory:       factory,
 	}
 }
 

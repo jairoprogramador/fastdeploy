@@ -1,6 +1,10 @@
 package values
 
-import shared "github.com/jairoprogramador/fastdeploy/internal/domain/shared/values"
+import (
+	"strings"
+
+	shared "github.com/jairoprogramador/fastdeploy/internal/domain/shared/values"
+)
 
 const TECHNOLOGY_NAME_DEFAULT_VALUE = "springboot"
 
@@ -9,6 +13,11 @@ type NameTechnology struct {
 }
 
 func NewNameTechnology(value string) (NameTechnology, error) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return NewDefaultNameTechnology(), nil
+	}
+	
 	valueSafe := shared.MakeSafeForFileSystem(value)
 	base, err := shared.NewBaseString(valueSafe, "TechnologyName")
 	if err != nil {

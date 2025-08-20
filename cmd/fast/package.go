@@ -2,14 +2,14 @@ package main
 
 import (
 	"fmt"
-	"log"
+	//"log"
 
-	factory "github.com/jairoprogramador/fastdeploy/internal/adapters/factory/impl"
-	"github.com/jairoprogramador/fastdeploy/internal/adapters/strategies/manager"
+	//factory "github.com/jairoprogramador/fastdeploy/internal/adapters/factory/impl"
+	//"github.com/jairoprogramador/fastdeploy/internal/adapters/strategies/manager"
 	"github.com/jairoprogramador/fastdeploy/internal/adapters/utils"
 	"github.com/jairoprogramador/fastdeploy/internal/constants"
-	"github.com/jairoprogramador/fastdeploy/internal/core/domain/commands"
-	"github.com/jairoprogramador/fastdeploy/internal/core/domain/context"
+	//"github.com/jairoprogramador/fastdeploy/internal/core/domain/commands"
+	//"github.com/jairoprogramador/fastdeploy/internal/core/domain/context"
 	"github.com/spf13/cobra"
 )
 
@@ -21,7 +21,8 @@ func NewPackageCmd() *cobra.Command {
 		Short: "Ejecuta el empaquetado de la aplicación.",
 		Long:  `Este comando ejecuta el empaquetado de la aplicación.`,
 		Run: func(cmd *cobra.Command, args []string) {
-			projectTechnology := "java" // o "node"
+			fmt.Println("Package command")
+			/* projectTechnology := "java" // o "node"
 
 			projectEntity, err := factory.NewServiceFactory().CreateProjectService().Load()
 			if err != nil {
@@ -62,7 +63,7 @@ func NewPackageCmd() *cobra.Command {
 				}
 			} else {
 				fmt.Println("No se seleccionaron pasos para ejecutar. Saliendo...")
-			}
+			} */
 		},
 	}
 	utils.AddSkipFlags(cmd, skippableSteps)

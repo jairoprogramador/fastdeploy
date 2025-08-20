@@ -2,14 +2,14 @@ package main
 
 import (
 	"fmt"
-	factory "github.com/jairoprogramador/fastdeploy/internal/adapters/factory/impl"
-	"github.com/jairoprogramador/fastdeploy/internal/adapters/strategies/manager"
+	//factory "github.com/jairoprogramador/fastdeploy/internal/adapters/factory/impl"
+	//"github.com/jairoprogramador/fastdeploy/internal/adapters/strategies/manager"
 	"github.com/jairoprogramador/fastdeploy/internal/adapters/utils"
 	"github.com/jairoprogramador/fastdeploy/internal/constants"
-	"github.com/jairoprogramador/fastdeploy/internal/core/domain/commands"
-	"github.com/jairoprogramador/fastdeploy/internal/core/domain/context"
+	//"github.com/jairoprogramador/fastdeploy/internal/core/domain/commands"
+	//"github.com/jairoprogramador/fastdeploy/internal/core/domain/context"
 	"github.com/spf13/cobra"
-	"log"
+	//"log"
 )
 
 func NewDeployCmd() *cobra.Command {
@@ -20,9 +20,10 @@ func NewDeployCmd() *cobra.Command {
 		Short: "Ejecuta el despliegue de la aplicación.",
 		Long:  `Este comando ejecuta el despliegue de la aplicación.`,
 		Run: func(cmd *cobra.Command, args []string) {
-			projectTechnology := "java" // o "node"
+			//projectTechnology := "java" // o "node"
 
-			projectEntity, err := factory.NewServiceFactory().CreateProjectService().Load()
+			fmt.Println("Deploy command")
+			/* projectEntity, err := factory.NewServiceFactory().CreateProjectService().Load()
 			if err != nil {
 				log.Fatalf("Error al leer datos del proyecto: %v", err)
 			}
@@ -62,7 +63,7 @@ func NewDeployCmd() *cobra.Command {
 				}
 			} else {
 				fmt.Println("No se seleccionaron pasos para ejecutar. Saliendo...")
-			}
+			} */
 		},
 	}
 	utils.AddSkipFlags(cmd, skippableSteps)

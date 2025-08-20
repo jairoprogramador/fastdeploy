@@ -1,25 +1,29 @@
 package project
 
 import (
-	domainEntity "github.com/jairoprogramador/fastdeploy/internal/domain/project/entities"
-	domainPort "github.com/jairoprogramador/fastdeploy/internal/domain/project/ports"
-	"github.com/jairoprogramador/fastdeploy/internal/application/project/ports"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/project/entities"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/project/ports"
 )
 
-type FileReader struct {
-	repository domainPort.Repository
+type Reader interface {
+	ExistsFile() (bool, error)
+	Read() (entities.Project, error)
 }
 
-func NewReader(repository domainPort.Repository) ports.Reader {
+type FileReader struct {
+	repository ports.Repository
+}
+
+func NewReader(repository ports.Repository) Reader {
 	return &FileReader{
 		repository: repository,
 	}
 }
 
-func (cs *FileReader) Read() (domainEntity.Project, error) {
+func (cs *FileReader) Read() (entities.Project, error) {
 	project, err := cs.repository.Load()
 	if err != nil {
-		return domainEntity.Project{}, err
+		return entities.Project{}, err
 	}
 
 	return project, nil

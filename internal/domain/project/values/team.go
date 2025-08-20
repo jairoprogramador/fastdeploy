@@ -1,6 +1,8 @@
 package values
 
 import (
+	"strings"
+
 	shared "github.com/jairoprogramador/fastdeploy/internal/domain/shared/values"
 )
 
@@ -11,6 +13,11 @@ type Team struct {
 }
 
 func NewTeam(value string) (Team, error) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return NewDefaultTeam(), nil
+	}
+
 	valueSafe := shared.MakeSafeForFileSystem(value)
 	base, err := shared.NewBaseString(valueSafe, "Team")
 	if err != nil {
