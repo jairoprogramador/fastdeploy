@@ -2,7 +2,6 @@ package project
 
 import (
 	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 	"github.com/jairoprogramador/fastdeploy/internal/domain/project/entities"
@@ -32,12 +31,12 @@ func (pr *FileRepository) Load() (entities.Project, error) {
 		return entities.Project{}, err
 	}
 
-	var result entities.Project
-	err = yaml.Unmarshal(data, &result)
+	var dto ProjectDTO
+	err = yaml.Unmarshal(data, &dto)
 	if err != nil {
 		return entities.Project{}, err
 	}
-	return result, nil
+	return dto.ToDomain()
 }
 
 func (pr *FileRepository) Save(project entities.Project) error {
@@ -46,14 +45,10 @@ func (pr *FileRepository) Save(project entities.Project) error {
 		return err
 	}
 
-	fmt.Println("project", project.GetName().Value())
-	fmt.Println("project", project.GetID().Value())
-	fmt.Println("project", project.GetRepository().GetURL().Value())
-	fmt.Println("project", project.GetTechnology().GetName().Value())
-	fmt.Println("project", project.GetTechnology().GetVersion().Value())
-	fmt.Println("project", project.GetDeployment().GetVersion().Value())
-	
-	yamlData, err := yaml.Marshal(project)
+	dto := ProjectDTO{}
+	dto.FromDomain(project)
+
+	yamlData, err := yaml.Marshal(dto)
 	if err != nil {
 		return err
 	}

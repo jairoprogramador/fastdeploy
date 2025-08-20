@@ -5,7 +5,6 @@ import (
 
 	appConfig "github.com/jairoprogramador/fastdeploy/internal/application/configuration/ports"
 	appProject "github.com/jairoprogramador/fastdeploy/internal/application/project/ports"
-	"github.com/jairoprogramador/fastdeploy/internal/domain/project/services"
 	"github.com/jairoprogramador/fastdeploy/internal/domain/project/entities"
 	"github.com/jairoprogramador/fastdeploy/internal/domain/project/factories"
 	"github.com/jairoprogramador/fastdeploy/internal/domain/project/ports"
@@ -19,7 +18,6 @@ type Initializer struct {
 	git          ports.Git
 	identifier   ports.Identifier
 	name         ports.Name
-	validator    services.Validator
 }
 
 func NewInitializer(
@@ -30,7 +28,6 @@ func NewInitializer(
 	git ports.Git,
 	identifier ports.Identifier,
 	name ports.Name,
-	validator services.Validator,
 ) *Initializer {
 	return &Initializer{
 		readerConfig: readerConfig,
@@ -40,7 +37,6 @@ func NewInitializer(
 		identifier:   identifier,
 		name:         name,
 		factory:      factory,
-		validator:    validator,
 	}
 }
 

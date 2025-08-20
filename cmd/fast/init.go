@@ -6,8 +6,6 @@ import (
 	appConfig "github.com/jairoprogramador/fastdeploy/internal/application/configuration"
 	appProject "github.com/jairoprogramador/fastdeploy/internal/application/project"
 	domainFactoryProject "github.com/jairoprogramador/fastdeploy/internal/domain/project/factories"
-	domainServiceProject "github.com/jairoprogramador/fastdeploy/internal/domain/project/services"
-	domainServiceConfig "github.com/jairoprogramador/fastdeploy/internal/domain/configuration/services"
 	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/configuration"
 	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/project"
 	"github.com/spf13/cobra"
@@ -22,13 +20,11 @@ func NewInitCmd() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 
 			projectRepository := project.NewFileRepository()
-			projectValidator := domainServiceProject.NewValidatorProject()
-
 			configRepository := configuration.NewFileRepository()
-			validatorConfig := domainServiceConfig.NewValidatorConfiguration()
-			readerConfig := appConfig.NewReader(configRepository, validatorConfig)
 
-			readerProject := appProject.NewReader(projectRepository, projectValidator)
+			readerConfig := appConfig.NewReader(configRepository)
+
+			readerProject := appProject.NewReader(projectRepository)
 			writerProject := appProject.NewWriter(projectRepository)
 
 			projectFactory := domainFactoryProject.NewProjectFactory()
@@ -36,7 +32,7 @@ func NewInitCmd() *cobra.Command {
 			projectIdentifier := project.NewHashIdentifier()
 			projectName := project.NewProjectName()
 
-			projectInitializer := appProject.NewInitializer(readerConfig, readerProject, writerProject, projectFactory, projectGit, projectIdentifier, projectName, projectValidator)
+			projectInitializer := appProject.NewInitializer(readerConfig, readerProject, writerProject, projectFactory, projectGit, projectIdentifier, projectName)
 			
 			project, err := projectInitializer.Initialize()
 			if err != nil {
@@ -44,7 +40,6 @@ func NewInitCmd() *cobra.Command {
 			}
 
 			fmt.Printf("Proyecto '%s' inicializado correctamente.\n", project.GetName().Value())
-			//fmt.Printf("Archivo de configuración '%s' creado.\n", "fastDeploy.yaml")
 		},
 	}
 }

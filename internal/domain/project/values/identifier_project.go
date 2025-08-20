@@ -9,7 +9,8 @@ type Identifier struct {
 }
 
 func NewIdentifier(value string) (Identifier, error) {
-	base, err := shared.NewBaseString(value, "ProjectID")
+	valueSafe := shared.MakeSafeForFileSystem(value)
+	base, err := shared.NewBaseString(valueSafe, "ProjectID")
 	if err != nil {
 		return Identifier{}, err
 	}

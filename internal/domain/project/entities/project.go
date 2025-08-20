@@ -6,7 +6,7 @@ import (
 
 type Project struct {
 	id           values.Identifier
-	name         values.NameProject `yaml:"projectName"`
+	name         values.NameProject
 	organization values.NameOrganization
 	team         values.Team
 	repository   values.Repository

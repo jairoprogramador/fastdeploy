@@ -38,6 +38,10 @@ func (r UrlRepository) Equals(other UrlRepository) bool {
 	return r.BaseString.Equals(other.BaseString)
 }
 
+func (r UrlRepository) IsValid() bool {
+	return validateUrl(r.Value()) == nil
+}
+
 func (r UrlRepository) ExtractNameRepository() string {
 	urlPath := r.Value()
 	parts := strings.Split(urlPath, "/")
@@ -51,11 +55,11 @@ func (r UrlRepository) ExtractNameRepository() string {
 func validateUrl(value string) error {
 	trimmedValue := strings.TrimSpace(value)
 	if trimmedValue == "" {
-		return errors.New("RepositoryURL cannot be empty")
+		return errors.New("repository.url cannot be empty")
 	}
 
 	if !urlRegex.MatchString(trimmedValue) {
-		return errors.New("RepositoryURL must be HTTP, HTTPS or GIT")
+		return errors.New("repository.url must be HTTP, HTTPS or GIT")
 	}
 
 	return nil

@@ -7,8 +7,6 @@ import (
 	appConfig "github.com/jairoprogramador/fastdeploy/internal/application/configuration"
 	appProject "github.com/jairoprogramador/fastdeploy/internal/application/project"
 	domainFactoryProject "github.com/jairoprogramador/fastdeploy/internal/domain/project/factories"
-	domainServiceProject "github.com/jairoprogramador/fastdeploy/internal/domain/project/services"
-	domainServiceConfig "github.com/jairoprogramador/fastdeploy/internal/domain/configuration/services"
 	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/configuration"
 	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/project"
 	"github.com/spf13/cobra"
@@ -31,13 +29,11 @@ func NewRootCmd() *cobra.Command {
 			}
 
 			projectRepository := project.NewFileRepository()
-			projectValidator := domainServiceProject.NewValidatorProject()
-
 			configRepository := configuration.NewFileRepository()
-			validatorConfig := domainServiceConfig.NewValidatorConfiguration()
-			readerConfig := appConfig.NewReader(configRepository, validatorConfig)
 
-			readerProject := appProject.NewReader(projectRepository, projectValidator)
+			readerConfig := appConfig.NewReader(configRepository)
+
+			readerProject := appProject.NewReader(projectRepository)
 			writerProject := appProject.NewWriter(projectRepository)
 
 			projectFactory := domainFactoryProject.NewProjectFactory()
@@ -45,7 +41,7 @@ func NewRootCmd() *cobra.Command {
 			projectIdentifier := project.NewHashIdentifier()
 			projectName := project.NewProjectName()
 
-			projectInitializer := appProject.NewInitializer(readerConfig, readerProject, writerProject, projectFactory, projectGit, projectIdentifier, projectName, projectValidator)
+			projectInitializer := appProject.NewInitializer(readerConfig, readerProject, writerProject, projectFactory, projectGit, projectIdentifier, projectName)
 
 			isInitialized, err := projectInitializer.IsInitialized()
 			if err != nil {
