@@ -1,0 +1,13 @@
+---
+description: Best practices for Go applications following DDD and SOLID principles
+globs: **/*.go
+alwaysApply: true
+---
+
+- Organize code into distinct packages based on domain boundaries.
+- Use interfaces to define contracts and promote dependency inversion.
+- Implement single responsibility by ensuring each function or method has one clear purpose.
+- Favor composition over inheritance to enhance flexibility and reusability.
+- Use value objects to encapsulate domain logic and ensure immutability where applicable.
+- Apply the repository pattern to abstract data access and promote separation of concerns.
+- Ensure that domain logic is isolated from infrastructure concerns to maintain a clean architecture.

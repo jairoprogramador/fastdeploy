@@ -3,8 +3,13 @@ package main
 import (
 	"fmt"
 	"log"
-
-	factory "github.com/jairoprogramador/fastdeploy/internal/adapters/factory/impl"
+	appConfig "github.com/jairoprogramador/fastdeploy/internal/application/configuration"
+	appProject "github.com/jairoprogramador/fastdeploy/internal/application/project"
+	domainFactoryProject "github.com/jairoprogramador/fastdeploy/internal/domain/project/factories"
+	domainServiceProject "github.com/jairoprogramador/fastdeploy/internal/domain/project/services"
+	domainServiceConfig "github.com/jairoprogramador/fastdeploy/internal/domain/configuration/services"
+	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/configuration"
+	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/project"
 	"github.com/spf13/cobra"
 )
 
@@ -15,20 +20,31 @@ func NewInitCmd() *cobra.Command {
 		Long: `Este comando crea el archivo fastDeploy.yaml en el directorio actual 
 	con las configuraciones por defecto, como el nombre del proyecto, ID y versión.`,
 		Run: func(cmd *cobra.Command, args []string) {
-			initializer := factory.NewInitializeFactory().CreateInitialize()
 
-			if initializer.IsInitialized() {
-				fmt.Println("¡El proyecto ya ha sido inicializado!")
-				return
-			}
+			projectRepository := project.NewFileRepository()
+			projectValidator := domainServiceProject.NewValidatorProject()
 
-			cfg, err := initializer.Initialize()
+			configRepository := configuration.NewFileRepository()
+			validatorConfig := domainServiceConfig.NewValidatorConfiguration()
+			readerConfig := appConfig.NewReader(configRepository, validatorConfig)
+
+			readerProject := appProject.NewReader(projectRepository, projectValidator)
+			writerProject := appProject.NewWriter(projectRepository)
+
+			projectFactory := domainFactoryProject.NewProjectFactory()
+			projectGit := project.NewGit()
+			projectIdentifier := project.NewHashIdentifier()
+			projectName := project.NewProjectName()
+
+			projectInitializer := appProject.NewInitializer(readerConfig, readerProject, writerProject, projectFactory, projectGit, projectIdentifier, projectName, projectValidator)
+			
+			project, err := projectInitializer.Initialize()
 			if err != nil {
 				log.Fatalf("Error al inicializar el proyecto: %v", err)
 			}
 
-			fmt.Printf("Proyecto '%s' inicializado correctamente.\n", cfg.ProjectName)
-			fmt.Printf("Archivo de configuración '%s' creado.\n", "fastDeploy.yaml")
+			fmt.Printf("Proyecto '%s' inicializado correctamente.\n", project.GetName().Value())
+			//fmt.Printf("Archivo de configuración '%s' creado.\n", "fastDeploy.yaml")
 		},
 	}
 }

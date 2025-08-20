@@ -1,0 +1,97 @@
+### General Responsibilities:
+
+Guiar el desarrollo de CLIs en Go que sean idiomáticas, mantenibles y fáciles de extender.
+Asegurar modularidad aplicando Clean Architecture y DDD ligero donde tenga sentido.
+Promover testabilidad, buen manejo de errores y excelente experiencia de usuario en consola.
+Realiza preguntas si la logica no se entiende bien.
+Siempre ten presente los principios SOLID al generar codigo 
+
+### Architecture Patterns:
+
+Aplicar Clean Architecture con estas capas:
+    cmd/ → entrypoints de la CLI (commands/subcommands con Cobra o similar).
+    internal/application/ → casos de uso / servicios de aplicación.
+    internal/domain/ → entidades, value objects, reglas de negocio, interfaces abstractas.
+    internal/infrastructure/ → adaptadores técnicos (DB, APIs, filesystem, etc.).
+Usar interfaces pequeñas y específicas para facilitar testing (ej: FileReader, Notifier).
+Mantener separación clara entre UI (CLI) y lógica de negocio.
+
+### Project Structure Guidelines:
+
+cmd/: comandos raíz y subcomandos (main.go, root.go, etc.).
+internal/domain/: modelos de negocio, invariantes, interfaces.
+internal/application/: casos de uso (ej: GenerateReportService, SyncService).
+internal/infrastructure/: acceso a APIs, DB, FS, logging.
+pkg/: utilidades genéricas (flags helpers, config loaders).
+configs/: archivos YAML/JSON/TOML de configuración.
+test/: pruebas de integración/E2E.
+
+### Development Best Practices:
+
+Funciones cortas, legibles y con un único propósito.
+Errores siempre manejados y envueltos (fmt.Errorf("context: %w", err)).
+Sin estado global → usar constructores e inyección de dependencias.
+Uso riguroso de context.Context para cancelar operaciones largas.
+Manejar recursos con defer (files, db, http).
+CLI amigable: mensajes claros, colores, flags intuitivos.
+
+### Security and Resilience:
+
+Validar y sanear inputs de flags y args.
+Configuración segura por defecto (ej: no guardar credenciales en texto plano).
+Retrys, backoff y timeouts en llamadas externas (ej: APIs REST).
+Manejo robusto de errores → mensajes al usuario claros, logs detallados para devs.
+
+### Testing:
+
+Unit tests table-driven (entidades, servicios de aplicación).
+Mocks/fakes para servicios externos.
+Integration tests con CLI runner (os/exec.Command) verificando stdout/stderr.
+Cobertura mínima sobre todos los comandos y casos de uso.
+
+### Documentation and Standards:
+
+GoDoc para funciones y paquetes exportados.
+README.md explicando instalación y uso de la CLI.
+--help y --version en todos los comandos.
+Estilo consistente (go fmt, goimports, golangci-lint).
+
+### Observability:
+
+Logs estructurados en JSON (nivel debug/info/error).
+Incluir traceID o requestID si interactúa con servicios externos.
+Metrics opcionales si la CLI corre en modo servidor o batch (Prometheus client).
+Tiempos de ejecución para comandos críticos.
+
+### Tracing and Monitoring Best Practices:
+
+Para CLIs que llaman a APIs → usar OpenTelemetry spans para medir llamadas externas.
+Anotar tiempos de ejecución de pasos largos.
+Exponer métricas opcionales (ej: --metrics flag para batch jobs).
+
+### Performance:
+
+Usar benchmarks en partes críticas (ej: procesamiento de archivos grandes).
+Evitar asignaciones innecesarias.
+Usar pprof en tareas intensivas si es necesario.
+
+### Concurrency and Goroutines:
+
+Usar goroutines solo cuando aporta valor (paralelismo en IO/cálculo).
+Propagar cancelación con context.Context.
+Sin leaks: cerrar canales y workers correctamente.
+
+### Tooling and Dependencies:
+
+Usar standard library siempre que sea posible.
+Librerías estables para CLI (cobra, viper, pflag).
+go mod tidy y go mod vendor en CI para builds reproducibles.
+Integrar linting, testing y seguridad en el pipeline.
+
+### Key Conventions:
+
+UX clara y sencilla: comandos autoexplicativos y consistentes.
+Lógica de negocio aislada del framework de CLI.
+Interfaces pequeñas y testeables para todo lo que dependa de IO externo.
+Todo comando debe ser observable, testeado y documentado.
+Automatizar build y release (ej: con goreleaser).

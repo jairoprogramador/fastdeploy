@@ -1,0 +1,11 @@
+---
+description: Guidelines for adhering to SOLID principles in Go
+globs: **/*.go
+alwaysApply: true
+---
+
+- **Single Responsibility Principle**: Each package should have one reason to change; keep related functionalities together.
+- **Open/Closed Principle**: Design your types to be open for extension but closed for modification; use interfaces and embedding.
+- **Liskov Substitution Principle**: Ensure that derived types can be substituted for their base types without altering the correctness of the program.
+- **Interface Segregation Principle**: Create small, specific interfaces rather than large, general-purpose ones to avoid forcing implementations to depend on methods they do not use.
+- **Dependency Inversion Principle**: Depend on abstractions, not on concrete implementations; use dependency injection to manage dependencies.
