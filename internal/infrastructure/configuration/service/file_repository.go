@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 
 	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/constants"
-	"github.com/jairoprogramador/fastdeploy/internal/domain/configuration/entities"
-	"github.com/jairoprogramador/fastdeploy/internal/domain/configuration/ports"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/configuration/entity"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/configuration/port"
 	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/configuration/dto"
 	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/configuration/mapper"
 	"gopkg.in/yaml.v3"
@@ -19,34 +19,33 @@ const CONFIG_FILE_NAME = "config.yaml"
 
 type FileRepository struct{}
 
-func NewFileRepository() ports.Repository {
+func NewFileRepository() port.Repository {
 	return &FileRepository{}
 }
 
-func (cr *FileRepository) Load() (entities.Configuration, error) {
+func (cr *FileRepository) Load() (entity.Configuration, error) {
 	filePath, err := cr.getFilePath()
 	if err != nil {
-		return entities.Configuration{}, err
+		return entity.Configuration{}, err
 	}
 
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return entities.Configuration{}, errors.New("FileNotFoundError: config file does not exist")
+			return entity.Configuration{}, errors.New("FileNotFoundError: config file does not exist")
 		}
-		return entities.Configuration{}, err
+		return entity.Configuration{}, err
 	}
 
 	var result dto.ConfigDto
-	err = yaml.Unmarshal(data, &result)
-	if err != nil {
-		return entities.Configuration{}, err
+	if err = yaml.Unmarshal(data, &result); err != nil {
+		return entity.Configuration{}, err
 	}
 
 	return mapper.ToDomain(result)
 }
 
-func (cr *FileRepository) Save(config entities.Configuration) error {
+func (cr *FileRepository) Save(config entity.Configuration) error {
 	filePath, err := cr.getFilePath()
 	if err != nil {
 		return err

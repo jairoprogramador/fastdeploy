@@ -7,12 +7,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jairoprogramador/fastdeploy/internal/domain/project/ports"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/project/port"
 )
 
 type HashIdentifier struct{}
 
-func NewHashIdentifier() ports.Identifier {
+func NewHashIdentifier() port.Identifier {
 	return &HashIdentifier{}
 }
 

@@ -3,7 +3,7 @@ package service
 import (
 	"fmt"
 
-	"github.com/jairoprogramador/fastdeploy/internal/domain/configuration/entities"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/configuration/entity"
 )
 
 type DataShow struct {
@@ -16,10 +16,10 @@ func NewDataShow(fileReader Reader) *DataShow {
 	}
 }
 
-func (ds *DataShow) Show() (entities.Configuration, error) {
+func (ds *DataShow) Show() (entity.Configuration, error) {
 	config, err := ds.fileReader.Read()
 	if err != nil {
-		return entities.Configuration{}, err
+		return entity.Configuration{}, err
 	}
 
 	fmt.Println("Configuración de FastDeploy")

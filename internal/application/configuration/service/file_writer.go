@@ -3,7 +3,7 @@ package service
 import (
 	"github.com/jairoprogramador/fastdeploy/internal/application/configuration/dto"
 	"github.com/jairoprogramador/fastdeploy/internal/application/configuration/mapper"
-	"github.com/jairoprogramador/fastdeploy/internal/domain/configuration/ports"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/configuration/port"
 )
 
 type Writer interface {
@@ -11,10 +11,10 @@ type Writer interface {
 }
 
 type FileWriter struct {
-	repository ports.Repository
+	repository port.Repository
 }
 
-func NewWriter(repository ports.Repository) Writer {
+func NewWriter(repository port.Repository) Writer {
 	return &FileWriter{
 		repository: repository,
 	}

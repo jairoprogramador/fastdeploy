@@ -6,7 +6,7 @@ import (
 
 	appConfig "github.com/jairoprogramador/fastdeploy/internal/application/configuration/service"
 	appProject "github.com/jairoprogramador/fastdeploy/internal/application/project"
-	domainFactoryProject "github.com/jairoprogramador/fastdeploy/internal/domain/project/factories"
+	domainFactoryProject "github.com/jairoprogramador/fastdeploy/internal/domain/project/factory"
 	infConfigService "github.com/jairoprogramador/fastdeploy/internal/infrastructure/configuration/service"
 	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/project/service"
 	"github.com/spf13/cobra"

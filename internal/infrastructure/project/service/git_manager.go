@@ -7,13 +7,13 @@ import (
 	"path/filepath"
 	"os/exec"
 
-	"github.com/jairoprogramador/fastdeploy/internal/domain/project/ports"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/project/port"
 	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/constants"
 )
 
 type GitManager struct{}
 
-func NewGitManager() ports.GitManager {
+func NewGitManager() port.GitManager {
 	return &GitManager{}
 }
 

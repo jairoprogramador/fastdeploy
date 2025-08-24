@@ -1,15 +1,17 @@
 package main
 
 import (
-	"fmt"
-	//"log"
+	"log"
 
-	//factory "github.com/jairoprogramador/fastdeploy/internal/adapters/factory/impl"
-	//"github.com/jairoprogramador/fastdeploy/internal/adapters/strategies/manager"
-	//"github.com/jairoprogramador/fastdeploy/internal/constants"
-	//"github.com/jairoprogramador/fastdeploy/internal/core/domain/commands"
-	//"github.com/jairoprogramador/fastdeploy/internal/core/domain/context"
 	"github.com/spf13/cobra"
+	"github.com/jairoprogramador/fastdeploy/internal/application/project"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/deployment"
+	domainService "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/service"
+	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/project/service"
+	app "github.com/jairoprogramador/fastdeploy/internal/application/deployment"
+	constantInfra "github.com/jairoprogramador/fastdeploy/internal/infrastructure/constants"
+	constantDomain "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/constant"
+	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/deployment/factory"
 )
 
 func NewTestCmd() *cobra.Command {
@@ -19,32 +21,24 @@ func NewTestCmd() *cobra.Command {
 		Long: `Este comando ejecuta pruebas unitarias, de integración, escaneos de seguridad y otros análisis estáticos
 			para asegurar la calidad del código.`,
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Println("Test command")
-			/* projectTechnology := "java" // o "node"
+			repositoryProject := service.NewFileRepository()
+			readerProject := project.NewReader(repositoryProject)
 
-			projectEntity, err := factory.NewServiceFactory().CreateProjectService().Load()
+			context := deployment.NewDeploymentContext()
+			registryStrategy := factory.NewRegistryStrategy()
+
+			factoryStrategy, err := registryStrategy.Get(constantInfra.FactoryManual)
 			if err != nil {
-				log.Fatalf("Error al leer datos del proyecto: %v", err)
+				log.Fatalf("Error al obtener el factory strategy: %v", err)
 			}
 
-			repositoryPath, err := factory.NewPathFactory().CreateGitPathResolver().GetDirectoryPath(projectEntity.Repository)
-			if err != nil {
-				log.Fatalf("Error al obtener ruta del repositorio: %v", err)
-			}
+			commandManager := domainService.NewCommandManager(factoryStrategy)
 
-			factory, err := manager.NewFactoryManager().GetFactory(projectTechnology, repositoryPath)
-			if err != nil {
-				log.Fatalf("Error al obtener la fábrica de estrategias: %v", err)
-			}
+			executeStep := app.NewExecuteStep(readerProject, context, commandManager)
 
-			testCommand := commands.NewTestCommand(factory.CreateTestStrategy())
-
-			pipelineContext := context.NewPipelineContext()
-			pipelineContext.Set(constants.Technology, projectEntity.Technology)
-
-			if err := testCommand.Execute(pipelineContext); err != nil {
+			if err := executeStep.StartStep(constantDomain.StepTest, []string{}); err != nil {
 				log.Fatalf("Error al ejecutar el comando test: %v", err)
-			} */
+			}
 		},
 	}
 }

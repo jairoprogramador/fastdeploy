@@ -5,8 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/jairoprogramador/fastdeploy/internal/domain/project/entities"
-	"github.com/jairoprogramador/fastdeploy/internal/domain/project/ports"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/project/entity"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/project/port"
 	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/project/dto"
 	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/project/mapper"
 	"gopkg.in/yaml.v3"
@@ -16,33 +16,33 @@ const PROJECT_FILE_NAME = "deploy.yaml"
 
 type FileRepository struct{}
 
-func NewFileRepository() ports.Repository {
+func NewFileRepository() port.Repository {
 	return &FileRepository{}
 }
 
-func (pr *FileRepository) Load() (entities.Project, error) {
+func (pr *FileRepository) Load() (entity.Project, error) {
 	filePath, err := pr.getFilePath()
 	if err != nil {
-		return entities.Project{}, err
+		return entity.Project{}, err
 	}
 
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return entities.Project{}, errors.New("FileNotFoundError: project file does not exist")
+			return entity.Project{}, errors.New("FileNotFoundError: project file does not exist")
 		}
-		return entities.Project{}, err
+		return entity.Project{}, err
 	}
 
 	var dto dto.ProjectDto
 	err = yaml.Unmarshal(data, &dto)
 	if err != nil {
-		return entities.Project{}, err
+		return entity.Project{}, err
 	}
 	return mapper.ToDomain(dto)
 }
 
-func (pr *FileRepository) Save(project entities.Project) error {
+func (pr *FileRepository) Save(project entity.Project) error {
 	filePath, err := pr.getFilePath()
 	if err != nil {
 		return err

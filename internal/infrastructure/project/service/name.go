@@ -5,12 +5,12 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/jairoprogramador/fastdeploy/internal/domain/project/ports"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/project/port"
 )
 
 type ProjectName struct{}
 
-func NewProjectName() ports.Name {
+func NewProjectName() port.Name {
 	return &ProjectName{}
 }
 

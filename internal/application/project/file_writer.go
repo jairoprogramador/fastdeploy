@@ -1,25 +1,25 @@
 package project
 
 import (
-	"github.com/jairoprogramador/fastdeploy/internal/domain/project/entities"
-	"github.com/jairoprogramador/fastdeploy/internal/domain/project/ports"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/project/entity"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/project/port"
 )
 
 type Writer interface {
-	Write(entities.Project) error
+	Write(entity.Project) error
 }
 
 type FileWriter struct {
-	repository ports.Repository
+	repository port.Repository
 }
 
-func NewWriter(repository ports.Repository) Writer {
+func NewWriter(repository port.Repository) Writer {
 	return &FileWriter{
 		repository: repository,
 	}
 }
 
-func (cs *FileWriter) Write(project entities.Project) error {
+func (cs *FileWriter) Write(project entity.Project) error {
 	if err := cs.repository.Save(project); err != nil {
 		return err
 	}

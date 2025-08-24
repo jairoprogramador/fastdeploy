@@ -1,12 +1,12 @@
 package mapper
 
 import (
-	"github.com/jairoprogramador/fastdeploy/internal/domain/configuration/entities"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/configuration/entity"
 	"github.com/jairoprogramador/fastdeploy/internal/domain/project/values"
 	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/configuration/dto"
 )
 
-func ToDto(configuration entities.Configuration) (dto.ConfigDto, error) {
+func ToDto(configuration entity.Configuration) (dto.ConfigDto, error) {
 	organization := configuration.GetNameOrganization().Value()
 	team := configuration.GetTeam().Value()
 	repository := configuration.GetRepository().GetURL().Value()
@@ -24,36 +24,36 @@ func ToDto(configuration entities.Configuration) (dto.ConfigDto, error) {
 	}, nil
 }
 
-func ToDomain(dto dto.ConfigDto) (entities.Configuration, error) {
+func ToDomain(dto dto.ConfigDto) (entity.Configuration, error) {
 	organization, err := values.NewNameOrganization(dto.Organization)
 	if err != nil {
-		return entities.Configuration{}, err
+		return entity.Configuration{}, err
 	}
 
 	team, err := values.NewTeam(dto.Team)
 	if err != nil {
-		return entities.Configuration{}, err
+		return entity.Configuration{}, err
 	}
 
 	repositoryUrl, err := values.NewUrlRepository(dto.Repository)
 	if err != nil {
-		return entities.Configuration{}, err
+		return entity.Configuration{}, err
 	}
 	repository := values.NewRepository(repositoryUrl)
 
 	technologyName, err := values.NewNameTechnology(dto.Technology.Name)
 	if err != nil {
-		return entities.Configuration{}, err
+		return entity.Configuration{}, err
 	}
 
 	technologyVersion, err := values.NewVersionTechnology(dto.Technology.Version)
 	if err != nil {
-		return entities.Configuration{}, err
+		return entity.Configuration{}, err
 	}
 
 	technology := values.NewTechnology(technologyName, technologyVersion)
 
-	return entities.NewConfiguration(
+	return entity.NewConfiguration(
 		organization,
 		team,
 		repository,

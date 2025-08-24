@@ -1,12 +1,12 @@
 package mapper
 
 import (
-	"github.com/jairoprogramador/fastdeploy/internal/domain/project/entities"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/project/entity"
 	"github.com/jairoprogramador/fastdeploy/internal/domain/project/values"
 	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/project/dto"
 )
 
-func ToDto(project entities.Project) (dto.ProjectDto, error) {
+func ToDto(project entity.Project) (dto.ProjectDto, error) {
 	projectInfo := dto.ProjectInfo{
 		ID:   project.GetID().Value(),
 		Name: project.GetName().Value(),
@@ -32,55 +32,55 @@ func ToDto(project entities.Project) (dto.ProjectDto, error) {
 	}, nil
 }
 
-func ToDomain(dto dto.ProjectDto) (entities.Project, error) {
+func ToDomain(dto dto.ProjectDto) (entity.Project, error) {
 
 	id, err := values.NewIdentifier(dto.Project.ID)
 	if err != nil {
-		return entities.Project{}, err
+		return entity.Project{}, err
 	}
 
 	name, err := values.NewNameProject(dto.Project.Name)
 	if err != nil {
-		return entities.Project{}, err
+		return entity.Project{}, err
 	}
 
 	organization, err := values.NewNameOrganization(dto.Organization)
 	if err != nil {
-		return entities.Project{}, err
+		return entity.Project{}, err
 	}
 
 	team, err := values.NewTeam(dto.Team)
 	if err != nil {
-		return entities.Project{}, err
+		return entity.Project{}, err
 	}
 
 	repositoryUrl, err := values.NewUrlRepository(dto.Repository.URL)
 	if err != nil {
-		return entities.Project{}, err
+		return entity.Project{}, err
 	}
 
 	repository := values.NewRepository(repositoryUrl)
 
 	technologyName, err := values.NewNameTechnology(dto.Technology.Name)
 	if err != nil {
-		return entities.Project{}, err
+		return entity.Project{}, err
 	}
 
 	technologyVersion, err := values.NewVersionTechnology(dto.Technology.Version)
 	if err != nil {
-		return entities.Project{}, err
+			return entity.Project{}, err
 	}
 
 	technology := values.NewTechnology(technologyName, technologyVersion)
 
 	deploymentVersion, err := values.NewVersionDeployment(dto.Deployment.Version)
 	if err != nil {
-		return entities.Project{}, err
+		return entity.Project{}, err
 	}
 
 	deployment := values.NewDeployment(deploymentVersion)
 
-	return entities.NewProject(
+	return entity.NewProject(
 		id,
 		name,
 		organization,

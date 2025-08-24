@@ -1,37 +1,37 @@
 package service
 
 import (
-	"github.com/jairoprogramador/fastdeploy/internal/domain/configuration/entities"
-	"github.com/jairoprogramador/fastdeploy/internal/domain/configuration/ports"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/configuration/entity"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/configuration/port"
 )
 
 type Reader interface {
-	Read() (entities.Configuration, error)
+	Read() (entity.Configuration, error)
 }
 
 type FileReader struct {
-	repository ports.Repository
+	repository port.Repository
 }
 
-func NewReader(repository ports.Repository) Reader {
+func NewReader(repository port.Repository) Reader {
 	return &FileReader{
 		repository: repository,
 	}
 }
 
-func (cs *FileReader) Read() (entities.Configuration, error) {
+func (cs *FileReader) Read() (entity.Configuration, error) {
 	existsFile, err := cs.repository.Exists()
 	if err != nil {
-		return entities.Configuration{}, err
+		return entity.Configuration{}, err
 	}
 
 	if !existsFile {
-		return entities.NewDefaultConfiguration(), nil
+		return entity.NewDefaultConfiguration(), nil
 	}
 
 	config, err := cs.repository.Load()
 	if err != nil {
-		return entities.Configuration{}, err
+		return entity.Configuration{}, err
 	}
 
 	return config, nil
