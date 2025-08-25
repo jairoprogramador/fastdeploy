@@ -10,13 +10,13 @@ import (
 type ExecuteStep struct {
 	readerProject  project.Reader
 	context        deployment.Context
-	commandManager service.CommandManager
+	commandManager service.StepOrchestrator
 }
 
 func NewExecuteStep(
 	readerProject project.Reader,
 	context deployment.Context,
-	commandManager service.CommandManager) *ExecuteStep {
+	commandManager service.StepOrchestrator) *ExecuteStep {
 	return &ExecuteStep{
 		readerProject:  readerProject,
 		context:        context,
@@ -30,7 +30,7 @@ func (e *ExecuteStep) StartStep(stepName string, blockedSteps []string) error {
 		return err
 	}
 
-	strategy, err := e.commandManager.CreateChain(stepName, blockedSteps)
+	strategy, err := e.commandManager.GetExecutionPlan(stepName, blockedSteps)
 	if err != nil {
 		return err
 	}

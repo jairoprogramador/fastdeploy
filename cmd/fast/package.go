@@ -33,7 +33,7 @@ func NewPackageCmd() *cobra.Command {
 				log.Fatalf("Error al obtener el factory strategy: %v", err)
 			}
 
-			commandManager := domainService.NewCommandManager(factoryStrategy)
+			commandManager := domainService.NewStepOrchestrator(factoryStrategy)
 
 			executeStep := app.NewExecuteStep(readerProject, context, commandManager)
 
