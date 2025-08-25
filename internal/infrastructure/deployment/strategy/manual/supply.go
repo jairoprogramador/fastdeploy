@@ -17,13 +17,13 @@ type ManualSupply struct {
 func NewManualSupply(executor service.ExecutorCmd) domain.StepStrategy {
 	return &ManualSupply{
 		BaseStrategy: strategy.BaseStrategy{
-			Executor:       executor,
+			Executor: executor,
 		},
 	}
 }
 
 func (s *ManualSupply) Execute(ctx deployment.Context) error {
-	fmt.Println("  [Estrategia] Ejecutando supply para un proyecto Java (ej. infraestructura)")
+	fmt.Println("  [Estrategia] Ejecutando supply para un proyecto")
 
 	if err := s.ExecuteStep(ctx, constant.StepSupply, s.Executor); err != nil {
 		return err

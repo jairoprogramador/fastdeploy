@@ -24,6 +24,5 @@ func (t *TestCommand) Execute(ctx deployment.Context) error {
 	if err := t.strategy.Execute(ctx); err != nil {
 		return err
 	}
-	t.ExecuteNext(ctx)
-	return nil
+	return t.ExecuteNext(ctx)
 }

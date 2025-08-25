@@ -24,6 +24,5 @@ func (d *DeployCommand) Execute(ctx deployment.Context) error {
 	if err := d.strategy.Execute(ctx); err != nil {
 		return err
 	}
-	d.ExecuteNext(ctx)
-	return nil
+	return d.ExecuteNext(ctx)
 }

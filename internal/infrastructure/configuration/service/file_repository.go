@@ -1,8 +1,6 @@
 package service
 
 import (
-	"errors"
-	"fmt"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -32,7 +30,7 @@ func (cr *FileRepository) Load() (entity.Configuration, error) {
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return entity.Configuration{}, errors.New("FileNotFoundError: config file does not exist")
+			return entity.Configuration{}, err
 		}
 		return entity.Configuration{}, err
 	}
@@ -82,7 +80,7 @@ func (cr *FileRepository) Exists() (bool, error) {
 func (cr *FileRepository) getFilePath() (string, error) {
 	currentUser, err := user.Current()
 	if err != nil {
-		return "", fmt.Errorf("no se pudo obtener el directorio del usuario: %w", err)
+		return "", err
 	}
 
 	directoryPath := filepath.Join(currentUser.HomeDir, constants.FastDeployDir)

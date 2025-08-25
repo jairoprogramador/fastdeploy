@@ -29,7 +29,7 @@ func NewTestCmd() *cobra.Command {
 
 			factoryStrategy, err := registryStrategy.Get(constantInfra.FactoryManual)
 			if err != nil {
-				log.Fatalf("Error al obtener el factory strategy: %v", err)
+				log.Fatalf("Error: %v", err)
 			}
 
 			commandManager := domainService.NewStepOrchestrator(factoryStrategy)
@@ -37,7 +37,7 @@ func NewTestCmd() *cobra.Command {
 			executeStep := app.NewExecuteStep(readerProject, context, commandManager)
 
 			if err := executeStep.StartStep(constantDomain.StepTest, []string{}); err != nil {
-				log.Fatalf("Error al ejecutar el comando test: %v", err)
+				log.Fatalf("Error: %v", err)
 			}
 		},
 	}

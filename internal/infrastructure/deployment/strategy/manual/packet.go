@@ -17,7 +17,7 @@ type ManualPacket struct {
 func NewManualPacket(executor service.ExecutorCmd) domain.StepStrategy {
 	return &ManualPacket{
 		BaseStrategy: strategy.BaseStrategy{
-			Executor:       executor,
+			Executor: executor,
 		},
 	}
 }

@@ -23,7 +23,7 @@ func (e *CommandExecutor) Execute(yamlFilePath string) error {
 	}
 
 	for _, cmdDef := range listCmd.Commands {
-		fmt.Printf("    -> %s\n", cmdDef.Name)
+		fmt.Printf("   -> %s %s\n", cmdDef.Name, cmdDef.Cmd)
 
 		projectDir := "."
 
@@ -33,7 +33,7 @@ func (e *CommandExecutor) Execute(yamlFilePath string) error {
 		cmd.Stderr = os.Stderr
 
 		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("error al ejecutar el comando '%s': %w", cmdDef.Cmd, err)
+			return fmt.Errorf("'%s': %w", cmdDef.Cmd, err)
 		}
 	}
 	return nil

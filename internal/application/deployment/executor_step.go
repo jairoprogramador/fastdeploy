@@ -8,19 +8,19 @@ import (
 )
 
 type ExecuteStep struct {
-	readerProject  project.Reader
-	context        deployment.Context
-	commandManager service.StepOrchestrator
+	readerProject   project.Reader
+	context          deployment.Context
+	stepOrchestrator service.StepOrchestrator
 }
 
 func NewExecuteStep(
 	readerProject project.Reader,
 	context deployment.Context,
-	commandManager service.StepOrchestrator) *ExecuteStep {
+	stepOrchestrator service.StepOrchestrator) *ExecuteStep {
 	return &ExecuteStep{
-		readerProject:  readerProject,
-		context:        context,
-		commandManager: commandManager,
+		readerProject:    readerProject,
+		context:          context,
+		stepOrchestrator: stepOrchestrator,
 	}
 }
 
@@ -30,7 +30,7 @@ func (e *ExecuteStep) StartStep(stepName string, blockedSteps []string) error {
 		return err
 	}
 
-	strategy, err := e.commandManager.GetExecutionPlan(stepName, blockedSteps)
+	commandChain, err := e.stepOrchestrator.GetExecutionPlan(stepName, blockedSteps)
 	if err != nil {
 		return err
 	}
@@ -39,5 +39,5 @@ func (e *ExecuteStep) StartStep(stepName string, blockedSteps []string) error {
 	e.context.Set(constants.KeyTechnologyVersion, project.GetTechnology().GetVersion().Value())
 	e.context.Set(constants.KeyNameRepository, project.GetRepository().GetURL().ExtractNameRepository())
 
-	return strategy.Execute(e.context)
+	return commandChain.Execute(e.context)
 }

@@ -24,6 +24,5 @@ func (p *PackageCommand) Execute(ctx deployment.Context) error {
 	if err := p.strategy.Execute(ctx); err != nil {
 		return err
 	}
-	p.ExecuteNext(ctx)
-	return nil
+	return p.ExecuteNext(ctx)
 }

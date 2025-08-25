@@ -1,7 +1,6 @@
 package service
 
 import (
-	"errors"
 	"os"
 	"path/filepath"
 
@@ -29,7 +28,7 @@ func (pr *FileRepository) Load() (entity.Project, error) {
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return entity.Project{}, errors.New("FileNotFoundError: project file does not exist")
+			return entity.Project{}, err
 		}
 		return entity.Project{}, err
 	}

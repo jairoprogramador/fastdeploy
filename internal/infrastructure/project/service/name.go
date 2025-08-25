@@ -1,7 +1,6 @@
 package service
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 
@@ -17,7 +16,7 @@ func NewProjectName() port.Name {
 func (s *ProjectName) GetName() (string, error) {
 	dir, err := os.Getwd()
 	if err != nil {
-		return "", fmt.Errorf("no se pudo obtener el directorio de trabajo: %w", err)
+		return "", err
 	}
 	return filepath.Base(dir), nil
 }
