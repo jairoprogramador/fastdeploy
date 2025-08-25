@@ -14,6 +14,7 @@ type VersionTechnology struct {
 
 func NewVersionTechnology(value string) (VersionTechnology, error) {
 	value = strings.TrimSpace(value)
+	
 	if value == "" {
 		return NewDefaultVersionTechnology(), nil
 	}
