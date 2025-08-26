@@ -21,6 +21,7 @@ func NewPackageCmd() *cobra.Command {
 		Use:   "package",
 		Short: "Ejecuta el empaquetado de la aplicación.",
 		Long:  `Este comando ejecuta el empaquetado de la aplicación.`,
+		Aliases: []string{"p"},
 		Run: func(cmd *cobra.Command, args []string) {
 			repositoryProject := service.NewFileRepository()
 			readerProject := project.NewReader(repositoryProject)

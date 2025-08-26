@@ -21,6 +21,7 @@ func NewSupplyCmd() *cobra.Command {
 		Use:   "supply",
 		Short: "Ejecuta el suministro de la aplicación.",
 		Long:  `Este comando ejecuta el suministro de la aplicación.`,
+		Aliases: []string{"s"},
 		Run: func(cmd *cobra.Command, args []string) {
 			repositoryProject := service.NewFileRepository()
 			readerProject := project.NewReader(repositoryProject)

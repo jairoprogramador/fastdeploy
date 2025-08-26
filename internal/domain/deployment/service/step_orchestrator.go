@@ -59,6 +59,10 @@ func (f *StepOrchestratorImpl) GetExecutionPlan(targetStep string, blockedSteps 
 			}
 			addCommand(cmd)
 		}
+
+		if stepName == targetStep {
+			break
+		}
 	}
 
 	return firstCommand, nil

@@ -30,7 +30,7 @@ func (e *ExecuteStep) StartStep(stepName string, blockedSteps []string) error {
 		return err
 	}
 
-	commandChain, err := e.stepOrchestrator.GetExecutionPlan(stepName, blockedSteps)
+	orchestrator, err := e.stepOrchestrator.GetExecutionPlan(stepName, blockedSteps)
 	if err != nil {
 		return err
 	}
@@ -39,5 +39,5 @@ func (e *ExecuteStep) StartStep(stepName string, blockedSteps []string) error {
 	e.context.Set(constants.KeyTechnologyVersion, project.GetTechnology().GetVersion().Value())
 	e.context.Set(constants.KeyNameRepository, project.GetRepository().GetURL().ExtractNameRepository())
 
-	return commandChain.Execute(e.context)
+	return orchestrator.Execute(e.context)
 }

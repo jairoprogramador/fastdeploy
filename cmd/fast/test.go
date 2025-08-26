@@ -20,6 +20,7 @@ func NewTestCmd() *cobra.Command {
 		Short: "Ejecuta las pruebas de calidad del software.",
 		Long: `Este comando ejecuta pruebas unitarias, de integración, escaneos de seguridad y otros análisis estáticos
 			para asegurar la calidad del código.`,
+		Aliases: []string{"t"},
 		Run: func(cmd *cobra.Command, args []string) {
 			repositoryProject := service.NewFileRepository()
 			readerProject := project.NewReader(repositoryProject)

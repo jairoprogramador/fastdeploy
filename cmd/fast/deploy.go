@@ -20,6 +20,7 @@ func NewDeployCmd() *cobra.Command {
 		Use:   "deploy",
 		Short: "Ejecuta el despliegue de la aplicación.",
 		Long:  `Este comando ejecuta el despliegue de la aplicación.`,
+		Aliases: []string{"d"},
 		Run: func(cmd *cobra.Command, args []string) {
 			repositoryProject := service.NewFileRepository()
 			readerProject := project.NewReader(repositoryProject)

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 )
 
 type ExecutorCmd interface {
@@ -22,10 +23,16 @@ func (e *CommandExecutor) Execute(yamlFilePath string) error {
 		return err
 	}
 
+	yamlDir := filepath.Dir(yamlFilePath)
+
 	for _, cmdDef := range listCmd.Commands {
-		fmt.Printf("   -> %s %s\n", cmdDef.Name, cmdDef.Cmd)
+		fmt.Printf("   -> %s\n", cmdDef.Name)
+		fmt.Printf("   -> command: %s\n", cmdDef.Cmd)
 
 		projectDir := "."
+		if cmdDef.Dir != "" {
+			projectDir = filepath.Join(yamlDir, cmdDef.Dir)
+		}
 
 		cmd := exec.Command("sh", "-c", cmdDef.Cmd)
 		cmd.Dir = projectDir
