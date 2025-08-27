@@ -36,7 +36,6 @@ func (e *ExecuteStep) StartStep(stepName string, blockedSteps []string) error {
 	}
 
 	e.context.Set(constants.KeyNameTechnology, project.GetTechnology().Value())
-	e.context.Set(constants.KeyVersionRepository, project.GetRepository().GetVersion().Value())
 	e.context.Set(constants.KeyNameRepository, project.GetRepository().GetURL().ExtractNameRepository())
 
 	return orchestrator.Execute(e.context)
