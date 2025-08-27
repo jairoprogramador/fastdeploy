@@ -25,9 +25,8 @@ func (ds *DataShow) Show() (entity.Configuration, error) {
 	fmt.Println("Configuración de FastDeploy")
 	fmt.Printf("\tOrganización: %s\n", config.GetNameOrganization().Value())
 	fmt.Printf("\tEquipo: %s\n", config.GetTeam().Value())
+	fmt.Printf("\tTecnología: %s\n", config.GetTechnology().Value())
 	fmt.Printf("\tRepositorio.url: %s\n", config.GetRepository().GetURL().Value())
-	fmt.Printf("\tTecnología.nombre: %s\n", config.GetTechnology().GetName().Value())
-	fmt.Printf("\tTecnología.version: %s\n", config.GetTechnology().GetVersion().Value())
 
 	return config, nil
 }

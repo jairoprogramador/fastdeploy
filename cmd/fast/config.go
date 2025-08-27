@@ -15,7 +15,6 @@ var (
 	teamNameValue      string
 	repositoryUrlValue string
 	technologyName     string
-	technologyVersion  string
 	listConfig         bool
 )
 
@@ -40,16 +39,11 @@ func NewConfigCmd() *cobra.Command {
 			} else {
 				writerConfig := appService.NewWriter(configRepository)
 
-				technologyDto := dto.TechnologyInfo{
-					Name:    technologyName,
-					Version: technologyVersion,
-				}
-
 				configDto := dto.ConfigDto{
 					NameOrganization: organizationValue,
 					Team:             teamNameValue,
 					UrlRepository:    repositoryUrlValue,
-					Technology:       technologyDto,
+					Technology:       technologyName,
 				}
 
 				err := writerConfig.Write(configDto)
@@ -66,8 +60,7 @@ func NewConfigCmd() *cobra.Command {
 	cmd.Flags().StringVarP(&organizationValue, "organization", "o", "", "asigna nombre de la organización.")
 	cmd.Flags().StringVarP(&teamNameValue, "team", "t", "", "asigna nombre del equipo.")
 	cmd.Flags().StringVarP(&repositoryUrlValue, "repository", "r", "", "asigna URL del repositorio git por defecto.")
-	cmd.Flags().StringVarP(&technologyName, "technology-name", "n", "", "asigna nombre de la tecnología.")
-	cmd.Flags().StringVarP(&technologyVersion, "technology-version", "v", "", "asigna versión de la tecnología.")
+	cmd.Flags().StringVarP(&technologyName, "technology", "n", "", "asigna nombre de la tecnología.")
 	cmd.Flags().BoolVarP(&listConfig, "list", "l", false, "Muestra la configuración actual.")
 
 	return cmd

@@ -24,12 +24,18 @@ func (s *BaseStrategy) ExecuteStep(
 		return err
 	}
 
+	technologyName, _ := ctx.Get(constants.KeyNameTechnology)
+	versionRepository, _ := ctx.Get(constants.KeyVersionRepository)
 	nameRepository, _ := ctx.Get(constants.KeyNameRepository)
-	technologyName, _ := ctx.Get(constants.KeyTechnologyName)
-	technologyVersion, _ := ctx.Get(constants.KeyTechnologyVersion)
 
-	repositoryFilePath := filepath.Join(homeDirPath, nameRepository, 
-		stepName, technologyName, technologyVersion, constants.CommandFileName)
+	var repositoryFilePath string
+	if technologyName == "" {
+		repositoryFilePath = filepath.Join(homeDirPath, nameRepository,
+			versionRepository, stepName, constants.CommandFileName)
+	} else {
+		repositoryFilePath = filepath.Join(homeDirPath, nameRepository,
+			versionRepository, technologyName, stepName, constants.CommandFileName)
+	}
 
 	if err := executor.Execute(repositoryFilePath); err != nil {
 		return err

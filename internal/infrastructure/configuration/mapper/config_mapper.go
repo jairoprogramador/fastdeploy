@@ -10,11 +10,7 @@ func ToDto(configuration entity.Configuration) (dto.ConfigDto, error) {
 	organization := configuration.GetNameOrganization().Value()
 	team := configuration.GetTeam().Value()
 	repository := configuration.GetRepository().GetURL().Value()
-
-	technology := dto.TechnologyInfo{
-		Name:    configuration.GetTechnology().GetName().Value(),
-		Version: configuration.GetTechnology().GetVersion().Value(),
-	}
+	technology := configuration.GetTechnology().Value()
 
 	return dto.ConfigDto{
 		Organization: organization,
@@ -39,19 +35,12 @@ func ToDomain(dto dto.ConfigDto) (entity.Configuration, error) {
 	if err != nil {
 		return entity.Configuration{}, err
 	}
-	repository := values.NewRepository(repositoryUrl)
+	repository := values.NewRepository(repositoryUrl, values.NewDefaultVersionRepository())
 
-	technologyName, err := values.NewNameTechnology(dto.Technology.Name)
+	technology, err := values.NewNameTechnology(dto.Technology)
 	if err != nil {
 		return entity.Configuration{}, err
 	}
-
-	technologyVersion, err := values.NewVersionTechnology(dto.Technology.Version)
-	if err != nil {
-		return entity.Configuration{}, err
-	}
-
-	technology := values.NewTechnology(technologyName, technologyVersion)
 
 	return entity.NewConfiguration(
 		organization,

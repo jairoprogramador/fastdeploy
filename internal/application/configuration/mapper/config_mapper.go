@@ -22,19 +22,12 @@ func ToDomain(dto dto.ConfigDto) (entity.Configuration, error) {
 		return entity.Configuration{}, err
 	}
 
-	repository := values.NewRepository(repositoryUrl)
+	repository := values.NewRepository(repositoryUrl, values.NewDefaultVersionRepository())
 
-	technologyName, err := values.NewNameTechnology(dto.Technology.Name)
+	technology, err := values.NewNameTechnology(dto.Technology)
 	if err != nil {
 		return entity.Configuration{}, err
 	}
-
-	technologyVersion, err := values.NewVersionTechnology(dto.Technology.Version)
-	if err != nil {
-		return entity.Configuration{}, err
-	}
-
-	technology := values.NewTechnology(technologyName, technologyVersion)
 
 	return entity.NewConfiguration(organization, team, repository, technology), nil
 }

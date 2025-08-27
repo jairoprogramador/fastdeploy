@@ -1,10 +1,9 @@
 package constants
 
 const (
-	KeyTechnologyName    = "technologyName"
-	KeyTechnologyVersion = "technologyVersion"
+	KeyNameTechnology    = "nameTechnology"
+	KeyVersionRepository = "versionRepository"
 	KeyNameRepository    = "nameRepository"
-
 	FactoryManual = "manual"
 	FactoryIA     = "ia"
 )

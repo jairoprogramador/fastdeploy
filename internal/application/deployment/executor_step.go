@@ -8,7 +8,7 @@ import (
 )
 
 type ExecuteStep struct {
-	readerProject   project.Reader
+	readerProject    project.Reader
 	context          deployment.Context
 	stepOrchestrator service.StepOrchestrator
 }
@@ -35,8 +35,8 @@ func (e *ExecuteStep) StartStep(stepName string, blockedSteps []string) error {
 		return err
 	}
 
-	e.context.Set(constants.KeyTechnologyName, project.GetTechnology().GetName().Value())
-	e.context.Set(constants.KeyTechnologyVersion, project.GetTechnology().GetVersion().Value())
+	e.context.Set(constants.KeyNameTechnology, project.GetTechnology().Value())
+	e.context.Set(constants.KeyVersionRepository, project.GetRepository().GetVersion().Value())
 	e.context.Set(constants.KeyNameRepository, project.GetRepository().GetURL().ExtractNameRepository())
 
 	return orchestrator.Execute(e.context)

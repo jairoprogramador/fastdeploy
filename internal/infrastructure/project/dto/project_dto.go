@@ -5,6 +5,5 @@ type ProjectDto struct {
 	Team         string         `yaml:"team"`
 	Project      ProjectInfo    `yaml:"project"`
 	Repository   RepositoryInfo `yaml:"repository"`
-	Technology   TechnologyInfo `yaml:"technology"`
 	Deployment   DeploymentInfo `yaml:"deployment"`
 }

@@ -8,14 +8,14 @@ type Configuration struct {
 	nameOrganization values.NameOrganization
 	team         values.Team
 	repository   values.Repository
-	technology   values.Technology
+	technology   values.NameTechnology
 }
 
 func NewConfiguration(
 	nameOrganization values.NameOrganization,
 	team values.Team,
 	deployRepo values.Repository,
-	technology values.Technology,
+	technology values.NameTechnology,
 ) Configuration {
 	return Configuration{
 		nameOrganization: nameOrganization,
@@ -29,7 +29,7 @@ func NewDefaultConfiguration() Configuration {
 	org := values.NewDefaultNameOrganization()
 	team := values.NewDefaultTeam()
 	repo := values.NewDefaultRepository()
-	tech := values.NewDefaultTechnology()
+	tech := values.NewDefaultNameTechnology()
 	return NewConfiguration(org, team, repo, tech)
 }
 
@@ -45,6 +45,6 @@ func (c Configuration) GetRepository() values.Repository {
 	return c.repository
 }
 
-func (c Configuration) GetTechnology() values.Technology {
+func (c Configuration) GetTechnology() values.NameTechnology {
 	return c.technology
 }

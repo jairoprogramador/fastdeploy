@@ -10,7 +10,7 @@ type Project struct {
 	organization values.NameOrganization
 	team         values.Team
 	repository   values.Repository
-	technology   values.Technology
+	technology   values.NameTechnology
 	deployment   values.Deployment
 }
 
@@ -20,7 +20,7 @@ func NewProject(
 	organization values.NameOrganization,
 	team values.Team,
 	repository values.Repository,
-	tech values.Technology,
+	technology values.NameTechnology,
 	deployment values.Deployment,
 ) Project {
 	return Project{
@@ -29,7 +29,7 @@ func NewProject(
 		organization: organization,
 		team:         team,
 		repository:   repository,
-		technology:   tech,
+		technology:   technology,
 		deployment:   deployment,
 	}
 }
@@ -54,7 +54,7 @@ func (p Project) GetRepository() values.Repository {
 	return p.repository
 }
 
-func (p Project) GetTechnology() values.Technology {
+func (p Project) GetTechnology() values.NameTechnology {
 	return p.technology
 }
 

@@ -48,6 +48,10 @@ func NewBaseString(value string, fieldName string) (BaseString, error) {
 	return BaseString{value: value}, nil
 }
 
+func NewBaseStringEmpty() BaseString{
+	return BaseString{value: ""}
+}
+
 func (s BaseString) Value() string {
 	return s.value
 }

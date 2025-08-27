@@ -86,32 +86,24 @@ func (pf *ProjectInitialize) makeRepository(repository values.Repository) (value
 		}
 	}
 
-	return values.NewRepository(url), nil
+	version := repository.GetVersion()
+	if version.IsEmpty() {
+		version = values.NewDefaultVersionRepository()
+	} else {
+		var err error
+		version, err = values.NewVersionRepository(version.Value())
+		if err != nil {
+			return values.Repository{}, err
+		}
+	}
+
+	return values.NewRepository(url, version), nil
 }
 
-func (pf *ProjectInitialize) makeTechnology(technology values.Technology) (values.Technology, error) {
-	name := technology.GetName()
-	if name.IsEmpty() {
-		name = values.NewDefaultNameTechnology()
-	} else {
-		var err error
-		name, err = values.NewNameTechnology(name.Value())
-		if err != nil {
-			return values.Technology{}, err
-		}
-	}
-
-	version := technology.GetVersion()
-	if version.IsEmpty() {
-		version = values.NewDefaultVersionTechnology()
-	} else {
-		var err error
-		version, err = values.NewVersionTechnology(version.Value())
-		if err != nil {
-			return values.Technology{}, err
-		}
-	}
-
-	return values.NewTechnology(name, version), nil
+func (pf *ProjectInitialize) makeTechnology(technology values.NameTechnology) (values.NameTechnology, error) {
+	if technology.IsEmpty() {
+		return values.NewDefaultNameTechnology(), nil
+	} 
+	return values.NewNameTechnology(technology.Value())
 }
 

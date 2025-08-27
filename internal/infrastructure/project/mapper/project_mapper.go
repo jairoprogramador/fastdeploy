@@ -10,14 +10,14 @@ func ToDto(project entity.Project) (dto.ProjectDto, error) {
 	projectInfo := dto.ProjectInfo{
 		ID:   project.GetID().Value(),
 		Name: project.GetName().Value(),
+		Technology: project.GetTechnology().Value(),
 	}
+
 	repository := dto.RepositoryInfo{
 		URL: project.GetRepository().GetURL().Value(),
+		Version: project.GetRepository().GetVersion().Value(),
 	}
-	technology := dto.TechnologyInfo{
-		Name:    project.GetTechnology().GetName().Value(),
-		Version: project.GetTechnology().GetVersion().Value(),
-	}
+
 	deployment := dto.DeploymentInfo{
 		Version: project.GetDeployment().GetVersion().Value(),
 	}
@@ -27,7 +27,6 @@ func ToDto(project entity.Project) (dto.ProjectDto, error) {
 		Team:         project.GetTeam().Value(),
 		Project:      projectInfo,
 		Repository:   repository,
-		Technology:   technology,
 		Deployment:   deployment,
 	}, nil
 }
@@ -40,6 +39,11 @@ func ToDomain(dto dto.ProjectDto) (entity.Project, error) {
 	}
 
 	name, err := values.NewNameProject(dto.Project.Name)
+	if err != nil {
+		return entity.Project{}, err
+	}
+
+	technology, err := values.NewNameTechnology(dto.Project.Technology)
 	if err != nil {
 		return entity.Project{}, err
 	}
@@ -59,19 +63,7 @@ func ToDomain(dto dto.ProjectDto) (entity.Project, error) {
 		return entity.Project{}, err
 	}
 
-	repository := values.NewRepository(repositoryUrl)
-
-	technologyName, err := values.NewNameTechnology(dto.Technology.Name)
-	if err != nil {
-		return entity.Project{}, err
-	}
-
-	technologyVersion, err := values.NewVersionTechnology(dto.Technology.Version)
-	if err != nil {
-			return entity.Project{}, err
-	}
-
-	technology := values.NewTechnology(technologyName, technologyVersion)
+	repository := values.NewRepository(repositoryUrl, values.NewDefaultVersionRepository())
 
 	deploymentVersion, err := values.NewVersionDeployment(dto.Deployment.Version)
 	if err != nil {
