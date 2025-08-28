@@ -5,10 +5,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+
+	"github.com/jairoprogramador/fastdeploy/internal/domain/deployment"
 )
 
 type ExecutorCmd interface {
-	Execute(yamlFilePath string) error
+	Execute(yamlFilePath string, context deployment.Context) error
 }
 
 type CommandExecutor struct{}
@@ -17,7 +19,7 @@ func NewCommandExecutor() ExecutorCmd {
 	return &CommandExecutor{}
 }
 
-func (e *CommandExecutor) Execute(yamlFilePath string) error {
+func (e *CommandExecutor) Execute(yamlFilePath string, context deployment.Context) error {
 	listCmd, err := Load(yamlFilePath)
 	if err != nil {
 		return err

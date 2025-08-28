@@ -12,6 +12,8 @@ import (
 
 var versionRegex = regexp.MustCompile(`^v(\d+)\.(\d+)\.(\d+)(-[a-zA-Z0-9.-]+)?$`)
 
+const DEPLOYMENT_VERSION_DEFAULT_VALUE = "v1.0.0"
+
 type VersionDeployment struct {
 	shared.BaseString
 }
@@ -35,7 +37,7 @@ func NewVersionDeployment(value string) (VersionDeployment, error) {
 }
 
 func NewDefaultVersionDeployment() VersionDeployment {
-	defaultVersion, _ := NewVersionDeployment("v1.0.0")
+	defaultVersion, _ := NewVersionDeployment(DEPLOYMENT_VERSION_DEFAULT_VALUE)
 	return defaultVersion
 }
 

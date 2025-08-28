@@ -28,8 +28,7 @@ func NewVersionRepository(value string) (VersionRepository, error) {
 }
 
 func NewDefaultVersionRepository() VersionRepository {
-	defaultVersion, _ := NewVersionRepository(REPOSITORY_VERSION_DEFAULT_VALUE)
-	return defaultVersion
+	return VersionRepository{BaseString: shared.NewBaseStringEmpty()}
 }
 
 func (tv VersionRepository) Equals(other VersionRepository) bool {

@@ -36,7 +36,7 @@ func (s *BaseStrategy) ExecuteStep(
 			constants.RepositoryStepsDir, technologyName, stepName, constants.CommandFileName)
 	}
 
-	if err := executor.Execute(repositoryFilePath); err != nil {
+	if err := executor.Execute(repositoryFilePath, ctx); err != nil {
 		return err
 	}
 
