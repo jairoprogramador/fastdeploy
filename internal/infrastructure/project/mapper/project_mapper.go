@@ -63,7 +63,12 @@ func ToDomain(dto dto.ProjectDto) (entity.Project, error) {
 		return entity.Project{}, err
 	}
 
-	repository := values.NewRepository(repositoryUrl, values.NewDefaultVersionRepository())
+	repositoryVersion, err := values.NewVersionRepository(dto.Repository.Version)
+	if err != nil {
+		return entity.Project{}, err
+	}
+
+	repository := values.NewRepository(repositoryUrl, repositoryVersion)
 
 	deploymentVersion, err := values.NewVersionDeployment(dto.Deployment.Version)
 	if err != nil {

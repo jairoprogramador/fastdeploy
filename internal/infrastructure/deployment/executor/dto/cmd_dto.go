@@ -5,4 +5,5 @@ type CmdDto struct {
 	Description string `yaml:"description"`
 	Cmd         string `yaml:"cmd"`
 	Dir         string `yaml:"dir,omitempty"`
+	Outputs     []OutputDto `yaml:"outputs,omitempty"`
 }

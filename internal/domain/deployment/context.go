@@ -8,6 +8,7 @@ import (
 type Context interface {
 	Get(key string) (string, error)
 	Set(key, value string)
+	GetAll() map[string]string
 }
 
 type DeploymentContext struct {
@@ -37,4 +38,11 @@ func (c *DeploymentContext) Set(key, value string) {
 	defer c.mu.Unlock()
 
 	c.params[key] = value
+}
+
+func (c *DeploymentContext) GetAll() map[string]string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	return c.params
 }
