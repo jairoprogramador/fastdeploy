@@ -7,7 +7,11 @@ import (
 )
 
 type ProjectFactory interface {
-	Create(configuration config.Configuration, idProject string, nameProject string) (project.Project, error)
+	Create(
+		configuration config.Configuration,
+		idProject string,
+		nameProject string,
+	) (project.Project, error)
 }
 
 type ProjectInitialize struct { }
@@ -16,7 +20,11 @@ func NewProjectFactory() ProjectFactory {
 	return &ProjectInitialize{}
 }
 
-func (pf *ProjectInitialize) Create(configuration config.Configuration, idProject string, nameProject string) (project.Project, error) {
+func (pf *ProjectInitialize) Create(
+	configuration config.Configuration,
+	idProject string,
+	nameProject string,
+) (project.Project, error) {
 
 	projectId, err := values.NewIdentifier(idProject)
 	if err != nil {

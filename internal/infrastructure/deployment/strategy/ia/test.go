@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/deployment/executor/service"
-	"github.com/jairoprogramador/fastdeploy/internal/domain/deployment"
+	contextService "github.com/jairoprogramador/fastdeploy/internal/domain/context/service"
 	domain "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/strategy"
 	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/deployment/strategy"
 )
@@ -21,7 +21,7 @@ func NewIATest(executor service.ExecutorCmd) domain.StepStrategy {
 	}
 }
 
-func (s *IATest) Execute(ctx deployment.Context) error {
+func (s *IATest) Execute(ctx contextService.Context) error {
 	fmt.Println("  [Estrategia] Ejecutando pruebas para un proyecto Node.js (ej. npm test)")
 	return nil
 }

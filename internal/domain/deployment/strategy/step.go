@@ -1,7 +1,7 @@
 package strategy
 
-import "github.com/jairoprogramador/fastdeploy/internal/domain/deployment"
+import "github.com/jairoprogramador/fastdeploy/internal/domain/context/service"
 
 type StepStrategy interface {
-	Execute(deployment.Context) error
+	Execute(service.Context) error
 }

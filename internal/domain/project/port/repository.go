@@ -6,4 +6,6 @@ type Repository interface {
 	Exists() (bool, error)
 	Load() (entity.Project, error)
 	Save(project entity.Project) error
+	PathDirectory() (string, error)
+	PathDirectoryGit(project entity.Project) (string, error)
 }

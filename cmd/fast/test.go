@@ -5,9 +5,10 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/jairoprogramador/fastdeploy/internal/application/project"
-	"github.com/jairoprogramador/fastdeploy/internal/domain/deployment"
+	domainContext "github.com/jairoprogramador/fastdeploy/internal/domain/context/service"
 	domainService "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/service"
-	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/project/service"
+	projectService "github.com/jairoprogramador/fastdeploy/internal/infrastructure/project/service"
+	contextService "github.com/jairoprogramador/fastdeploy/internal/infrastructure/context/service"
 	app "github.com/jairoprogramador/fastdeploy/internal/application/deployment"
 	constantInfra "github.com/jairoprogramador/fastdeploy/internal/infrastructure/constants"
 	constantDomain "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/constant"
@@ -22,10 +23,10 @@ func NewTestCmd() *cobra.Command {
 			para asegurar la calidad del código.`,
 		Aliases: []string{"t"},
 		Run: func(cmd *cobra.Command, args []string) {
-			repositoryProject := service.NewFileRepository()
+			repositoryProject := projectService.NewFileRepository()
 			readerProject := project.NewReader(repositoryProject)
 
-			context := deployment.NewDeploymentContext()
+			context := domainContext.NewDataContext()
 			registryStrategy := factory.NewRegistryStrategy()
 
 			factoryStrategy, err := registryStrategy.Get(constantInfra.FactoryManual)
@@ -35,7 +36,9 @@ func NewTestCmd() *cobra.Command {
 
 			commandManager := domainService.NewStepOrchestrator(factoryStrategy)
 
-			executeStep := app.NewExecuteStep(readerProject, context, commandManager)
+			contextRepository := contextService.NewFileRepository()
+
+			executeStep := app.NewExecuteStep(readerProject, context, contextRepository, commandManager)
 
 			if err := executeStep.StartStep(constantDomain.StepTest, []string{}); err != nil {
 				log.Fatalf("Error: %v", err)

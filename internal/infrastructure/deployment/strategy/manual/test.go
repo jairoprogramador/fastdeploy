@@ -5,7 +5,7 @@ import (
 
 	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/deployment/executor/service"
 	"github.com/jairoprogramador/fastdeploy/internal/domain/deployment/constant"
-	"github.com/jairoprogramador/fastdeploy/internal/domain/deployment"
+	contextService "github.com/jairoprogramador/fastdeploy/internal/domain/context/service"
 	domain "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/strategy"
 	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/deployment/strategy"
 )
@@ -22,7 +22,7 @@ func NewManualTest(executor service.ExecutorCmd) domain.StepStrategy {
 	}
 }
 
-func (s *ManualTest) Execute(ctx deployment.Context) error {
+func (s *ManualTest) Execute(ctx contextService.Context) error {
 	fmt.Println("  [Estrategia] Ejecutando pruebas para un proyecto Java (Spring Boot)")
 
 	if err := s.ExecuteStep(ctx, constant.StepTest, s.Executor); err != nil {

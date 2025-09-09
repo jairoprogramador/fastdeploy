@@ -9,13 +9,14 @@ import (
 	"path/filepath"
 	"regexp"
 
-	"github.com/jairoprogramador/fastdeploy/internal/domain/deployment"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/context/service"
 )
 
 var ansiRegex = regexp.MustCompile(`\x1b\[[0-9;]*[a-zA-Z]`)
 var varRegex = regexp.MustCompile(`\$\{var\.([^}]+)\}`)
+
 type ExecutorCmd interface {
-	Execute(yamlFilePath string, context deployment.Context) error
+	Execute(yamlFilePath string, context service.Context) error
 }
 
 type CommandExecutor struct{}
@@ -24,11 +25,7 @@ func NewCommandExecutor() ExecutorCmd {
 	return &CommandExecutor{}
 }
 
-func cleanANSICodes(s string) string {
-	return ansiRegex.ReplaceAllString(s, "")
-}
-
-func prepareCommand(cmdTemplate string, context deployment.Context) (string, error) {
+func prepareCommand(cmdTemplate string, context service.Context) (string, error) {
 	result := varRegex.ReplaceAllStringFunc(cmdTemplate, func(match string) string {
 		subMatch := varRegex.FindStringSubmatch(match)
 		if len(subMatch) >= 1 {
@@ -46,7 +43,7 @@ func prepareCommand(cmdTemplate string, context deployment.Context) (string, err
 	return result, nil
 }
 
-func (e *CommandExecutor) Execute(yamlFilePath string, context deployment.Context) error {
+func (e *CommandExecutor) Execute(yamlFilePath string, context service.Context) error {
 	listCmd, err := Load(yamlFilePath)
 	if err != nil {
 		return err
@@ -54,10 +51,10 @@ func (e *CommandExecutor) Execute(yamlFilePath string, context deployment.Contex
 
 	yamlDir := filepath.Dir(yamlFilePath)
 
-	for _, cmdDef := range listCmd.Commands {
-		fmt.Printf("   -> %s\n", cmdDef.Name)
+	for _, command := range listCmd.Commands {
+		fmt.Printf("   -> %s\n", command.Name)
 
-		preparedCmd, err := prepareCommand(cmdDef.Cmd, context)
+		preparedCmd, err := prepareCommand(command.Cmd, context)
 		if err != nil {
 			return fmt.Errorf("error preparando comando: %w", err)
 		}	
@@ -65,30 +62,35 @@ func (e *CommandExecutor) Execute(yamlFilePath string, context deployment.Contex
 
 			
 		cmdDir := "."
-		if cmdDef.Dir != "" {
-			cmdDir = filepath.Join(yamlDir, cmdDef.Dir)
+		if command.Workdir != "" {
+			cmdDir = filepath.Join(yamlDir, command.Workdir)
 		}
 
-		cmd := exec.Command("sh", "-c", preparedCmd)
+		commandExec := exec.Command("sh", "-c", preparedCmd)
 
 		var out bytes.Buffer
 		mw := io.MultiWriter(os.Stdout, &out)
 
-		cmd.Dir = cmdDir
-		cmd.Stdout = mw
-		cmd.Stderr = mw
+		commandExec.Dir = cmdDir
+		commandExec.Stdout = mw
+		commandExec.Stderr = mw
 
-		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("'%s': %w", preparedCmd, err)
+		if err := commandExec.Run(); err != nil {
+			if command.ContinueOnError {
+				fmt.Printf("error: %v\n", err)
+				continue
+			} else {
+				return fmt.Errorf("'%s': %w", preparedCmd, err)
+			}
 		}
 
-		for _, output := range cmdDef.Outputs {
+		for _, output := range command.Outputs {
 			re, err := regexp.Compile(output.Regex)
 			if err != nil {
 				return fmt.Errorf("regex inválida: %w", err)
 			}
 
-			outputCmd := cleanANSICodes(out.String())
+			outputCmd :=  ansiRegex.ReplaceAllString(out.String(), "")
 
 			matches := re.FindAllStringSubmatch(outputCmd, -1)
 			if len(matches) == 0 {

@@ -3,7 +3,7 @@ package command
 import (
 	"fmt"
 
-	"github.com/jairoprogramador/fastdeploy/internal/domain/deployment"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/context/service"
 	"github.com/jairoprogramador/fastdeploy/internal/domain/deployment/chain"
 	"github.com/jairoprogramador/fastdeploy/internal/domain/deployment/strategy"
 )
@@ -19,7 +19,7 @@ func NewTestCommand(strategy strategy.StepStrategy) chain.CommandChain {
 	}
 }
 
-func (t *TestCommand) Execute(ctx deployment.Context) error {
+func (t *TestCommand) Execute(ctx service.Context) error {
 	fmt.Println("Ejecutando el comando: TEST")
 	if err := t.strategy.Execute(ctx); err != nil {
 		return err

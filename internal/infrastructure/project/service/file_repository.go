@@ -2,12 +2,14 @@ package service
 
 import (
 	"os"
+	"os/user"
 	"path/filepath"
 
 	"github.com/jairoprogramador/fastdeploy/internal/domain/project/entity"
 	"github.com/jairoprogramador/fastdeploy/internal/domain/project/port"
 	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/project/dto"
 	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/project/mapper"
+	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/constants"
 	"gopkg.in/yaml.v3"
 )
 
@@ -38,6 +40,7 @@ func (pr *FileRepository) Load() (entity.Project, error) {
 	if err != nil {
 		return entity.Project{}, err
 	}
+
 	return mapper.ToDomain(dto)
 }
 
@@ -73,6 +76,35 @@ func (pr *FileRepository) Exists() (bool, error) {
 		return false, err
 	}
 	return true, nil
+}
+
+func (pr *FileRepository) PathDirectory() (string, error) {
+	dir, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+	return dir, nil
+}
+
+func (pr *FileRepository) PathDirectoryGit(project entity.Project) (string, error) {
+	currentUser, err := user.Current()
+	if err != nil {
+		return "", err
+	}
+
+	nameRepository, err := project.GetRepository().GetName()
+	pathBase := filepath.Join(currentUser.HomeDir, constants.FastDeployDir, nameRepository.Value(), constants.RepositoryStepsDir)
+
+	if err != nil {
+		return "", err
+	}
+
+	if project.GetTechnology().Value() != "" {
+		return filepath.Join(pathBase, project.GetTechnology().Value()), nil
+	}
+
+	return pathBase, nil
+
 }
 
 func (pr *FileRepository) getFilePath() (string, error) {

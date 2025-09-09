@@ -5,7 +5,7 @@ import (
 	"os/user"
 	"path/filepath"
 
-	"github.com/jairoprogramador/fastdeploy/internal/domain/deployment"
+	contextService "github.com/jairoprogramador/fastdeploy/internal/domain/context/service"
 	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/constants"
 	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/deployment/executor/service"
 )
@@ -15,7 +15,7 @@ type BaseStrategy struct {
 }
 
 func (s *BaseStrategy) ExecuteStep(
-	ctx deployment.Context,
+	ctx contextService.Context,
 	stepName string,
 	executor service.ExecutorCmd,
 ) error {

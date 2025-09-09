@@ -5,7 +5,7 @@ import (
 
 	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/deployment/executor/service"
 	"github.com/jairoprogramador/fastdeploy/internal/domain/deployment/constant"
-	"github.com/jairoprogramador/fastdeploy/internal/domain/deployment"
+	contextService "github.com/jairoprogramador/fastdeploy/internal/domain/context/service"
 	domain "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/strategy"
 	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/deployment/strategy"
 )
@@ -22,7 +22,7 @@ func NewManualSupply(executor service.ExecutorCmd) domain.StepStrategy {
 	}
 }
 
-func (s *ManualSupply) Execute(ctx deployment.Context) error {
+func (s *ManualSupply) Execute(ctx contextService.Context) error {
 	fmt.Println("  [Estrategia] Ejecutando supply para un proyecto")
 
 	if err := s.ExecuteStep(ctx, constant.StepSupply, s.Executor); err != nil {

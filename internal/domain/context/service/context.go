@@ -1,4 +1,4 @@
-package deployment
+package service
 
 import (
 	"fmt"
@@ -9,20 +9,21 @@ type Context interface {
 	Get(key string) (string, error)
 	Set(key, value string)
 	GetAll() map[string]string
+	SetAll(data map[string]string)
 }
 
-type DeploymentContext struct {
+type DataContext struct {
 	mu     sync.RWMutex
 	params map[string]string
 }
 
-func NewDeploymentContext() Context {
-	return &DeploymentContext{
+func NewDataContext() Context {
+	return &DataContext{
 		params: make(map[string]string),
 	}
 }
 
-func (c *DeploymentContext) Get(key string) (string, error) {
+func (c *DataContext) Get(key string) (string, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
@@ -33,16 +34,23 @@ func (c *DeploymentContext) Get(key string) (string, error) {
 	return value, nil
 }
 
-func (c *DeploymentContext) Set(key, value string) {
+func (c *DataContext) Set(key, value string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	c.params[key] = value
 }
 
-func (c *DeploymentContext) GetAll() map[string]string {
+func (c *DataContext) GetAll() map[string]string {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
 	return c.params
+}
+
+func (c *DataContext) SetAll(data map[string]string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.params = data
 }

@@ -8,6 +8,8 @@ import (
 type Reader interface {
 	ExistsFile() (bool, error)
 	Read() (entity.Project, error)
+	PathDirectory() (string, error)
+	PathDirectoryGit(project entity.Project) (string, error)
 }
 
 type FileReader struct {
@@ -31,4 +33,12 @@ func (cs *FileReader) Read() (entity.Project, error) {
 
 func (cs *FileReader) ExistsFile() (bool, error) {
 	return cs.repository.Exists()
+}
+
+func (cs *FileReader) PathDirectory() (string, error) {
+	return cs.repository.PathDirectory()
+}
+
+func (cs *FileReader) PathDirectoryGit(project entity.Project) (string, error) {
+	return cs.repository.PathDirectoryGit(project)
 }

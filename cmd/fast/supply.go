@@ -2,9 +2,10 @@ package main
 
 import (
 	"log"
-	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/project/service"
+	projectService "github.com/jairoprogramador/fastdeploy/internal/infrastructure/project/service"
+	contextService "github.com/jairoprogramador/fastdeploy/internal/infrastructure/context/service"
 	"github.com/jairoprogramador/fastdeploy/internal/application/project"
-	"github.com/jairoprogramador/fastdeploy/internal/domain/deployment"
+	domainContext "github.com/jairoprogramador/fastdeploy/internal/domain/context/service"
 	app "github.com/jairoprogramador/fastdeploy/internal/application/deployment"
 	domainService "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/service"
 	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/deployment/factory"
@@ -23,10 +24,10 @@ func NewSupplyCmd() *cobra.Command {
 		Long:  `Este comando ejecuta el suministro de la aplicación.`,
 		Aliases: []string{"s"},
 		Run: func(cmd *cobra.Command, args []string) {
-			repositoryProject := service.NewFileRepository()
+			repositoryProject := projectService.NewFileRepository()
 			readerProject := project.NewReader(repositoryProject)
 
-			context := deployment.NewDeploymentContext()
+			context := domainContext.NewDataContext()
 			registryStrategy := factory.NewRegistryStrategy()
 
 			factoryStrategy, err := registryStrategy.Get(constantInfra.FactoryManual)
@@ -36,7 +37,9 @@ func NewSupplyCmd() *cobra.Command {
 
 			commandManager := domainService.NewStepOrchestrator(factoryStrategy)
 
-			executeStep := app.NewExecuteStep(readerProject, context, commandManager)
+			contextRepository := contextService.NewFileRepository()
+
+			executeStep := app.NewExecuteStep(readerProject, context, contextRepository, commandManager)
 
 			if err := executeStep.StartStep(constantDomain.StepSupply, GetSkipSteps(cmd, skippableSteps)); err != nil {
 				log.Fatalf("Error: %v", err)

@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/deployment/executor/service"
-	"github.com/jairoprogramador/fastdeploy/internal/domain/deployment"
+	contextService "github.com/jairoprogramador/fastdeploy/internal/domain/context/service"
 	domain "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/strategy"
 	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/deployment/strategy"
 )
@@ -21,7 +21,7 @@ func NewIASupply(executor service.ExecutorCmd) domain.StepStrategy {
 	}
 }
 
-func (s *IASupply) Execute(ctx deployment.Context) error {
+func (s *IASupply) Execute(ctx contextService.Context) error {
 	fmt.Println("  [Estrategia] Ejecutando supply para un proyecto Node.js (ej. infraestructura)")
 	return nil
 }
