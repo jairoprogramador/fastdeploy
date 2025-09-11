@@ -73,8 +73,8 @@ func (e *ExecuteStep) StartStep(stepName string, blockedSteps []string) error {
 	e.context.Set(constants.KeySubscriptionId, "ee6f0101-cf12-48ca-b7b8-1745af77d759")
 
 	fmt.Println("INICIO Contexto de la ejecución")
-	for key, value := range e.context.GetAll() {
-		fmt.Println(key,":", value)
+	for id, value := range e.context.GetAll() {
+		fmt.Println(id,":", value)
 	}
 
 	err = orchestrator.Execute(e.context)
@@ -88,8 +88,8 @@ func (e *ExecuteStep) StartStep(stepName string, blockedSteps []string) error {
 	}
 
 	fmt.Println("FINAL Contexto de la ejecución")
-	for key, value := range e.context.GetAll() {
-		fmt.Println(key,":", value)
+	for id, value := range e.context.GetAll() {
+		fmt.Println(id,":", value)
 	}
 
 	return result
