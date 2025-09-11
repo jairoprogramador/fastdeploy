@@ -2,10 +2,11 @@ package deployment
 
 import (
 	"fmt"
+
 	"github.com/jairoprogramador/fastdeploy/internal/application/project"
+	contextRepository "github.com/jairoprogramador/fastdeploy/internal/domain/context/port"
 	contextService "github.com/jairoprogramador/fastdeploy/internal/domain/context/service"
 	deploymentService "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/service"
-	contextRepository "github.com/jairoprogramador/fastdeploy/internal/domain/context/port"
 	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/constants"
 )
 
