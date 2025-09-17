@@ -9,8 +9,7 @@ type NameRepository struct {
 }
 
 func NewNameRepository(value string) (NameRepository, error) {
-	valueSafe := shared.MakeSafeForFileSystem(value)
-	base, err := shared.NewBaseString(valueSafe, "RepositoryName")
+	base, err := shared.NewBaseString(value, "RepositoryName")
 	if err != nil {
 		return NameRepository{}, err
 	}

@@ -26,7 +26,7 @@ func (g *GitManager) Clone(url string, nameRepository string) error {
 	directoryGit := filepath.Join(directoryPath, ".git")
 
 	if _, err := os.Stat(directoryGit); err == nil {
-		fmt.Printf("El repositorio ya está clonado en '%s'. Omitiendo la clonación.\n", directoryPath)
+		fmt.Printf("El repositorio de despliegue ya está clonado en '%s'. Omitiendo la clonación.\n", directoryPath)
 		return nil
 	} else if !os.IsNotExist(err) {
 		return err

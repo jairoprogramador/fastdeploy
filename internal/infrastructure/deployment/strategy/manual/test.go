@@ -23,7 +23,7 @@ func NewManualTest(executor service.ExecutorCmd) domain.StepStrategy {
 }
 
 func (s *ManualTest) Execute(ctx contextService.Context) error {
-	fmt.Println("  [Estrategia] Ejecutando pruebas para un proyecto Java (Spring Boot)")
+	fmt.Println("Ejecutando el comando: TEST")
 
 	if err := s.ExecuteStep(ctx, constant.StepTest, s.Executor); err != nil {
 		return err

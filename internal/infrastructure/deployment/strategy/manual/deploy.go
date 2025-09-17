@@ -23,7 +23,7 @@ func NewManualDeploy(executor service.ExecutorCmd) domain.StepStrategy {
 }
 
 func (s *ManualDeploy) Execute(ctx contextService.Context) error {
-	fmt.Println("  [Estrategia] Ejecutando deploy para un proyecto Java")
+	fmt.Println("Ejecutando el comando: DEPLOY")
 
 	if err := s.ExecuteStep(ctx, constant.StepDeploy, s.Executor); err != nil {
 		return err

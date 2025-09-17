@@ -64,6 +64,7 @@ func (pf *ProjectInitialize) Create(
 		repository,
 		technology,
 		values.NewDefaultDeployment(),
+		values.NewDefaultCategoryProject(),
 	), nil
 }
 

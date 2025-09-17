@@ -6,7 +6,7 @@ import (
 	shared "github.com/jairoprogramador/fastdeploy/internal/domain/shared/values"
 )
 
-const REPOSITORY_VERSION_DEFAULT_VALUE = "v1.0.0"
+const REPOSITORY_VERSION_DEFAULT_VALUE = "main"
 
 type VersionRepository struct {
 	shared.BaseString
@@ -28,7 +28,8 @@ func NewVersionRepository(value string) (VersionRepository, error) {
 }
 
 func NewDefaultVersionRepository() VersionRepository {
-	return VersionRepository{BaseString: shared.NewBaseStringEmpty()}
+	defaultVersion, _ := NewVersionRepository(REPOSITORY_VERSION_DEFAULT_VALUE)
+	return defaultVersion
 }
 
 func (tv VersionRepository) Equals(other VersionRepository) bool {

@@ -23,7 +23,7 @@ func NewManualPacket(executor service.ExecutorCmd) domain.StepStrategy {
 }
 
 func (s *ManualPacket) Execute(ctx contextService.Context) error {
-	fmt.Println("  [Estrategia] Ejecutando package para un proyecto Java")
+	fmt.Println("Ejecutando el comando: PACKAGE")
 
 	if err := s.ExecuteStep(ctx, constant.StepPackage, s.Executor); err != nil {
 		return err

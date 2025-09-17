@@ -5,6 +5,9 @@ import (
 
 	shared "github.com/jairoprogramador/fastdeploy/internal/domain/shared/values"
 )
+
+const TECHNOLOGY_DEFAULT_VALUE = "springboot"
+
 type NameTechnology struct {
 	shared.BaseString
 }
@@ -24,7 +27,8 @@ func NewNameTechnology(value string) (NameTechnology, error) {
 }
 
 func NewDefaultNameTechnology() NameTechnology {
-	return NameTechnology{BaseString: shared.NewBaseStringEmpty()}
+	defaultTechnology, _ := NewNameTechnology(TECHNOLOGY_DEFAULT_VALUE)
+	return defaultTechnology
 }
 
 func (tn NameTechnology) Equals(other NameTechnology) bool {

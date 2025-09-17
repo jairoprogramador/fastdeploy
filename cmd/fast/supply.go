@@ -2,15 +2,16 @@ package main
 
 import (
 	"log"
-	projectService "github.com/jairoprogramador/fastdeploy/internal/infrastructure/project/service"
-	contextService "github.com/jairoprogramador/fastdeploy/internal/infrastructure/context/service"
+
+	app "github.com/jairoprogramador/fastdeploy/internal/application/deployment"
 	"github.com/jairoprogramador/fastdeploy/internal/application/project"
 	domainContext "github.com/jairoprogramador/fastdeploy/internal/domain/context/service"
-	app "github.com/jairoprogramador/fastdeploy/internal/application/deployment"
-	domainService "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/service"
-	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/deployment/factory"
-	constantInfra "github.com/jairoprogramador/fastdeploy/internal/infrastructure/constants"
 	constantDomain "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/constant"
+	domainService "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/service"
+	constantInfra "github.com/jairoprogramador/fastdeploy/internal/infrastructure/constants"
+	contextService "github.com/jairoprogramador/fastdeploy/internal/infrastructure/context/service"
+	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/deployment/factory"
+	projectService "github.com/jairoprogramador/fastdeploy/internal/infrastructure/project/service"
 
 	"github.com/spf13/cobra"
 )
@@ -19,13 +20,14 @@ func NewSupplyCmd() *cobra.Command {
 	skippableSteps := []string{constantDomain.StepTest}
 
 	cmd := &cobra.Command{
-		Use:   "supply",
-		Short: "Ejecuta el suministro de la aplicación.",
-		Long:  `Este comando ejecuta el suministro de la aplicación.`,
+		Use:     "supply",
+		Short:   "Ejecuta el suministro de la aplicación.",
+		Long:    `Este comando ejecuta el suministro de la aplicación.`,
 		Aliases: []string{"s"},
 		Run: func(cmd *cobra.Command, args []string) {
 			repositoryProject := projectService.NewFileRepository()
 			readerProject := project.NewReader(repositoryProject)
+			identifier := projectService.NewHashIdentifier()
 
 			context := domainContext.NewDataContext()
 			registryStrategy := factory.NewRegistryStrategy()
@@ -39,7 +41,7 @@ func NewSupplyCmd() *cobra.Command {
 
 			contextRepository := contextService.NewFileRepository()
 
-			executeStep := app.NewExecuteStep(readerProject, context, contextRepository, commandManager)
+			executeStep := app.NewExecuteStep(readerProject, identifier, context, contextRepository, commandManager)
 
 			if err := executeStep.StartStep(constantDomain.StepSupply, GetSkipSteps(cmd, skippableSteps)); err != nil {
 				log.Fatalf("Error: %v", err)

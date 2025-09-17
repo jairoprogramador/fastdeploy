@@ -1,8 +1,6 @@
 package command
 
 import (
-	"fmt"
-
 	"github.com/jairoprogramador/fastdeploy/internal/domain/context/service"
 	"github.com/jairoprogramador/fastdeploy/internal/domain/deployment/chain"
 	"github.com/jairoprogramador/fastdeploy/internal/domain/deployment/strategy"
@@ -20,7 +18,6 @@ func NewSupplyCommand(strategy strategy.StepStrategy) chain.CommandChain {
 }
 
 func (s *SupplyCommand) Execute(ctx service.Context) error {
-	fmt.Println("Ejecutando el comando: SUPPLY")
 	if err := s.strategy.Execute(ctx); err != nil {
 		return err
 	}

@@ -6,35 +6,35 @@ import (
 )
 
 var unsafeChars = map[string]string{
-	" ":  "_",
-	"<":  "_",
-	">":  "_",
-	":":  "_",
-	"\"": "_",
-	"/":  "_",
-	"\\": "_",
-	"|":  "_",
-	"?":  "_",
-	"*":  "_",
-	"%":  "_",
-	"&":  "_",
-	"+":  "_",
-	"-":  "_",
-	"=":  "_",
-	"@":  "_",
-	"#":  "_",
-	"$":  "_",
-	"!":  "_",
-	"^":  "_",
-	"~":  "_",
-	"`":  "_",
-	"'":  "_",
-	"(":  "_",
-	")":  "_",
-	"{":  "_",
-	"}":  "_",
-	"[":  "_",
-	"]":  "_",
+	" ":  "",
+	"<":  "",
+	">":  "",
+	":":  "",
+	"\"": "",
+	"/":  "",
+	"\\": "",
+	"|":  "",
+	"?":  "",
+	"*":  "",
+	"%":  "",
+	"&":  "",
+	"+":  "",
+	"-":  "",
+	"=":  "",
+	"@":  "",
+	"#":  "",
+	"$":  "",
+	"!":  "",
+	"^":  "",
+	"~":  "",
+	"`":  "",
+	"'":  "",
+	"(":  "",
+	")":  "",
+	"{":  "",
+	"}":  "",
+	"[":  "",
+	"]":  "",
 }
 
 type BaseString struct {
@@ -48,9 +48,9 @@ func NewBaseString(value string, fieldName string) (BaseString, error) {
 	return BaseString{value: value}, nil
 }
 
-func NewBaseStringEmpty() BaseString{
+/* func NewBaseStringEmpty() BaseString{
 	return BaseString{value: ""}
-}
+} */
 
 func (s BaseString) Value() string {
 	return s.value
@@ -75,10 +75,10 @@ func (s BaseString) IsValid() bool {
 	})
 }
 
-func (s *BaseString) MakeSafe() BaseString {
+/* func (s *BaseString) MakeSafe() BaseString {
 	safeValue := MakeSafeForFileSystem(s.value)
 	return BaseString{value: safeValue}
-}
+} */
 
 func MakeSafeForFileSystem(value string) string {
 	trimmedValue := strings.TrimSpace(value)

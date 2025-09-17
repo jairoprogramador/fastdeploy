@@ -28,6 +28,7 @@ func ToDto(project entity.Project) (dto.ProjectDto, error) {
 		Project:      projectInfo,
 		Repository:   repository,
 		Deployment:   deployment,
+		Category:     project.GetCategory().Value(),
 	}, nil
 }
 
@@ -77,6 +78,11 @@ func ToDomain(dto dto.ProjectDto) (entity.Project, error) {
 
 	deployment := values.NewDeployment(deploymentVersion)
 
+	category, err := values.NewCategoryProject(dto.Category)
+	if err != nil {
+		return entity.Project{}, err
+	}
+
 	return entity.NewProject(
 		id,
 		name,
@@ -85,5 +91,6 @@ func ToDomain(dto dto.ProjectDto) (entity.Project, error) {
 		repository,
 		technology,
 		deployment,
+		category,
 	), nil
 }

@@ -2,6 +2,7 @@ package strategy
 
 import (
 	"fmt"
+	"os"
 	"os/user"
 	"path/filepath"
 
@@ -24,8 +25,8 @@ func (s *BaseStrategy) ExecuteStep(
 		return err
 	}
 
-	technologyName, _ := ctx.Get(constants.KeyNameTechnology)
-	nameRepository, _ := ctx.Get(constants.KeyNameRepository)
+	technologyName, _ := ctx.Get(constants.ProjectTechnology)
+	nameRepository, _ := ctx.Get(constants.DeploymentRepositoryName)
 
 	var repositoryFilePath string
 	if technologyName == "" {
@@ -44,10 +45,13 @@ func (s *BaseStrategy) ExecuteStep(
 }
 
 func (s *BaseStrategy) getHomeDirPath() (string, error) {
+	if fastDeployHome := os.Getenv("FASTDEPLOY_HOME"); fastDeployHome != "" {
+		return fastDeployHome, nil
+	}
+
 	currentUser, err := user.Current()
 	if err != nil {
 		return "", fmt.Errorf("no se pudo obtener el directorio del usuario: %w", err)
 	}
-
 	return filepath.Join(currentUser.HomeDir, constants.FastDeployDir), nil
 }

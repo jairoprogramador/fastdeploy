@@ -23,7 +23,7 @@ func NewManualSupply(executor service.ExecutorCmd) domain.StepStrategy {
 }
 
 func (s *ManualSupply) Execute(ctx contextService.Context) error {
-	fmt.Println("  [Estrategia] Ejecutando supply para un proyecto")
+	fmt.Println("Ejecutando el comando: SUPPLY")
 
 	if err := s.ExecuteStep(ctx, constant.StepSupply, s.Executor); err != nil {
 		return err

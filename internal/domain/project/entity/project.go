@@ -5,13 +5,14 @@ import (
 )
 
 type Project struct {
-	id           values.Identifier
-	name         values.NameProject
-	organization values.NameOrganization
-	team         values.Team
-	repository   values.Repository
-	technology   values.NameTechnology
-	deployment   values.Deployment
+	id             values.Identifier
+	name           values.NameProject
+	organization   values.NameOrganization
+	team           values.Team
+	repository     values.Repository
+	technology     values.NameTechnology
+	deployment     values.Deployment
+	category       values.CategoryProject
 }
 
 func NewProject(
@@ -22,6 +23,7 @@ func NewProject(
 	repository values.Repository,
 	technology values.NameTechnology,
 	deployment values.Deployment,
+	category values.CategoryProject,
 ) Project {
 	return Project{
 		id:           id,
@@ -31,6 +33,7 @@ func NewProject(
 		repository:   repository,
 		technology:   technology,
 		deployment:   deployment,
+		category:     category,
 	}
 }
 
@@ -66,6 +69,10 @@ func (p Project) GetFullName() string {
 	return p.organization.Value() + "/" + p.name.Value()
 }
 
+func (p Project) GetCategory() values.CategoryProject {
+	return p.category
+}
+
 func (p Project) IncrementDeploymentVersion() Project {
 	newDeployment := p.deployment.IncrementVersion()
 	return Project{
@@ -78,4 +85,3 @@ func (p Project) IncrementDeploymentVersion() Project {
 		deployment:   newDeployment,
 	}
 }
-
