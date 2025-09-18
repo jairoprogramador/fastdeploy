@@ -64,12 +64,22 @@ func (g *GitManager) IsCloned(nameRepository string) (bool, error) {
 }
 
 func (g *GitManager) getDirectoryPath(nameRepository string) (string, error) {
-	currentUser, err := user.Current()
+	directoryPath, err := g.getHomeDirPath()
 	if err != nil {
 		return "", err
 	}
 
-	directoryPath := filepath.Join(currentUser.HomeDir, constants.FastDeployDir)
-
 	return filepath.Join(directoryPath, nameRepository), nil
+}
+
+func (g *GitManager) getHomeDirPath() (string, error) {
+	if fastDeployHome := os.Getenv("FASTDEPLOY_HOME"); fastDeployHome != "" {
+		return fastDeployHome, nil
+	}
+
+	currentUser, err := user.Current()
+	if err != nil {
+		return "", fmt.Errorf("no se pudo obtener el directorio del usuario: %w", err)
+	}
+	return filepath.Join(currentUser.HomeDir, constants.FastDeployDir), nil
 }

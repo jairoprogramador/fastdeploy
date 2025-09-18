@@ -27,6 +27,7 @@ const (
 	ProjectType                 = "project_type"
 	Environment                 = "environment"
 	Environment8                = "environment8"
+	Step                        = "step"
 
 	FactoryManual = "manual"
 	FactoryIA     = "ia"

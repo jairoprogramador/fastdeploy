@@ -8,4 +8,5 @@ type CmdDTO struct {
 	Workdir         string               `yaml:"workdir,omitempty"`
 	Result          string               `yaml:"result,omitempty"`
 	Variables       []VariablePatternDTO `yaml:"variables,omitempty"`
+	Templating      TemplatingDTO        `yaml:"templating,omitempty"`
 }

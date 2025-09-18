@@ -2,6 +2,7 @@ package service
 
 import (
 	"encoding/gob"
+	"fmt"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -19,8 +20,8 @@ func NewFileRepository() port.Repository {
 	return &FileRepository{}
 }
 
-func (fr *FileRepository) Load(projectName string) (service.Context, error) {
-	filePath, err := fr.getFilePath(projectName)
+func (fr *FileRepository) Load(projectName, environment string) (service.Context, error) {
+	filePath, err := fr.getFilePath(projectName, environment)
 	if err != nil {
 		return service.NewDataContext(), err
 	}
@@ -51,7 +52,11 @@ func (fr *FileRepository) Load(projectName string) (service.Context, error) {
 }
 
 func (fr *FileRepository) Save(projectName string, data service.Context) error {
-	filePath, err := fr.getFilePath(projectName)
+	environment, err := data.Get(constants.Environment)
+	if err != nil {
+		return err
+	}
+	filePath, err := fr.getFilePath(projectName, environment)
 	if err != nil {
 		return err
 	}
@@ -75,8 +80,8 @@ func (fr *FileRepository) Save(projectName string, data service.Context) error {
 	return nil
 }
 
-func (fr *FileRepository) Exists(projectName string) (bool, error) {
-	filePath, err := fr.getFilePath(projectName)
+func (fr *FileRepository) Exists(projectName, environment string) (bool, error) {
+	filePath, err := fr.getFilePath(projectName, environment)
 	if err != nil {
 		return false, err
 	}
@@ -92,13 +97,25 @@ func (fr *FileRepository) Exists(projectName string) (bool, error) {
 	return true, nil
 }
 
-func (pr *FileRepository) getFilePath(projectName string) (string, error) {
-	currentUser, err := user.Current()
+func (pr *FileRepository) getFilePath(projectName, environment string) (string, error) {
+	homeDir, err := pr.getHomeDirPath()
 	if err != nil {
 		return "", err
 	}
 
-	directoryPath := filepath.Join(currentUser.HomeDir, constants.FastDeployDir)
+	var nameFile = fmt.Sprintf("%s%s", environment, CONTEXT_FILE_NAME)
 
-	return filepath.Join(directoryPath, projectName, CONTEXT_FILE_NAME), nil
+	return filepath.Join(homeDir, projectName, nameFile), nil
+}
+
+func (pr *FileRepository) getHomeDirPath() (string, error) {
+	if fastDeployHome := os.Getenv("FASTDEPLOY_HOME"); fastDeployHome != "" {
+		return fastDeployHome, nil
+	}
+
+	currentUser, err := user.Current()
+	if err != nil {
+		return "", fmt.Errorf("no se pudo obtener el directorio del usuario: %w", err)
+	}
+	return filepath.Join(currentUser.HomeDir, constants.FastDeployDir), nil
 }

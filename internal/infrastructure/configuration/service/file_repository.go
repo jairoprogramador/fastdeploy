@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -78,12 +79,22 @@ func (cr *FileRepository) Exists() (bool, error) {
 }
 
 func (cr *FileRepository) getFilePath() (string, error) {
-	currentUser, err := user.Current()
+	homeDir, err := cr.getHomeDirPath()
 	if err != nil {
 		return "", err
 	}
 
-	directoryPath := filepath.Join(currentUser.HomeDir, constants.FastDeployDir)
+	return filepath.Join(homeDir, CONFIG_FILE_NAME), nil
+}
 
-	return filepath.Join(directoryPath, CONFIG_FILE_NAME), nil
+func (cr *FileRepository) getHomeDirPath() (string, error) {
+	if fastDeployHome := os.Getenv("FASTDEPLOY_HOME"); fastDeployHome != "" {
+		return fastDeployHome, nil
+	}
+
+	currentUser, err := user.Current()
+	if err != nil {
+		return "", fmt.Errorf("no se pudo obtener el directorio del usuario: %w", err)
+	}
+	return filepath.Join(currentUser.HomeDir, constants.FastDeployDir), nil
 }

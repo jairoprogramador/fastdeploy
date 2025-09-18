@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"fmt"
 
 	"github.com/jairoprogramador/fastdeploy/internal/domain/project/entity"
 	"github.com/jairoprogramador/fastdeploy/internal/domain/project/port"
@@ -30,7 +31,7 @@ func (pr *FileRepository) Load() (entity.Project, error) {
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return entity.Project{}, err
+			return entity.Project{}, nil
 		}
 		return entity.Project{}, err
 	}
@@ -87,13 +88,13 @@ func (pr *FileRepository) PathDirectory() (string, error) {
 }
 
 func (pr *FileRepository) PathDirectoryGit(project entity.Project) (string, error) {
-	currentUser, err := user.Current()
+	directoryHome, err := pr.getHomeDirPath()
 	if err != nil {
 		return "", err
 	}
 
 	nameRepository, err := project.GetRepository().GetName()
-	pathBase := filepath.Join(currentUser.HomeDir, constants.FastDeployDir, nameRepository.Value(), constants.RepositoryStepsDir)
+	pathBase := filepath.Join(directoryHome, nameRepository.Value(), constants.RepositoryStepsDir)
 
 	if err != nil {
 		return "", err
@@ -113,4 +114,16 @@ func (pr *FileRepository) getFilePath() (string, error) {
 		return "", err
 	}
 	return filepath.Join(dir, PROJECT_FILE_NAME), nil
+}
+
+func (pr *FileRepository) getHomeDirPath() (string, error) {
+	if fastDeployHome := os.Getenv("FASTDEPLOY_HOME"); fastDeployHome != "" {
+		return fastDeployHome, nil
+	}
+
+	currentUser, err := user.Current()
+	if err != nil {
+		return "", fmt.Errorf("no se pudo obtener el directorio del usuario: %w", err)
+	}
+	return filepath.Join(currentUser.HomeDir, constants.FastDeployDir), nil
 }
