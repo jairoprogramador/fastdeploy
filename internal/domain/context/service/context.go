@@ -1,56 +1,55 @@
 package service
 
 import (
-	"fmt"
-	"sync"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/context/port"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/context/values"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/router/service"
 )
 
-type Context interface {
-	Get(key string) (string, error)
-	Set(key, value string)
-	GetAll() map[string]string
-	SetAll(data map[string]string)
+const CONTEXT_FILE_NAME = "context.gob"
+
+type ContextService interface {
+	AddContextStep(stepName string, contextValue *values.ContextValue) (*values.ContextValue, error)
+	SaveContextStep(stepName string, contextValue *values.ContextValue) error
 }
 
-type DataContext struct {
-	mu     sync.RWMutex
-	params map[string]string
+type ContextServiceImpl struct {
+	projectRouter service.ProjectRouterService
+	contextPort   port.ContextPort
 }
 
-func NewDataContext() Context {
-	return &DataContext{
-		params: make(map[string]string),
+func NewContextService(
+	projectRouter service.ProjectRouterService,
+	contextPort port.ContextPort) ContextService {
+	return &ContextServiceImpl{
+		projectRouter: projectRouter,
+		contextPort:   contextPort,
 	}
 }
 
-func (c *DataContext) Get(key string) (string, error) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
+func (c *ContextServiceImpl) AddContextStep(
+	stepName string,
+	contextValue *values.ContextValue) (*values.ContextValue, error) {
 
-	value, ok := c.params[key]
-	if !ok {
-		return "", fmt.Errorf("parámetro no encontrado: %s", key)
+	pathFileContextStep := c.getPathFileContextStep(stepName)
+
+	data, err := c.contextPort.Load(pathFileContextStep)
+	if err != nil {
+		return contextValue, err
 	}
-	return value, nil
+
+	contextValue.AddAll(data)
+
+	return contextValue, nil
 }
 
-func (c *DataContext) Set(key, value string) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	c.params[key] = value
+func (c *ContextServiceImpl) SaveContextStep(stepName string, context *values.ContextValue) error {
+	pathFileContextStep := c.getPathFileContextStep(stepName)
+	return c.contextPort.Save(pathFileContextStep, context.GetAll())
 }
 
-func (c *DataContext) GetAll() map[string]string {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
-	return c.params
-}
-
-func (c *DataContext) SetAll(data map[string]string) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	c.params = data
+func (c *ContextServiceImpl) getPathFileContextStep(stepName string) string {
+	pathStep := c.projectRouter.GetPathStep(stepName)
+	pathFile := c.projectRouter.BuildPath(pathStep, CONTEXT_FILE_NAME)
+	return pathFile
 }

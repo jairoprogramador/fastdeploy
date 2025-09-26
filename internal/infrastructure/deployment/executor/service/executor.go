@@ -1,18 +1,18 @@
 package service
-
+/*
 import (
 	"bufio"
 	"bytes"
 	"fmt"
 	"io"
-	"os/user"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
 	"regexp"
 	"strings"
 
-	"github.com/jairoprogramador/fastdeploy/internal/domain/context/service"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/context/values"
 	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/constants"
 	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/deployment/executor/dto"
 )
@@ -23,7 +23,7 @@ var ansiRegex = regexp.MustCompile(`\x1b\[[0-9;]*[a-zA-Z]`)
 var varRegex = regexp.MustCompile(`\$\{var\.([^}]+)\}`)
 
 type ExecutorCmd interface {
-	Execute(yamlFilePath string, context service.Context) error
+	Execute(yamlFilePath string, context *values.ContextValue) error
 }
 
 type CommandExecutor struct{}
@@ -32,7 +32,7 @@ func NewCommandExecutor() ExecutorCmd {
 	return &CommandExecutor{}
 }
 
-func prepareCommand(cmdTemplate string, context service.Context) (string, error) {
+func prepareCommand(cmdTemplate string, context *values.ContextValue) (string, error) {
 	result := varRegex.ReplaceAllStringFunc(cmdTemplate, func(match string) string {
 		subMatch := varRegex.FindStringSubmatch(match)
 		if len(subMatch) >= 1 {
@@ -50,7 +50,7 @@ func prepareCommand(cmdTemplate string, context service.Context) (string, error)
 	return result, nil
 }
 
-func (e *CommandExecutor) Execute(yamlFilePath string, context service.Context) error {
+func (e *CommandExecutor) Execute(yamlFilePath string, context *values.ContextValue) error {
 	listCmd, err := LoadCmdList(yamlFilePath)
 	if err != nil {
 		return err
@@ -65,10 +65,11 @@ func (e *CommandExecutor) Execute(yamlFilePath string, context service.Context) 
 		return err
 	}
 	if environment == "" {
-		environment = "local.yaml"
-	} else {
-		environment = fmt.Sprintf("%s.yaml", environment)
+		environment = "local"
 	}
+	//else {
+	//	environment = fmt.Sprintf("%s.yaml", environment)
+	//}
 
 	if err := e.processVariablesFromSubDirIfExists(filepath.Dir(yamlFilePath), variablesDirName, environment, context); err != nil {
 		return err
@@ -77,16 +78,34 @@ func (e *CommandExecutor) Execute(yamlFilePath string, context service.Context) 
 	yamlDir := filepath.Dir(yamlFilePath)
 
 	for _, command := range listCmd.Commands {
+		if command.NotExecuteLocal && environment == "local" {
+			continue
+		}
 		fmt.Printf("   -> %s: '%s'\n", command.Name, command.Cmd)
 
 		preparedCmd, err := prepareCommand(command.Cmd, context)
 		if err != nil {
 			return fmt.Errorf("error preparando comando: %w", err)
 		}
-
+		var dirExec string
 		cmdDir := "."
+		dirExec = ""
 		if command.Workdir != "" {
 			cmdDir = filepath.Join(yamlDir, command.Workdir)
+
+			projectName, err := context.Get(constants.ProjectName)
+			if err != nil {
+				return fmt.Errorf("error al obtener el nombre del proyecto: %w", err)
+			}
+			step, err := context.Get(constants.Step)
+			if err != nil {
+				return fmt.Errorf("error al obtener el step: %w", err)
+			}
+			destDir, err := e.copyWorkdir(environment, projectName, step, cmdDir)
+			if err != nil {
+				return fmt.Errorf("error al copiar el directorio de trabajo para el comando '%s': %w", command.Name, err)
+			}
+			dirExec = destDir
 		}
 
 		if command.Templating.Path != nil {
@@ -94,7 +113,11 @@ func (e *CommandExecutor) Execute(yamlFilePath string, context service.Context) 
 			if err != nil {
 				return fmt.Errorf("error al procesar las plantillas para el comando '%s': %w", command.Name, err)
 			}
-			cmdDir = dir
+			dirExec = dir
+		}
+
+		if dirExec != "" {
+			cmdDir = dirExec
 		}
 
 		commandExec := exec.Command("sh", "-c", preparedCmd)
@@ -155,7 +178,7 @@ func (e *CommandExecutor) getAllSubMatch(regexpresion, info string) ([][]string,
 	return re.FindAllStringSubmatch(usefulInfo, -1), nil
 }
 
-func (e *CommandExecutor) loadAndProcessVariablesFromFile(dirPath string, fileName string, context service.Context) error {
+func (e *CommandExecutor) loadAndProcessVariablesFromFile(dirPath string, fileName string, context *values.ContextValue) error {
 	filePath := filepath.Join(dirPath, fileName)
 
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
@@ -174,7 +197,7 @@ func (e *CommandExecutor) loadAndProcessVariablesFromFile(dirPath string, fileNa
 	return nil
 }
 
-func (e *CommandExecutor) processVariablesFromSubDirIfExists(parentDir, subDir, fileName string, context service.Context) error {
+func (e *CommandExecutor) processVariablesFromSubDirIfExists(parentDir, subDir, fileName string, context *values.ContextValue) error {
 	dirToConsult := filepath.Join(parentDir, subDir)
 
 	fileInfo, err := os.Stat(dirToConsult)
@@ -190,7 +213,7 @@ func (e *CommandExecutor) processVariablesFromSubDirIfExists(parentDir, subDir, 
 	return e.loadAndProcessVariablesFromFile(dirToConsult, fileName, context)
 }
 
-func (e *CommandExecutor) processVariables(variables dto.VariableListDTO, context service.Context) error {
+func (e *CommandExecutor) processVariables(variables dto.VariableListDTO, context *values.ContextValue) error {
 	for _, variable := range variables {
 		preparedValue, err := prepareCommand(variable.Value, context)
 		if err != nil {
@@ -201,7 +224,7 @@ func (e *CommandExecutor) processVariables(variables dto.VariableListDTO, contex
 	return nil
 }
 
-func (e *CommandExecutor) processTemplateFile(filePath string, context service.Context) error {
+func (e *CommandExecutor) processTemplateFile(filePath string, context *values.ContextValue) error {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return fmt.Errorf("no se pudo abrir el archivo de plantilla %s: %w", filePath, err)
@@ -235,7 +258,7 @@ func (e *CommandExecutor) processTemplateFile(filePath string, context service.C
 	return nil
 }
 
-func (e *CommandExecutor) processTemplating(workdir string, templating dto.TemplatingDTO, context service.Context) (string, error) {
+func (e *CommandExecutor) processTemplating(workdir string, templating dto.TemplatingDTO, context *values.ContextValue) (string, error) {
 	projectName, err := context.Get(constants.ProjectName)
 	if err != nil {
 		return workdir, fmt.Errorf("no se pudo obtener el nombre del proyecto del contexto: %w", err)
@@ -278,12 +301,23 @@ func (e *CommandExecutor) processTemplating(workdir string, templating dto.Templ
 		}
 	}
 
-	return e.buildTemplatingPath(projectName, step, fullWorkdir,""), nil
+	environment, err := context.Get(constants.Environment)
+	if err != nil {
+		return "", err
+	}
+
+	return e.buildTemplatingPath(environment, projectName, step, fullWorkdir, ""), nil
 }
 
-func (e *CommandExecutor) handleTemplateFile(workdir, path, projectName, step string, context service.Context) error {
+func (e *CommandExecutor) handleTemplateFile(workdir, path, projectName, step string, context *values.ContextValue) error {
 	sourceFilePath := filepath.Join(workdir, path)
-	destDir := e.buildTemplatingPath(projectName, step, workdir, path)
+
+	environment, err := context.Get(constants.Environment)
+	if err != nil {
+		return err
+	}
+
+	destDir := e.buildTemplatingPath(environment, projectName, step, workdir, path)
 
 	if err := e.copyFileToTemplateDir(sourceFilePath, destDir); err != nil {
 		return err
@@ -294,7 +328,16 @@ func (e *CommandExecutor) handleTemplateFile(workdir, path, projectName, step st
 	return e.processTemplateFile(destFilePath, context)
 }
 
-func (e *CommandExecutor) buildTemplatingPath(nameProject, step, workdir, path string) string {
+func (e *CommandExecutor) copyWorkdir(environment, nameProject, step, workdir string) (string, error) {
+	destDir := e.buildTemplatingPath(environment, nameProject, step, workdir, "")
+
+	if err := e.copyDirectoryContents(workdir, destDir); err != nil {
+		return "", err
+	}
+	return destDir, nil
+}
+
+func (e *CommandExecutor) buildTemplatingPath(environment, nameProject, step, workdir, path string) string {
 	searchPattern := string(os.PathSeparator) + step + string(os.PathSeparator)
 	parts := strings.SplitN(workdir, searchPattern, 2)
 
@@ -311,8 +354,53 @@ func (e *CommandExecutor) buildTemplatingPath(nameProject, step, workdir, path s
 		return ""
 	}
 
-	pathfinal := filepath.Join(homeDirPath, nameProject, step, subDir, pathDir)
+	pathfinal := filepath.Join(homeDirPath, nameProject, environment, step, subDir, pathDir)
 	return pathfinal
+}
+
+func (e *CommandExecutor) copyDirectoryContents(sourceDir, destDir string) error {
+	return filepath.Walk(sourceDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		relPath, err := filepath.Rel(sourceDir, path)
+		if err != nil {
+			return fmt.Errorf("no se pudo calcular la ruta relativa para %s: %w", path, err)
+		}
+		destPath := filepath.Join(destDir, relPath)
+
+		if _, err := os.Stat(destPath); err == nil {
+			if info.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		} else if !os.IsNotExist(err) {
+			return fmt.Errorf("error inesperado al verificar la ruta de destino %s: %w", destPath, err)
+		}
+		if info.IsDir() {
+			return os.MkdirAll(destPath, info.Mode())
+		}
+
+		sourceFile, err := os.Open(path)
+		if err != nil {
+			return fmt.Errorf("no se pudo abrir el archivo de origen %s: %w", path, err)
+		}
+		defer sourceFile.Close()
+
+		destFile, err := os.Create(destPath)
+		if err != nil {
+			return fmt.Errorf("no se pudo crear el archivo de destino %s: %w", destPath, err)
+		}
+		defer destFile.Close()
+
+		_, err = io.Copy(destFile, sourceFile)
+		if err != nil {
+			return fmt.Errorf("no se pudo copiar el contenido de %s a %s: %w", path, destPath, err)
+		}
+
+		return nil
+	})
 }
 
 func (e *CommandExecutor) copyFileToTemplateDir(pathFile, pathDir string) error {
@@ -352,3 +440,4 @@ func (pr *CommandExecutor) getHomeDirPath() (string, error) {
 	}
 	return filepath.Join(currentUser.HomeDir, constants.FastDeployDir), nil
 }
+ */

@@ -1,5 +1,5 @@
 package factory
-
+/*
 import (
 	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/deployment/executor/service"
 	"github.com/jairoprogramador/fastdeploy/internal/domain/deployment/strategy"
@@ -31,4 +31,4 @@ func (f *IAFactory) CreatePackageStrategy() strategy.StepStrategy {
 func (f *IAFactory) CreateDeployStrategy() strategy.StepStrategy {
 	return ia.NewIADeploy(f.executor)
 }
-
+ */

@@ -1,11 +1,11 @@
 package manual
-
+/*
 import (
 	"fmt"
 
 	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/deployment/executor/service"
 	"github.com/jairoprogramador/fastdeploy/internal/domain/deployment/constant"
-	contextService "github.com/jairoprogramador/fastdeploy/internal/domain/context/service"
+	values "github.com/jairoprogramador/fastdeploy/internal/domain/context/values"
 	domain "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/strategy"
 	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/deployment/strategy"
 )
@@ -22,7 +22,7 @@ func NewManualTest(executor service.ExecutorCmd) domain.StepStrategy {
 	}
 }
 
-func (s *ManualTest) Execute(ctx contextService.Context) error {
+func (s *ManualTest) Execute(ctx *values.ContextValue) error {
 	fmt.Println("Ejecutando el comando: TEST")
 
 	if err := s.ExecuteStep(ctx, constant.StepTest, s.Executor); err != nil {
@@ -32,3 +32,4 @@ func (s *ManualTest) Execute(ctx contextService.Context) error {
 	fmt.Println("  [Estrategia] Pruebas completadas correctamente.")
 	return nil
 }
+ */

@@ -1,10 +1,10 @@
 package ia
-
+/*
 import (
 	"fmt"
 
 	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/deployment/executor/service"
-	contextService "github.com/jairoprogramador/fastdeploy/internal/domain/context/service"
+	values "github.com/jairoprogramador/fastdeploy/internal/domain/context/values"
 	domain "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/strategy"
 	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/deployment/strategy"
 )
@@ -21,7 +21,8 @@ func NewIAPacket(executor service.ExecutorCmd) domain.StepStrategy {
 	}
 }
 
-func (s *IAPacket) Execute(ctx contextService.Context) error {
+func (s *IAPacket) Execute(ctx *values.ContextValue) error {
 	fmt.Println("  [Estrategia] Ejecutando package para un proyecto Node.js ")
 	return nil
 }
+ */

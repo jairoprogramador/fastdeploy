@@ -10,7 +10,6 @@ import (
 	"github.com/jairoprogramador/fastdeploy/internal/domain/project/port"
 	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/project/dto"
 	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/project/mapper"
-	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/constants"
 	"gopkg.in/yaml.v3"
 )
 
@@ -94,7 +93,7 @@ func (pr *FileRepository) PathDirectoryGit(project entity.Project) (string, erro
 	}
 
 	nameRepository, err := project.GetRepository().GetName()
-	pathBase := filepath.Join(directoryHome, nameRepository.Value(), constants.RepositoryStepsDir)
+	pathBase := filepath.Join(directoryHome, nameRepository.Value(), "steps")
 
 	if err != nil {
 		return "", err
@@ -125,5 +124,5 @@ func (pr *FileRepository) getHomeDirPath() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("no se pudo obtener el directorio del usuario: %w", err)
 	}
-	return filepath.Join(currentUser.HomeDir, constants.FastDeployDir), nil
+	return filepath.Join(currentUser.HomeDir, ".fastdeploy"), nil
 }

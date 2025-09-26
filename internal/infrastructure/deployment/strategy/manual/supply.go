@@ -1,12 +1,13 @@
 package manual
 
-import (
+/* import (
 	"fmt"
 
-	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/deployment/executor/service"
+	values "github.com/jairoprogramador/fastdeploy/internal/domain/context/values"
 	"github.com/jairoprogramador/fastdeploy/internal/domain/deployment/constant"
-	contextService "github.com/jairoprogramador/fastdeploy/internal/domain/context/service"
 	domain "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/strategy"
+	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/constants"
+	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/deployment/executor/service"
 	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/deployment/strategy"
 )
 
@@ -22,13 +23,24 @@ func NewManualSupply(executor service.ExecutorCmd) domain.StepStrategy {
 	}
 }
 
-func (s *ManualSupply) Execute(ctx contextService.Context) error {
-	fmt.Println("Ejecutando el comando: SUPPLY")
-
-	if err := s.ExecuteStep(ctx, constant.StepSupply, s.Executor); err != nil {
+func (s *ManualSupply) Execute(ctx *values.ContextValue) error {
+	environment, err := ctx.Get(constants.Environment)
+	if err != nil {
 		return err
 	}
 
-	fmt.Println("  [Estrategia] Supply completado correctamente.")
+	if environment != "local" {
+		fmt.Println("Ejecutando el comando: SUPPLY")
+
+		if err := s.ExecuteStep(ctx, constant.StepSupply, s.Executor); err != nil {
+			return err
+		}
+
+		fmt.Println("  [Estrategia] Supply completado correctamente.")
+	}else{
+		fmt.Println("  [Estrategia] Supply no se ejecutó porque el entorno es local.")
+	}
+
 	return nil
 }
+ */

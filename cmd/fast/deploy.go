@@ -5,16 +5,7 @@ import (
 	"log"
 	"strings"
 
-	app "github.com/jairoprogramador/fastdeploy/internal/application/deployment"
-	"github.com/jairoprogramador/fastdeploy/internal/application/project"
-	domainContext "github.com/jairoprogramador/fastdeploy/internal/domain/context/service"
-	constantDomain "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/constant"
-	domainService "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/service"
-	constantInfra "github.com/jairoprogramador/fastdeploy/internal/infrastructure/constants"
-	contextService "github.com/jairoprogramador/fastdeploy/internal/infrastructure/context/service"
-	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/deployment/factory"
-	deploymentService "github.com/jairoprogramador/fastdeploy/internal/infrastructure/deployment/service"
-	projectService "github.com/jairoprogramador/fastdeploy/internal/infrastructure/project/service"
+	values "github.com/jairoprogramador/fastdeploy/internal/domain/step/values"
 	"github.com/spf13/cobra"
 )
 
@@ -26,44 +17,29 @@ func NewDeployCmd() *cobra.Command {
 		Aliases: []string{"d"},
 	}
 
-	// Lógica para añadir subcomandos dinámicamente
-	repositoryProject := projectService.NewFileRepository()
-	readerProject := project.NewReader(repositoryProject)
-	proj, err := readerProject.Read()
 	var validEnvironments []string
-	if err != nil {
-		log.Printf("Advertencia: no se ha podido leer el proyecto para crear subcomandos de deploy: %v", err)
-	} else {
-		repoName := proj.GetRepository().GetURL().ExtractNameRepository()
-		environmentRepository := deploymentService.NewEnvironmentRepository()
-		environments, err := environmentRepository.GetEnvironments(repoName)
-		if err != nil {
-			log.Printf("Advertencia: no se pudieron obtener los entornos para deploy: %v", err)
-		}
 
-		for _, env := range environments {
-			envName := env.GetName()
-			validEnvironments = append(validEnvironments, envName)
-			envCmd := &cobra.Command{
-				Use:   envName,
-				Short: fmt.Sprintf("Ejecuta el despliegue para el entorno %s", envName),
-				Run: func(cmd *cobra.Command, args []string) {
-					runDeployForEnvironment(cmd, envName)
-				},
-			}
-			cmd.AddCommand(envCmd)
+	environments := GetEnvironmentRepository()
+
+	for _, env := range environments {
+		validEnvironments = append(validEnvironments, env)
+		envCmd := &cobra.Command{
+			Use:   env,
+			Short: fmt.Sprintf("Ejecuta el despliegue para el entorno %s", env),
+			Run: func(cmd *cobra.Command, args []string) {
+				runDeployForEnvironment(cmd, env)
+			},
 		}
+		cmd.AddCommand(envCmd)
 	}
 
 	cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		if len(args) == 0 {
-			runDeployForEnvironment(cmd, "local")
-			return nil
+			return runDeployForEnvironment(cmd, "local")
 		}
 
 		if args[0] == "local" {
-			runDeployForEnvironment(cmd, "local")
-			return nil
+			return runDeployForEnvironment(cmd, "local")
 		}
 
 		invalidEnv := args[0]
@@ -81,36 +57,17 @@ func NewDeployCmd() *cobra.Command {
 	return cmd
 }
 
-func runDeployForEnvironment(cmd *cobra.Command, environment string) {
+func runDeployForEnvironment(cmd *cobra.Command, environment string) error {
 	log.Printf("Iniciando despliegue para el entorno: %s\n", environment)
 
-	repositoryProject := projectService.NewFileRepository()
-	readerProject := project.NewReader(repositoryProject)
-	identifier := projectService.NewHashIdentifier()
-
-	context := domainContext.NewDataContext()
-	context.Set(constantInfra.Environment, environment)
-
-	registryStrategy := factory.NewRegistryStrategy()
-	factoryStrategy, err := registryStrategy.Get(constantInfra.FactoryManual)
-	if err != nil {
+	if err := GetCommandExecutor().ExecuteCommand(environment, values.StepDeploy, []string{}); err != nil {
 		log.Fatalf("Error: %v", err)
+		return err
 	}
 
-	commandManager := domainService.NewStepOrchestrator(factoryStrategy)
-
-	contextRepository := contextService.NewFileRepository()
-	environmentRepository := deploymentService.NewEnvironmentRepository()
-
-	validateEnvironment := domainService.NewValidateEnvironment(environmentRepository)
-
-	executeStep := app.NewExecuteStep(readerProject, identifier, context, contextRepository, commandManager, validateEnvironment)
-
-	if err := executeStep.StartStep(constantDomain.StepDeploy, GetSkipSteps(cmd, getSkipStepsDeploy())); err != nil {
-		log.Fatalf("Error: %v", err)
-	}
+	return nil
 }
 
 func getSkipStepsDeploy() []string {
-	return []string{constantDomain.StepTest, constantDomain.StepSupply}
+	return []string{values.StepTest, values.StepSupply}
 }

@@ -1,3 +1,8 @@
+nombre de variable
+
+[prefijo]NombreVariable
+por ejmplo: addrFirsName, addrLastName, addrState
+
 # FastDeploy
 
 ## Descripción General

@@ -7,7 +7,6 @@ import (
 	"github.com/jairoprogramador/fastdeploy/internal/domain/deployment/entity"
 	"os/user"
 	"path/filepath"
-	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/constants"
 	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/deployment/dto"
 	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/deployment/mapper"
 	"gopkg.in/yaml.v3"
@@ -25,7 +24,7 @@ func NewEnvironmentRepository() port.EnvironmentRepository {
 }
 
 
-func (s *EnvironmentRepository) GetEnvironments(repositoryName string) ([]entity.Environment, error) {
+func (s *EnvironmentRepository) GetEnvironments(repositoryName string) ([]string, error) {
 	homeDirPath, err := s.getHomeDirPath()
 	if err != nil {
 		return []entity.Environment{}, err
@@ -59,5 +58,5 @@ func (s *EnvironmentRepository) getHomeDirPath() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("no se pudo obtener el directorio del usuario: %w", err)
 	}
-	return filepath.Join(currentUser.HomeDir, constants.FastDeployDir), nil
+	return filepath.Join(currentUser.HomeDir, ".fastdeploy"), nil
 }

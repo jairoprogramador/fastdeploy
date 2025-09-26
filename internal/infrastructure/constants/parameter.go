@@ -1,6 +1,6 @@
 package constants
 
-const (
+/* const (
 	ToolName                    = "fastdeploy"
 	DeploymentRepositoryVersion = "deployment_repository_version"
 	DeploymentRepositoryUrl     = "deployment_repository_url"
@@ -32,3 +32,4 @@ const (
 	FactoryManual = "manual"
 	FactoryIA     = "ia"
 )
+ */

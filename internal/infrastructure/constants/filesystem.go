@@ -1,7 +1,7 @@
 package constants
 
-const (
+/* const (
 	RepositoryStepsDir = "steps"
 	FastDeployDir    = ".fastdeploy"
 	CommandFileName      = "commands.yaml"
-)
+) */

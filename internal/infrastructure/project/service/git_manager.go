@@ -8,7 +8,6 @@ import (
 	"os/exec"
 
 	"github.com/jairoprogramador/fastdeploy/internal/domain/project/port"
-	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/constants"
 )
 
 type GitManager struct{}
@@ -81,5 +80,5 @@ func (g *GitManager) getHomeDirPath() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("no se pudo obtener el directorio del usuario: %w", err)
 	}
-	return filepath.Join(currentUser.HomeDir, constants.FastDeployDir), nil
+	return filepath.Join(currentUser.HomeDir, ".fastdeploy"), nil
 }

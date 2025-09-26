@@ -1,5 +1,5 @@
 package factory
-
+/*
 import (
 	"github.com/jairoprogramador/fastdeploy/internal/domain/deployment/port"
 	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/deployment/executor/service"
@@ -30,3 +30,4 @@ func (f *ManualFactory) CreatePackageStrategy() strategy.StepStrategy {
 func (f *ManualFactory) CreateDeployStrategy() strategy.StepStrategy {
 	return manual.NewManualDeploy(f.executor)
 }
+ */

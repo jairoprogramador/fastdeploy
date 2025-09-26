@@ -1,5 +1,5 @@
 package factory
-
+/*
 import (
 	"fmt"
 
@@ -37,3 +37,4 @@ func (r *RegistryStrategyImpl) Get(technology string) (port.FactoryStrategy, err
 	}
 	return factory, nil
 }
+ */

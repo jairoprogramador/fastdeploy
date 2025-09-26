@@ -9,4 +9,5 @@ type CmdDTO struct {
 	Result          string               `yaml:"result,omitempty"`
 	Variables       []VariablePatternDTO `yaml:"variables,omitempty"`
 	Templating      TemplatingDTO        `yaml:"templating,omitempty"`
+	NotExecuteLocal    bool              `yaml:"not_execute_local,omitempty"`
 }

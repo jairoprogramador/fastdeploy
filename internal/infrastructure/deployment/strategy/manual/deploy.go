@@ -1,12 +1,13 @@
 package manual
 
-import (
+/* import (
 	"fmt"
 
 	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/deployment/executor/service"
 	"github.com/jairoprogramador/fastdeploy/internal/domain/deployment/constant"
-	contextService "github.com/jairoprogramador/fastdeploy/internal/domain/context/service"
+	values "github.com/jairoprogramador/fastdeploy/internal/domain/context/values"
 	domain "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/strategy"
+	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/constants"
 	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/deployment/strategy"
 )
 
@@ -22,13 +23,23 @@ func NewManualDeploy(executor service.ExecutorCmd) domain.StepStrategy {
 	}
 }
 
-func (s *ManualDeploy) Execute(ctx contextService.Context) error {
-	fmt.Println("Ejecutando el comando: DEPLOY")
-
-	if err := s.ExecuteStep(ctx, constant.StepDeploy, s.Executor); err != nil {
+func (s *ManualDeploy) Execute(ctx *values.ContextValue) error {
+	environment, err := ctx.Get(constants.Environment)
+	if err != nil {
 		return err
 	}
+	if environment != "local" {
+		fmt.Println("Ejecutando el comando: DEPLOY")
 
-	fmt.Println("  [Estrategia] Deploy completado correctamente.")
+		if err := s.ExecuteStep(ctx, constant.StepDeploy, s.Executor); err != nil {
+			return err
+		}
+
+		fmt.Println("  [Estrategia] Deploy completado correctamente.")
+	}else{
+		fmt.Println("  [Estrategia] Deploy no se ejecutó porque el entorno es local.")
+	}
+
 	return nil
 }
+ */

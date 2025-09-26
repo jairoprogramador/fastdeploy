@@ -1,12 +1,12 @@
 package strategy
 
-import (
+/* import (
 	"fmt"
 	"os"
 	"os/user"
 	"path/filepath"
 
-	contextService "github.com/jairoprogramador/fastdeploy/internal/domain/context/service"
+	values "github.com/jairoprogramador/fastdeploy/internal/domain/context/values"
 	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/constants"
 	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/deployment/executor/service"
 )
@@ -16,7 +16,7 @@ type BaseStrategy struct {
 }
 
 func (s *BaseStrategy) ExecuteStep(
-	ctx contextService.Context,
+	ctx *values.ContextValue,
 	stepName string,
 	executor service.ExecutorCmd,
 ) error {
@@ -55,3 +55,4 @@ func (s *BaseStrategy) getHomeDirPath() (string, error) {
 	}
 	return filepath.Join(currentUser.HomeDir, constants.FastDeployDir), nil
 }
+ */

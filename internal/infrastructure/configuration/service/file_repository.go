@@ -6,7 +6,6 @@ import (
 	"os/user"
 	"path/filepath"
 
-	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/constants"
 	"github.com/jairoprogramador/fastdeploy/internal/domain/configuration/entity"
 	"github.com/jairoprogramador/fastdeploy/internal/domain/configuration/port"
 	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/configuration/dto"
@@ -96,5 +95,5 @@ func (cr *FileRepository) getHomeDirPath() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("no se pudo obtener el directorio del usuario: %w", err)
 	}
-	return filepath.Join(currentUser.HomeDir, constants.FastDeployDir), nil
+	return filepath.Join(currentUser.HomeDir, ".fastdeploy"), nil
 }
