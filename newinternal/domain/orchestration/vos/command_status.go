@@ -26,3 +26,16 @@ func (s CommandStatus) String() string {
 		return "Desconocido"
 	}
 }
+
+func CommandStatusFromString(status string) CommandStatus {
+	switch status {
+	case "Pendiente":
+		return CommandStatusPending
+	case "Exitoso":
+		return CommandStatusSuccessful
+	case "Fallido":
+		return CommandStatusFailed
+	default:
+		return CommandStatus(99)
+	}
+}

@@ -30,6 +30,13 @@ func NewEnvironment(name, description, value string) (Environment, error) {
 	}, nil
 }
 
+func RehydrateEnvironment(value string) Environment {
+	return Environment{
+		name:        value,
+		value:       value,
+	}
+}
+
 // Name devuelve el nombre del ambiente.
 func (e Environment) Name() string {
 	return e.name

@@ -19,11 +19,6 @@ import (
 	"github.com/jairoprogramador/fastdeploy/newinternal/infrastructure/git/mapper"
 )
 
-/* type stepDefinitionDTO struct {
-	Name     string                 `yaml:"name"`
-	Commands []dto.CommandDefinitionDTO `yaml:"commands"`
-} */
-
 // TemplateRepository implementa la interfaz ports.TemplateRepository.
 // Es un adaptador que obtiene la definición de un despliegue desde un repositorio Git.
 type TemplateRepository struct {
@@ -39,6 +34,19 @@ func NewTemplateRepository(reposBasePath string, executor ports.CommandExecutor)
 	//	relativeStepsPath: relativeStepsPath,
 		executor:          executor,
 	}
+}
+
+func (r *TemplateRepository) GetRepositoryName(repoURL string) (string, error) {
+	parsed, err := url.Parse(repoURL)
+	if err != nil {
+		return "", fmt.Errorf("URL de repositorio no válida: %w", err)
+	}
+
+	safePath := strings.Split(parsed.Path, "/")
+	lastPart := safePath[len(safePath)-1]
+	repositoryName := strings.TrimSuffix(lastPart, ".git")
+
+	return repositoryName, nil
 }
 
 // GetTemplate orquesta la clonación/actualización de un repo Git, el checkout a una
@@ -60,12 +68,16 @@ func (r *TemplateRepository) GetTemplate(ctx context.Context, source vos.Templat
 }
 
 func (r *TemplateRepository) ensureRepo(ctx context.Context, repoURL string) (string, error) {
-	repoPath, err := repoPathFromURL(r.reposBasePath, repoURL)
+	repoPath, err := r.repoPathFromURL(repoURL)
 	if err != nil {
 		return "", err
 	}
 
-	if _, err := os.Stat(repoPath); os.IsNotExist(err) {
+	if err := os.MkdirAll(repoPath, 0755); err != nil {
+		return "",err
+	}
+
+	if _, err := os.Stat(filepath.Join(repoPath, ".git")); os.IsNotExist(err) {
 		// Clonar si el repo no existe localmente.
 		cloneCmd := fmt.Sprintf("git clone %s %s", repoURL, repoPath)
 		_, _, err := r.executor.Execute(ctx, r.reposBasePath, cloneCmd)
@@ -85,13 +97,13 @@ func (r *TemplateRepository) ensureRepo(ctx context.Context, repoURL string) (st
 
 func (r *TemplateRepository) buildTemplateFromFile(source vos.TemplateSource, repoPath string) (*aggregates.DeploymentTemplate, error) {
 	// Leer environments.yaml
-	environments, err := r.parseEnvironments(filepath.Join(repoPath, "environments.yaml"))
+	environments, err := r.parseEnvironments(repoPath)
 	if err != nil {
 		return nil, err
 	}
 
 	// Leer steps.yaml
-	steps, err := r.parseSteps(filepath.Join(repoPath, "steps"))
+	steps, err := r.parseSteps(repoPath)
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +113,8 @@ func (r *TemplateRepository) buildTemplateFromFile(source vos.TemplateSource, re
 }
 
 // parseEnvironments lee y convierte el DTO de environments a objetos de valor del dominio.
-func (r *TemplateRepository) parseEnvironments(filePath string) ([]vos.Environment, error) {
+func (r *TemplateRepository) parseEnvironments(repoPath string) ([]vos.Environment, error) {
+	filePath := filepath.Join(repoPath, "environments.yaml")
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("no se pudo leer el archivo de ambientes: %w", err)
@@ -195,14 +208,15 @@ func extractStepName(dirName string) (string, error) {
 }
 
 // repoPathFromURL genera un nombre de directorio local seguro a partir de una URL de repo.
-func repoPathFromURL(basePath, repoURL string) (string, error) {
-	parsed, err := url.Parse(repoURL)
+func (r *TemplateRepository) repoPathFromURL(repoURL string) (string, error) {
+	repositoryName, err := r.GetRepositoryName(repoURL)
 	if err != nil {
-		return "", fmt.Errorf("URL de repositorio no válida: %w", err)
+		return "", err
 	}
-	// Limpiar el path para usarlo como nombre de directorio. e.g., /user/repo.git -> user_repo
-	safePath := strings.Trim(parsed.Path, "/")
-	safePath = strings.TrimSuffix(safePath, ".git")
-	safePath = strings.ReplaceAll(safePath, "/", "_")
-	return filepath.Join(basePath, safePath), nil
+	// Limpiar el path para usarlo como nombre de directorio. e.g., /user/myproject.git -> myproject
+	//safePath := strings.Trim(parsed.Path, "/")
+	//safePath = strings.TrimSuffix(safePath, ".git")
+	//safePath = strings.ReplaceAll(safePath, "/", "_")
+
+	return filepath.Join(r.reposBasePath, repositoryName), nil
 }

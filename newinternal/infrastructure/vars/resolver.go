@@ -72,7 +72,7 @@ func (r *Resolver) ExtractVariable(probe deploymentvos.OutputProbe, text string)
 
 	matches := re.FindStringSubmatch(text)
 	if matches == nil {
-		return vos.Variable{}, false, nil // No hubo coincidencia.
+		return vos.Variable{}, false, fmt.Errorf("la sonda '%s' no coincidió", re.String())
 	}
 
 	// Si el nombre de la sonda está vacío, solo nos importaba si había una coincidencia.

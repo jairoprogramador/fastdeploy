@@ -15,4 +15,5 @@ type TemplateRepository interface {
 	// La implementación se encargará de la lógica de clonado, checkout y parsing de los archivos
 	// para construir un agregado válido y consistente.
 	GetTemplate(ctx context.Context, source vos.TemplateSource) (*aggregates.DeploymentTemplate, error)
+	GetRepositoryName(repoURL string) (string, error)
 }

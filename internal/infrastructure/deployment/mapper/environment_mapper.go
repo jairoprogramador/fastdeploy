@@ -1,5 +1,5 @@
 package mapper
-
+/*
 import (
 	"github.com/jairoprogramador/fastdeploy/internal/domain/deployment/entity"
 	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/deployment/dto"
@@ -12,3 +12,4 @@ func ToDomainList(dtoList []dto.EnvironmentDto) ([]entity.Environment, error) {
 	}
 	return environmentList, nil
 }
+ */

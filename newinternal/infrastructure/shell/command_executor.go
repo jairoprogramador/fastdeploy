@@ -6,7 +6,10 @@ import (
 	"os"
 	"context"
 	"os/exec"
+	"regexp"
 )
+
+var ansiRegex = regexp.MustCompile(`\x1b\[[0-9;]*[a-zA-Z]`)
 
 // Executor implementa la interfaz ports.CommandExecutor utilizando el paquete os/exec.
 // Es un adaptador que traduce las necesidades de la aplicación a llamadas concretas del sistema operativo.
@@ -47,6 +50,7 @@ func (e *Executor) Execute(ctx context.Context, workdir, command string) (log st
 		return log, -1, runErr
 	}
 
+	log = ansiRegex.ReplaceAllString(log, "")
 	// El comando se ejecutó exitosamente.
 	return log, 0, nil
 }

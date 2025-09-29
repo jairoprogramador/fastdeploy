@@ -25,3 +25,16 @@ func (s OrderStatus) String() string {
 		return "Desconocido"
 	}
 }
+
+func OrderStatusFromString(status string) OrderStatus {
+	switch status {
+	case "En Progreso":
+		return OrderStatusInProgress
+	case "Exitoso":
+		return OrderStatusSuccessful
+	case "Fallido":
+		return OrderStatusFailed
+	default:
+		return OrderStatus(99)
+	}
+}

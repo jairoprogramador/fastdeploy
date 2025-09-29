@@ -69,14 +69,16 @@ func NewOrder(
 	// Añadir variables del ambiente al mapa.
 	// Usamos un prefijo "env." para evitar colisiones.
 	//envNameVar, _ := vos.NewVariable("env.name", targetEnvironment.Name())
-	//envValueVar, _ := vos.NewVariable("env.value", targetEnvironment.Value())
+	envValueVar, _ := vos.NewVariable("environment", targetEnvironment.Value())
+	orderIdVar, _ := vos.NewVariable("order_id", id.String())
 	//variableMap[envNameVar.Key()] = envNameVar
-	//variableMap[envValueVar.Key()] = envValueVar
+	variableMap[envValueVar.Key()] = envValueVar
+	variableMap[orderIdVar.Key()] = orderIdVar
 
 	return &Order{
 		id:     id,
 		status: vos.OrderStatusInProgress,
-		//targetEnvironment: targetEnvironment,
+		targetEnvironment: targetEnvironment,
 		stepExecutions: stepExecutions,
 		variableMap:    variableMap,
 	}, nil

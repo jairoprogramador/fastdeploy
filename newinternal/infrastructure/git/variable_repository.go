@@ -33,12 +33,14 @@ func NewVariableRepository(repoPath string) *VariableRepository {
 // Load busca y parsea el archivo de variables para una combinación específica de ambiente y paso.
 func (r *VariableRepository) Load(
 	_ context.Context,
+	repositoryName string,
 	environment deploymentvos.Environment,
 	stepDefinition deploymententities.StepDefinition,
 ) ([]vos.Variable, error) {
 	// La convención de ruta es: <repo>/variables/<valor_ambiente>/<nombre_paso>.yaml
 	varsPath := filepath.Join(
 		r.repoPath,
+		repositoryName,
 		"variables",
 		environment.Value(),
 		fmt.Sprintf("%s.yaml", stepDefinition.Name()),

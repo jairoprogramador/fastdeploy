@@ -1,5 +1,5 @@
 package service
-
+/*
 import (
 	"fmt"
 	"os"
@@ -59,4 +59,4 @@ func (s *EnvironmentRepository) getHomeDirPath() (string, error) {
 		return "", fmt.Errorf("no se pudo obtener el directorio del usuario: %w", err)
 	}
 	return filepath.Join(currentUser.HomeDir, ".fastdeploy"), nil
-}
+} */

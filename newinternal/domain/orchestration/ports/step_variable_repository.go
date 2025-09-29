@@ -18,6 +18,7 @@ type StepVariableRepository interface {
 	// encontrar y parsear el archivo correspondiente (e.g., variables/stag/supply.yaml).
 	Load(
 		ctx context.Context,
+		repositoryName string,
 		environment deploymentvos.Environment,
 		stepDefinition deploymententities.StepDefinition,
 	) ([]vos.Variable, error)

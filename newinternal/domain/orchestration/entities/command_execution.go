@@ -61,7 +61,7 @@ func (ce *CommandExecution) Execute(resolvedCmd, log string, exitCode int, extra
 		if !match {
 			// La sonda era obligatoria y no coincidió, el comando falla.
 			ce.status = vos.CommandStatusFailed
-			return nil
+			return err
 		}
 
 		// Si la sonda tiene un nombre, significa que queríamos extraer una variable.

@@ -34,3 +34,20 @@ func (s StepStatus) String() string {
 		return "Desconocido"
 	}
 }
+
+func StepStatusFromString(status string) StepStatus {
+	switch status {
+	case "Pendiente":
+		return StepStatusPending
+	case "En Progreso":
+		return StepStatusInProgress
+	case "Omitido":
+		return StepStatusSkipped
+	case "Exitoso":
+		return StepStatusSuccessful
+	case "Fallido":
+		return StepStatusFailed
+	default:
+		return StepStatus(99)
+	}
+}

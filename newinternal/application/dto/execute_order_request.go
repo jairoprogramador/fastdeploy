@@ -14,6 +14,7 @@ type ExecuteOrderRequest struct {
 	TemplateSource   deploymentvos.TemplateSource
 	EnvironmentName  string
 	FinalStepName    string
+	ProjectName      string
 	SkippedStepNames map[string]struct{}
 	InitialVariables []vos.Variable
 }
