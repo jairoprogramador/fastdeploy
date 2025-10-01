@@ -1,15 +1,9 @@
 package dto
 
-import (
-	//deploymentvos "github.com/jairoprogramador/fastdeploy/newinternal/domain/deployment/vos"
-	//"github.com/jairoprogramador/fastdeploy/newinternal/domain/orchestration/vos"
-)
-
 // DTOs para la serialización del estado de la ejecución.
 
 type CommandExecutionDTO struct {
 	Name         string                          `yaml:"name"`
-	//Definition   deploymentvos.CommandDefinition `yaml:"definition"` // <-- AÑADIDO: El snapshot de la definición.
 	Status       string                          `yaml:"status"`
 	ResolvedCmd  string                          `yaml:"cmd"`
 	ExecutionLog string                          `yaml:"log"`

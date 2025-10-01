@@ -17,7 +17,8 @@ func createTestStepDef(t *testing.T, name string, commandNames []string) deploym
 		assert.NoError(t, err)
 		cmds = append(cmds, cmd)
 	}
-	stepDef, err := deploymententities.NewStepDefinition(name, cmds)
+	verifications := []deploymentvos.VerificationType{deploymentvos.VerificationTypeCode}
+	stepDef, err := deploymententities.NewStepDefinition(name, verifications, cmds)
 	assert.NoError(t, err)
 	return stepDef
 }
@@ -35,13 +36,15 @@ func TestNewStepExecution(t *testing.T) {
 	})
 
 	t.Run("Fallo por StepDefinition sin comandos", func(t *testing.T) {
-		stepDef, _ := deploymententities.NewStepDefinition("test", []deploymentvos.CommandDefinition{})
+		verifications := []deploymentvos.VerificationType{deploymentvos.VerificationTypeCode}
+		stepDef, _ := deploymententities.NewStepDefinition("test", verifications, []deploymentvos.CommandDefinition{})
 		_, err := NewStepExecution(stepDef)
 		assert.Error(t, err)
 	})
 
 	t.Run("Fallo por StepDefinition sin nombre", func(t *testing.T) {
-		stepDef, _ := deploymententities.NewStepDefinition("", []deploymentvos.CommandDefinition{})
+		verifications := []deploymentvos.VerificationType{deploymentvos.VerificationTypeCode}
+		stepDef, _ := deploymententities.NewStepDefinition("", verifications, []deploymentvos.CommandDefinition{})
 		_, err := NewStepExecution(stepDef)
 		assert.Error(t, err)
 	})

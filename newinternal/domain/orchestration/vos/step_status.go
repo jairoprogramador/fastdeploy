@@ -11,6 +11,8 @@ const (
 	StepStatusInProgress
 	// StepStatusSkipped indica que el paso fue omitido por el usuario.
 	StepStatusSkipped
+	// StepStatusCached indica que el paso fue omitido por caché.
+	StepStatusCached
 	// StepStatusSuccessful indica que el paso y todos sus comandos se completaron exitosamente.
 	StepStatusSuccessful
 	// StepStatusFailed indica que el paso falló porque uno de sus comandos falló.
@@ -26,6 +28,8 @@ func (s StepStatus) String() string {
 		return "En Progreso"
 	case StepStatusSkipped:
 		return "Omitido"
+	case StepStatusCached:
+		return "En Caché"
 	case StepStatusSuccessful:
 		return "Exitoso"
 	case StepStatusFailed:
@@ -43,6 +47,8 @@ func StepStatusFromString(status string) StepStatus {
 		return StepStatusInProgress
 	case "Omitido":
 		return StepStatusSkipped
+	case "En Caché":
+		return StepStatusCached
 	case "Exitoso":
 		return StepStatusSuccessful
 	case "Fallido":

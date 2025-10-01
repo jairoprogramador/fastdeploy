@@ -48,9 +48,10 @@ func createTestTemplate(t *testing.T) *deploymentaggregates.DeploymentTemplate {
 	source, _ := deploymentvos.NewTemplateSource("http://test.com/repo.git", "main")
 	env, _ := deploymentvos.NewEnvironment(ENV_STAGING_NAME, "staging description", ENV_STAGING_VALUE)
 	cmd, _ := deploymentvos.NewCommandDefinition("cmd", "echo")
-	stepTest, _ := deploymententities.NewStepDefinition(STEP_TEST, []deploymentvos.CommandDefinition{cmd})
-	stepSupply, _ := deploymententities.NewStepDefinition(STEP_SUPPLY, []deploymentvos.CommandDefinition{cmd})
-	stepDeploy, _ := deploymententities.NewStepDefinition(STEP_DEPLOY, []deploymentvos.CommandDefinition{cmd})
+	verifications := []deploymentvos.VerificationType{deploymentvos.VerificationTypeCode}
+	stepTest, _ := deploymententities.NewStepDefinition(STEP_TEST, verifications, []deploymentvos.CommandDefinition{cmd})
+	stepSupply, _ := deploymententities.NewStepDefinition(STEP_SUPPLY, verifications, []deploymentvos.CommandDefinition{cmd})
+	stepDeploy, _ := deploymententities.NewStepDefinition(STEP_DEPLOY, verifications, []deploymentvos.CommandDefinition{cmd})
 
 	template, err := deploymentaggregates.NewDeploymentTemplate(
 		source,
@@ -173,11 +174,12 @@ func TestOrder_MarkCommandAsCompleted_StateTransition(t *testing.T) {
 		variableNewVarName := "new_var"
 		variableNewVarValue := "secret"
 		outputTextVariableValue := fmt.Sprintf("val=%s", variableNewVarValue)
+		verifications := []deploymentvos.VerificationType{deploymentvos.VerificationTypeCode}
 
 		outputProbe, _ := deploymentvos.NewOutputProbe(variableNewVarName, "description", "val=(.*)")
 		cmdWithProbe, _ := deploymentvos.NewCommandDefinition(
 			cmdWithProbeName, "echo", deploymentvos.WithOutputs([]deploymentvos.OutputProbe{outputProbe}))
-		stepWithProbe, _ := deploymententities.NewStepDefinition(STEP_TEST, []deploymentvos.CommandDefinition{cmdWithProbe})
+		stepWithProbe, _ := deploymententities.NewStepDefinition(STEP_TEST, verifications, []deploymentvos.CommandDefinition{cmdWithProbe})
 
 		templateProbe, _ := deploymentaggregates.NewDeploymentTemplate(
 			template.Source(),

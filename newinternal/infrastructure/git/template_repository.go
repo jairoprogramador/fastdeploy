@@ -22,17 +22,15 @@ import (
 // TemplateRepository implementa la interfaz ports.TemplateRepository.
 // Es un adaptador que obtiene la definición de un despliegue desde un repositorio Git.
 type TemplateRepository struct {
-	reposBasePath     string
-	//relativeStepsPath string
-	executor          ports.CommandExecutor
+	reposBasePath string
+	executor      ports.CommandExecutor
 }
 
 // NewTemplateRepository crea una nueva instancia del repositorio de plantillas Git.
 func NewTemplateRepository(reposBasePath string, executor ports.CommandExecutor) *TemplateRepository {
 	return &TemplateRepository{
-		reposBasePath:     reposBasePath,
-	//	relativeStepsPath: relativeStepsPath,
-		executor:          executor,
+		reposBasePath: reposBasePath,
+		executor:      executor,
 	}
 }
 
@@ -49,22 +47,26 @@ func (r *TemplateRepository) GetRepositoryName(repoURL string) (string, error) {
 	return repositoryName, nil
 }
 
-// GetTemplate orquesta la clonación/actualización de un repo Git, el checkout a una
-// versión específica, y el parsing de los archivos para construir el agregado DeploymentTemplate.
-func (r *TemplateRepository) GetTemplate(ctx context.Context, source vos.TemplateSource) (*aggregates.DeploymentTemplate, error) {
+// GetTemplate orquesta la clonación/actualización y devuelve el agregado y la ruta local.
+func (r *TemplateRepository) GetTemplate(ctx context.Context, source vos.TemplateSource) (*aggregates.DeploymentTemplate, string, error) {
 	repoPath, err := r.ensureRepo(ctx, source.RepoURL())
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	// Checkout a la referencia específica para asegurar una ejecución reproducible.
 	checkoutCmd := fmt.Sprintf("git checkout %s", source.Ref())
 	if _, _, err := r.executor.Execute(ctx, repoPath, checkoutCmd); err != nil {
-		return nil, fmt.Errorf("error al hacer checkout a la referencia '%s' en '%s': %w", source.Ref(), repoPath, err)
+		return nil, "", fmt.Errorf("error al hacer checkout a la referencia '%s' en '%s': %w", source.Ref(), repoPath, err)
 	}
 
 	// Leer y construir el agregado desde los archivos.
-	return r.buildTemplateFromFile(source, repoPath)
+	template, err := r.buildTemplateFromFile(source, repoPath)
+	if err != nil {
+		return nil, "", err
+	}
+
+	return template, repoPath, nil
 }
 
 func (r *TemplateRepository) ensureRepo(ctx context.Context, repoURL string) (string, error) {
@@ -74,7 +76,7 @@ func (r *TemplateRepository) ensureRepo(ctx context.Context, repoURL string) (st
 	}
 
 	if err := os.MkdirAll(repoPath, 0755); err != nil {
-		return "",err
+		return "", err
 	}
 
 	if _, err := os.Stat(filepath.Join(repoPath, ".git")); os.IsNotExist(err) {
@@ -135,7 +137,6 @@ func (r *TemplateRepository) parseSteps(repoPath string) ([]entities.StepDefinit
 
 	entries, err := os.ReadDir(stepsRootPath)
 	if err != nil {
-		// Si el directorio de pasos no existe, lo tratamos como si no hubiera pasos definidos.
 		if os.IsNotExist(err) {
 			return []entities.StepDefinition{}, fmt.Errorf("no se pudo leer el directorio de pasos '%s': %w", stepsRootPath, err)
 		}
@@ -151,41 +152,53 @@ func (r *TemplateRepository) parseSteps(repoPath string) ([]entities.StepDefinit
 
 	// Ordenar alfabéticamente asegura el orden de ejecución correcto (01-test, 02-supply, etc.).
 	// sort.Strings(dirNames) // os.ReadDir ya devuelve los resultados ordenados por nombre.
-
 	var stepsDefinitions []entities.StepDefinition
 	for _, dirName := range dirNames {
 		stepName, err := extractStepName(dirName)
 		if err != nil {
-			// Ignorar directorios que no siguen la convención de nomenclatura.
-			continue
+			continue // Ignorar directorios que no siguen la convención
 		}
 
-		commandsPath := filepath.Join(stepsRootPath, dirName, "commands.yaml")
-		data, err := os.ReadFile(commandsPath)
-		if err != nil {
-			// Permitir que un paso no tenga un commands.yaml si no tiene comandos.
-			if os.IsNotExist(err) {
-				continue
+		stepDirPath := filepath.Join(stepsRootPath, dirName)
+
+		// Leer metadatos de step.yaml
+		var verifications []vos.VerificationType
+		metaPath := filepath.Join(stepDirPath, "verifications.yaml")
+		if _, err := os.Stat(metaPath); !os.IsNotExist(err) {
+			data, err := os.ReadFile(metaPath)
+			if err != nil {
+				return nil, fmt.Errorf("no se pudo leer el archivo de metadatos '%s': %w", metaPath, err)
 			}
-			return nil, fmt.Errorf("no se pudo leer el archivo de comandos '%s': %w", commandsPath, err)
+			var stepDTO dto.StepDTO
+			if err := yaml.Unmarshal(data, &stepDTO); err != nil {
+				return nil, fmt.Errorf("error al parsear YAML en '%s': %w", metaPath, err)
+			}
+			verifications, err = mapper.VerificationsToDomain(stepDTO.Verifications)
+			if err != nil {
+				return nil, fmt.Errorf("error en los metadatos de '%s': %w", metaPath, err)
+			}
 		}
 
-		var dtos []dto.CommandDefinitionDTO
-		if err := yaml.Unmarshal(data, &dtos); err != nil {
-			return nil, fmt.Errorf("error al parsear YAML en '%s': %w", commandsPath, err)
+		// Leer commands.yaml
+		var commands []vos.CommandDefinition
+		commandsPath := filepath.Join(stepDirPath, "commands.yaml")
+		if _, err := os.Stat(commandsPath); !os.IsNotExist(err) {
+			data, err := os.ReadFile(commandsPath)
+			if err != nil {
+				return nil, fmt.Errorf("no se pudo leer el archivo de comandos '%s': %w", commandsPath, err)
+			}
+			var dtos []dto.CommandDefinitionDTO
+			if err := yaml.Unmarshal(data, &dtos); err != nil {
+				return nil, fmt.Errorf("error al parsear YAML en '%s': %w", commandsPath, err)
+			}
+			commands, err = mapper.CommandsToDomain(dtos)
+			if err != nil {
+				return nil, fmt.Errorf("error al mapear comandos desde '%s': %w", commandsPath, err)
+			}
 		}
 
-		commands, err := mapper.CommandsToDomain(dtos)
-		if err != nil {
-			return nil, fmt.Errorf("error al mapear comandos desde '%s': %w", commandsPath, err)
-		}
-
-		// Si un paso no tiene comandos, no lo añadimos.
-		if len(commands) == 0 {
-			continue
-		}
-
-		stepDefinition, err := entities.NewStepDefinition(stepName, commands)
+		// Crear la definición del paso
+		stepDefinition, err := entities.NewStepDefinition(stepName, verifications, commands)
 		if err != nil {
 			return nil, fmt.Errorf("error al crear la definición del paso '%s': %w", stepName, err)
 		}
@@ -213,10 +226,6 @@ func (r *TemplateRepository) repoPathFromURL(repoURL string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	// Limpiar el path para usarlo como nombre de directorio. e.g., /user/myproject.git -> myproject
-	//safePath := strings.Trim(parsed.Path, "/")
-	//safePath = strings.TrimSuffix(safePath, ".git")
-	//safePath = strings.ReplaceAll(safePath, "/", "_")
 
 	return filepath.Join(r.reposBasePath, repositoryName), nil
 }

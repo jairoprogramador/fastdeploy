@@ -31,12 +31,14 @@ func createValidEnvironments(t *testing.T) []vos.Environment {
 
 func createValidSteps(t *testing.T) []entities.StepDefinition {
 	t.Helper()
+	verifications := []vos.VerificationType{vos.VerificationTypeCode}
+	verifications2 := []vos.VerificationType{vos.VerificationTypeEnv}
 	cmd, err := vos.NewCommandDefinition("test-cmd", "echo")
 	if err != nil {
 		t.Fatalf("fallo al crear helper CommandDefinition: %v", err)
 	}
-	step1, err1 := entities.NewStepDefinition(STEP_TEST, []vos.CommandDefinition{cmd})
-	step2, err2 := entities.NewStepDefinition("deploy", []vos.CommandDefinition{cmd})
+	step1, err1 := entities.NewStepDefinition(STEP_TEST, verifications, []vos.CommandDefinition{cmd})
+	step2, err2 := entities.NewStepDefinition("deploy", verifications2, []vos.CommandDefinition{cmd})
 	if err1 != nil || err2 != nil {
 		t.Fatalf("fallo al crear helpers StepDefinition: %v, %v", err1, err2)
 	}
@@ -49,13 +51,15 @@ func TestNewDeploymentTemplate(t *testing.T) {
 	validEnvs := createValidEnvironments(t)
 	validSteps := createValidSteps(t)
 
+	verifications := []vos.VerificationType{vos.VerificationTypeCode}
+
 	// Crear un environment duplicado para el caso de prueba de fallo
 	envDupe, _ := vos.NewEnvironment(ENV_STAGING, "Duplicated Staging", "stag-dupe")
 	dupeEnvs := append(validEnvs, envDupe)
 
 	// Crear un paso duplicado
 	cmd, _ := vos.NewCommandDefinition("cmd", "c")
-	stepDupe, _ := entities.NewStepDefinition(STEP_TEST, []vos.CommandDefinition{cmd})
+	stepDupe, _ := entities.NewStepDefinition(STEP_TEST, verifications, []vos.CommandDefinition{cmd})
 	dupeSteps := append(validSteps, stepDupe)
 
 	testCases := []struct {
@@ -137,10 +141,11 @@ func TestDeploymentTemplate_DefensiveCopying(t *testing.T) {
 		originalEnvs := createValidEnvironments(t)
 		originalSource := createValidTemplateSource(t)
 		template, _ := NewDeploymentTemplate(originalSource, originalEnvs, originalSteps)
+		verifications := []vos.VerificationType{vos.VerificationTypeCode}
 
 		retrievedSteps := template.Steps()
 		cmd, _ := vos.NewCommandDefinition("c", "c")
-		modifiedStep, _ := entities.NewStepDefinition("MODIFIED", []vos.CommandDefinition{cmd})
+		modifiedStep, _ := entities.NewStepDefinition("MODIFIED", verifications, []vos.CommandDefinition{cmd})
 		retrievedSteps[0] = modifiedStep
 
 		if template.Steps()[0].Name() == "MODIFIED" {

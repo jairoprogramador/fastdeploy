@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/jairoprogramador/fastdeploy/newinternal/domain/orchestration/aggregates"
-	//"github.com/jairoprogramador/fastdeploy/newinternal/domain/orchestration/vos"
 )
 
 // OrderRepository define el contrato para la persistencia del agregado Order.
@@ -14,7 +13,4 @@ type OrderRepository interface {
 	// Save guarda el estado actual del agregado Order.
 	// La implementación decidirá si es una creación o una actualización.
 	Save(ctx context.Context, order *aggregates.Order, nameProject string) error
-
-	// FindByID recupera un agregado Order por su identificador único.
-	//FindByID(ctx context.Context, id vos.OrderID, nameProject string) (*aggregates.Order, error)
 }

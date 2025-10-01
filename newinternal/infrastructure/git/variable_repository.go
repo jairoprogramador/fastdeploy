@@ -7,11 +7,12 @@ import (
 	"path/filepath"
 	"gopkg.in/yaml.v3"
 
-	deploymententities "github.com/jairoprogramador/fastdeploy/newinternal/domain/deployment/entities"
-	"github.com/jairoprogramador/fastdeploy/newinternal/domain/orchestration/vos"
+	"github.com/jairoprogramador/fastdeploy/newinternal/domain/deployment/entities"
 	"github.com/jairoprogramador/fastdeploy/newinternal/infrastructure/git/dto"
 	"github.com/jairoprogramador/fastdeploy/newinternal/infrastructure/git/mapper"
+	orchestrationvos "github.com/jairoprogramador/fastdeploy/newinternal/domain/orchestration/vos"
 	deploymentvos "github.com/jairoprogramador/fastdeploy/newinternal/domain/deployment/vos"
+	"github.com/jairoprogramador/fastdeploy/newinternal/domain/orchestration/ports"
 )
 
 // VariableRepository implementa la interfaz ports.StepVariableRepository.
@@ -24,7 +25,7 @@ type VariableRepository struct {
 }
 
 // NewVariableRepository crea una nueva instancia del repositorio de variables.
-func NewVariableRepository(repoPath string) *VariableRepository {
+func NewVariableRepository(repoPath string) ports.StepVariableRepository {
 	return &VariableRepository{
 		repoPath: repoPath,
 	}
@@ -33,14 +34,12 @@ func NewVariableRepository(repoPath string) *VariableRepository {
 // Load busca y parsea el archivo de variables para una combinación específica de ambiente y paso.
 func (r *VariableRepository) Load(
 	_ context.Context,
-	repositoryName string,
 	environment deploymentvos.Environment,
-	stepDefinition deploymententities.StepDefinition,
-) ([]vos.Variable, error) {
+	stepDefinition entities.StepDefinition,
+) ([]orchestrationvos.Variable, error) {
 	// La convención de ruta es: <repo>/variables/<valor_ambiente>/<nombre_paso>.yaml
 	varsPath := filepath.Join(
 		r.repoPath,
-		repositoryName,
 		"variables",
 		environment.Value(),
 		fmt.Sprintf("%s.yaml", stepDefinition.Name()),
@@ -48,7 +47,7 @@ func (r *VariableRepository) Load(
 
 	// Es válido que un paso no tenga un archivo de variables.
 	if _, err := os.Stat(varsPath); os.IsNotExist(err) {
-		return []vos.Variable{}, nil
+		return []orchestrationvos.Variable{}, nil
 	}
 
 	data, err := os.ReadFile(varsPath)

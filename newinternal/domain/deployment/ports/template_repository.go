@@ -11,9 +11,9 @@ import (
 // Actúa como un puerto en la arquitectura hexagonal, permitiendo que la capa de
 // aplicación solicite un agregado sin conocer los detalles de su obtención (e.g., git, filesystem).
 type TemplateRepository interface {
-	// GetTemplate obtiene una plantilla de despliegue basada en su origen (URL y referencia).
-	// La implementación se encargará de la lógica de clonado, checkout y parsing de los archivos
-	// para construir un agregado válido y consistente.
-	GetTemplate(ctx context.Context, source vos.TemplateSource) (*aggregates.DeploymentTemplate, error)
+	// GetTemplate obtiene una plantilla de despliegue y devuelve también la ruta local
+	// al repositorio clonado para que otros servicios puedan usarla.
+	GetTemplate(ctx context.Context, source vos.TemplateSource) (template *aggregates.DeploymentTemplate, repoLocalPath string, err error)
+
 	GetRepositoryName(repoURL string) (string, error)
 }

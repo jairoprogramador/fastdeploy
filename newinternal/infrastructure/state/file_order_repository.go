@@ -10,8 +10,6 @@ import (
 
 	"github.com/jairoprogramador/fastdeploy/newinternal/domain/orchestration/aggregates"
 	"github.com/jairoprogramador/fastdeploy/newinternal/infrastructure/state/mapper"
-	//"github.com/jairoprogramador/fastdeploy/newinternal/domain/orchestration/vos"
-	//"github.com/jairoprogramador/fastdeploy/newinternal/infrastructure/state/dto"
 )
 
 // FileOrderRepository implementa la interfaz ports.OrderRepository utilizando el sistema de archivos.
@@ -49,27 +47,3 @@ func (r *FileOrderRepository) Save(_ context.Context, order *aggregates.Order, n
 
 	return nil
 }
-
-func (r *FileOrderRepository) getFileStateName(orderId string) string {
-	fileStateName := fmt.Sprintf("state%s.yaml", orderId[0:8])
-	return fileStateName
-}
-
-// FindByID lee un archivo YAML y lo deserializa para reconstruir un agregado Order.
-/* func (r *FileOrderRepository) FindByID(_ context.Context, id vos.OrderID, nameProject string) (*aggregates.Order, error) {
-	filePath := filepath.Join(r.basePath, nameProject, r.getFileStateName(id.String()))
-	data, err := os.ReadFile(filePath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, fmt.Errorf("no se encontró la orden con ID %s: %w", id.String(), err)
-		}
-		return nil, fmt.Errorf("error al leer el archivo de estado de la orden: %w", err)
-	}
-
-	var orderDTO dto.OrderDTO
-	if err := yaml.Unmarshal(data, &orderDTO); err != nil {
-		return nil, fmt.Errorf("error al deserializar el estado de la orden desde YAML: %w", err)
-	}
-
-	return mapper.OrderToDomain(orderDTO)
-} */

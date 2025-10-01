@@ -4,7 +4,7 @@ import (
 	"context"
 
 	deploymentvos "github.com/jairoprogramador/fastdeploy/newinternal/domain/deployment/vos"
-	"github.com/jairoprogramador/fastdeploy/newinternal/domain/orchestration/vos"
+	orchestrationvos "github.com/jairoprogramador/fastdeploy/newinternal/domain/orchestration/vos"
 )
 
 // ExecuteOrderRequest es el DTO (Data Transfer Object) que encapsula todos los
@@ -15,6 +15,7 @@ type ExecuteOrderRequest struct {
 	EnvironmentName  string
 	FinalStepName    string
 	ProjectName      string
+	ProjectRootPath  string
 	SkippedStepNames map[string]struct{}
-	InitialVariables []vos.Variable
+	InitialVariables []orchestrationvos.Variable
 }

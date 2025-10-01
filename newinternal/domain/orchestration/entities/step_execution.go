@@ -146,3 +146,9 @@ func (se *StepExecution) Skip() {
 		se.status = vos.StepStatusSkipped
 	}
 }
+
+func (se *StepExecution) MarkAsCached() {
+	if se.status == vos.StepStatusPending {
+		se.status = vos.StepStatusCached
+	}
+}

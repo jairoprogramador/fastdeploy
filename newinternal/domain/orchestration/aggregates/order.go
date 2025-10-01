@@ -144,6 +144,15 @@ func (o *Order) MarkCommandAsCompleted(
 	return nil
 }
 
+func (o *Order) MarkStepAsCached(stepName string) {
+	for _, step := range o.stepExecutions {
+		if step.Name() == stepName {
+			step.MarkAsCached() // <-- NUEVO MÉTODO EN StepExecution
+			break
+		}
+	}
+}
+
 // ID devuelve el identificador de la Orden.
 func (o *Order) ID() vos.OrderID {
 	return o.id
