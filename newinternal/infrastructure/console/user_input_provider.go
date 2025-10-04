@@ -4,13 +4,14 @@ import (
 	"context"
 
 	"github.com/AlecAivazis/survey/v2"
+	"github.com/jairoprogramador/fastdeploy/newinternal/application/ports"
 )
 
 // UserInputProvider implementa la interfaz ports.UserInputProvider.
 type UserInputProvider struct{}
 
 // NewUserInputProvider crea una nueva instancia.
-func NewUserInputProvider() *UserInputProvider {
+func NewUserInputProvider() ports.UserInputProvider {
 	return &UserInputProvider{}
 }
 

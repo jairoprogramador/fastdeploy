@@ -7,6 +7,6 @@ type CommandDefinitionDTO struct {
 	Description   string           `yaml:"description"`
 	Cmd           string           `yaml:"cmd"`
 	Workdir       string           `yaml:"workdir"`
-	TemplateFiles []string         `yaml:"template_files"`
+	TemplateFiles []string         `yaml:"templates"`
 	Outputs       []OutputProbeDTO `yaml:"outputs"`
 }

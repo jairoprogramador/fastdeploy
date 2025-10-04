@@ -7,6 +7,9 @@ import (
 	"context"
 	"os/exec"
 	"regexp"
+	"path/filepath"
+
+	"github.com/jairoprogramador/fastdeploy/newinternal/application/ports"
 )
 
 var ansiRegex = regexp.MustCompile(`\x1b\[[0-9;]*[a-zA-Z]`)
@@ -16,8 +19,12 @@ var ansiRegex = regexp.MustCompile(`\x1b\[[0-9;]*[a-zA-Z]`)
 type Executor struct{}
 
 // NewExecutor crea una nueva instancia del Executor.
-func NewExecutor() *Executor {
+func NewExecutor() ports.CommandExecutor {
 	return &Executor{}
+}
+
+func (e *Executor) CreateWorkDir(workdirs ...string) string {
+	return filepath.Join(workdirs...)
 }
 
 // Execute ejecuta un comando del sistema, captura su salida combinada (stdout y stderr)
@@ -27,7 +34,9 @@ func (e *Executor) Execute(ctx context.Context, workdir, command string) (log st
 	// Usamos exec.CommandContext para que la ejecución del comando respete
 	// los timeouts o cancelaciones del contexto.
 	cmd := exec.CommandContext(ctx, "sh", "-c", command)
-	cmd.Dir = workdir
+	if workdir != "" {
+		cmd.Dir = workdir
+	}
 
 	var out bytes.Buffer
 	multiOutput := io.MultiWriter(os.Stdout, &out)

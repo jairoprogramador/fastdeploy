@@ -2,10 +2,13 @@ package vars
 
 import (
 	"fmt"
+	"io/fs"
 	"os"
+	"path/filepath"
 	"regexp"
 
 	deploymentvos "github.com/jairoprogramador/fastdeploy/newinternal/domain/deployment/vos"
+	"github.com/jairoprogramador/fastdeploy/newinternal/domain/orchestration/services"
 	"github.com/jairoprogramador/fastdeploy/newinternal/domain/orchestration/vos"
 )
 
@@ -17,12 +20,13 @@ var varRegex = regexp.MustCompile(`\$\{var\.([a-zA-Z0-9_.-]+)\}`)
 type Resolver struct{}
 
 // NewResolver crea una nueva instancia del Resolver.
-func NewResolver() *Resolver {
+func NewResolver() services.VariableResolver {
 	return &Resolver{}
 }
 
 // Interpolate reemplaza los placeholders de variables en una cadena con sus valores reales.
 func (r *Resolver) Interpolate(template string, variables map[string]vos.Variable) (string, error) {
+	//fmt.Println("----------------Interpolate----------------", variables)
 	var firstErr error
 	result := varRegex.ReplaceAllStringFunc(template, func(match string) string {
 		key := varRegex.FindStringSubmatch(match)[1]
@@ -42,21 +46,57 @@ func (r *Resolver) Interpolate(template string, variables map[string]vos.Variabl
 	return result, nil
 }
 
-// ProcessTemplateFile lee un archivo, interpola sus variables y escribe el resultado en un nuevo archivo.
-func (r *Resolver) ProcessTemplateFile(srcPath, destPath string, variables map[string]vos.Variable) error {
-	content, err := os.ReadFile(srcPath)
+// ProcessTemplateFile procesa un único archivo o recorre un directorio para procesar todos los archivos que contiene.
+func (r *Resolver) ProcessTemplate(path string, variables map[string]vos.Variable) error {
+	info, err := os.Stat(path)
 	if err != nil {
-		return fmt.Errorf("error al leer el archivo de plantilla '%s': %w", srcPath, err)
+		return fmt.Errorf("error al obtener información de la ruta '%s': %w", path, err)
+	}
+
+	if !info.IsDir() {
+		// El path es un archivo, procesarlo directamente.
+		return r.processSingleFile(path, variables)
+	}
+
+	// El path es un directorio, recorrerlo recursivamente.
+	return filepath.WalkDir(path, func(currentPath string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		// Procesar solo archivos, no directorios.
+		if !d.IsDir() {
+			err := r.processSingleFile(currentPath, variables)
+			if err != nil {
+				// Envolver el error con el path del archivo que falló.
+				return fmt.Errorf("fallo al procesar el archivo '%s': %w", currentPath, err)
+			}
+		}
+		return nil
+	})
+}
+
+// processSingleFile contiene la lógica para procesar un único archivo de plantilla "in-place".
+func (r *Resolver) processSingleFile(filePath string, variables map[string]vos.Variable) error {
+	info, err := os.Stat(filePath)
+	if err != nil {
+		return fmt.Errorf("error al obtener información del archivo de plantilla '%s': %w", filePath, err)
+	}
+	fileMode := info.Mode()
+
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		return fmt.Errorf("error al leer el archivo de plantilla '%s': %w", filePath, err)
 	}
 
 	interpolatedContent, err := r.Interpolate(string(content), variables)
 	if err != nil {
-		return fmt.Errorf("error al interpolar variables en el archivo '%s': %w", srcPath, err)
+		return fmt.Errorf("error al interpolar variables en el archivo '%s': %w", filePath, err)
 	}
 
-	err = os.WriteFile(destPath, []byte(interpolatedContent), 0644)
+	// Sobrescribir el archivo original con el contenido interpolado y los permisos originales.
+	err = os.WriteFile(filePath, []byte(interpolatedContent), fileMode)
 	if err != nil {
-		return fmt.Errorf("error al escribir el archivo de plantilla procesado en '%s': %w", destPath, err)
+		return fmt.Errorf("error al escribir las modificaciones en el archivo de plantilla '%s': %w", filePath, err)
 	}
 
 	return nil
@@ -66,16 +106,14 @@ func (r *Resolver) ProcessTemplateFile(srcPath, destPath string, variables map[s
 func (r *Resolver) ExtractVariable(probe deploymentvos.OutputProbe, text string) (vos.Variable, bool, error) {
 	re, err := regexp.Compile(probe.Probe())
 	if err != nil {
-		// Este error no debería ocurrir si el VO se construye correctamente, pero es una buena salvaguarda.
 		return vos.Variable{}, false, fmt.Errorf("expresión regular de la sonda no es válida '%s': %w", probe.Probe(), err)
 	}
 
 	matches := re.FindStringSubmatch(text)
 	if matches == nil {
-		return vos.Variable{}, false, fmt.Errorf("la sonda '%s' no coincidió", re.String())
+		return vos.Variable{}, false, fmt.Errorf("no se encontró ninguna coincidencia para la sonda '%s'", probe.Probe())
 	}
 
-	// Si el nombre de la sonda está vacío, solo nos importaba si había una coincidencia.
 	if probe.Name() == "" {
 		return vos.Variable{}, true, nil
 	}
@@ -92,7 +130,6 @@ func (r *Resolver) ExtractVariable(probe deploymentvos.OutputProbe, text string)
 	value := matches[1]
 	variable, err := vos.NewVariable(probe.Name(), value)
 	if err != nil {
-		// Error al crear el VO (e.g., el valor extraído estaba vacío).
 		return vos.Variable{}, false, fmt.Errorf("error al crear la variable extraída '%s': %w", probe.Name(), err)
 	}
 

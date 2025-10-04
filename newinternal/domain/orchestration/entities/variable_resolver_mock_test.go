@@ -23,7 +23,7 @@ func (m *MockVariableResolver) Interpolate(template string, variables map[string
 	return args.String(0), args.Error(1)
 }
 
-func (m *MockVariableResolver) ProcessTemplateFile(srcPath, destPath string, variables map[string]vos.Variable) error {
-	args := m.Called(srcPath, destPath, variables)
+func (m *MockVariableResolver) ProcessTemplate(pathFile string, variables map[string]vos.Variable) error {
+	args := m.Called(pathFile, variables)
 	return args.Error(0)
 }

@@ -11,23 +11,25 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/jairoprogramador/fastdeploy/newinternal/application/ports"
+	applicationports "github.com/jairoprogramador/fastdeploy/newinternal/application/ports"
 	"github.com/jairoprogramador/fastdeploy/newinternal/domain/deployment/aggregates"
 	"github.com/jairoprogramador/fastdeploy/newinternal/domain/deployment/entities"
 	"github.com/jairoprogramador/fastdeploy/newinternal/domain/deployment/vos"
 	"github.com/jairoprogramador/fastdeploy/newinternal/infrastructure/git/dto"
 	"github.com/jairoprogramador/fastdeploy/newinternal/infrastructure/git/mapper"
+	deploymentports "github.com/jairoprogramador/fastdeploy/newinternal/domain/deployment/ports"
 )
 
 // TemplateRepository implementa la interfaz ports.TemplateRepository.
 // Es un adaptador que obtiene la definición de un despliegue desde un repositorio Git.
 type TemplateRepository struct {
 	reposBasePath string
-	executor      ports.CommandExecutor
+	executor      applicationports.CommandExecutor
 }
 
 // NewTemplateRepository crea una nueva instancia del repositorio de plantillas Git.
-func NewTemplateRepository(reposBasePath string, executor ports.CommandExecutor) *TemplateRepository {
+func NewTemplateRepository(
+	reposBasePath string, executor applicationports.CommandExecutor) deploymentports.TemplateRepository {
 	return &TemplateRepository{
 		reposBasePath: reposBasePath,
 		executor:      executor,

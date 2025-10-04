@@ -38,6 +38,7 @@ func NewProduct(id ProductID, name, description, team, organization string) (*Pr
 
 // Getters para todos los campos...
 func (p *Product) ID() ProductID        { return p.id }
+func (p *Product) IdString() string     { return string(p.id) }
 func (p *Product) Name() string         { return p.name }
 func (p *Product) Description() string  { return p.description }
 func (p *Product) Team() string         { return p.team }

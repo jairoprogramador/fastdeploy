@@ -19,11 +19,8 @@ type FileOrderRepository struct {
 }
 
 // NewFileOrderRepository crea una nueva instancia del repositorio de órdenes.
-func NewFileOrderRepository(basePath string) (*FileOrderRepository, error) {
-	if err := os.MkdirAll(basePath, 0755); err != nil {
-		return nil, fmt.Errorf("no se pudo crear el directorio base para el estado de las órdenes: %w", err)
-	}
-	return &FileOrderRepository{basePath: basePath}, nil
+func NewFileOrderRepository(basePath string) *FileOrderRepository {
+	return &FileOrderRepository{basePath: basePath}
 }
 
 // Save serializa el agregado Order a un archivo YAML.

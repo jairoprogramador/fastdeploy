@@ -1,40 +1,38 @@
 package workspace
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"regexp"
-
-	deploymententities "github.com/jairoprogramador/fastdeploy/newinternal/domain/deployment/entities"
-	deploymentvos "github.com/jairoprogramador/fastdeploy/newinternal/domain/deployment/vos"
+	"github.com/jairoprogramador/fastdeploy/newinternal/application/ports"
 )
 
 // Manager implementa la interfaz ports.WorkspaceManager.
 // Es responsable de preparar los directorios de trabajo para la ejecución de cada paso.
 type Manager struct {
 	projectsBasePath string
+	respositoriesBasePath string
 }
 
 // NewManager crea una nueva instancia del WorkspaceManager.
-func NewManager(projectsBasePath string) *Manager {
+func NewManager(projectsBasePath string, respositoriesBasePath string) ports.WorkspaceManager {
 	return &Manager{
 		projectsBasePath: projectsBasePath,
+		respositoriesBasePath: respositoriesBasePath,
 	}
 }
 
 // PrepareStepWorkspace crea un directorio de trabajo limpio y copia los archivos de la plantilla del paso.
 func (m *Manager) PrepareStepWorkspace(
-	_ context.Context,
 	projectName string,
-	targetEnv deploymentvos.Environment,
-	stepDef deploymententities.StepDefinition,
-	templateRepoPath string,
+	environment string,
+	stepName string,
+	repositoryName string,
 ) (string, error) {
 	// 1. Encontrar el directorio de origen del paso en la plantilla.
-	sourceDir, err := findStepSourceDir(templateRepoPath, stepDef.Name())
+	sourceDir, err := m.findStepSourceDir(repositoryName, stepName)
 	if err != nil {
 		// Si no hay un directorio de plantilla para el paso, no es un error.
 		// Simplemente creamos un directorio de trabajo vacío.
@@ -46,12 +44,12 @@ func (m *Manager) PrepareStepWorkspace(
 	}
 
 	// 2. Construir la ruta de destino.
-	destPath := filepath.Join(m.projectsBasePath, projectName, targetEnv.Value(), stepDef.Name())
+	destPath := filepath.Join(m.projectsBasePath, projectName, environment, stepName)
 
 	// 3. Limpiar y recrear el directorio de destino para asegurar un estado prístino.
-	if err := os.RemoveAll(destPath); err != nil {
+	/* if err := os.RemoveAll(destPath); err != nil {
 		return "", fmt.Errorf("error al limpiar el workspace del paso anterior: %w", err)
-	}
+	} */
 	if err := os.MkdirAll(destPath, 0755); err != nil {
 		return "", fmt.Errorf("error al crear el workspace del paso: %w", err)
 	}
@@ -68,8 +66,8 @@ func (m *Manager) PrepareStepWorkspace(
 
 // findStepSourceDir busca en el directorio "steps" el subdirectorio que corresponde a un nombre de paso.
 // Ej: para stepName "test", busca un directorio como "01-test".
-func findStepSourceDir(templateRepoPath, stepName string) (string, error) {
-	stepsRoot := filepath.Join(templateRepoPath, "steps")
+func (m *Manager) findStepSourceDir(repositoryName, stepName string) (string, error) {
+	stepsRoot := filepath.Join(m.respositoriesBasePath, repositoryName, "steps")
 	entries, err := os.ReadDir(stepsRoot)
 	if err != nil {
 		return "", err

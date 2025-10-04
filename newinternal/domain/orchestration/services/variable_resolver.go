@@ -15,10 +15,9 @@ type VariableResolver interface {
 	// and replaces them with their corresponding values from the provided map.
 	Interpolate(template string, variables map[string]vos.Variable) (string, error)
 
-	// ProcessTemplateFile takes a path to a source template file, a destination path,
-	// and a map of variables. It reads the source, interpolates the variables,
-	// and writes the result to the destination.
-	ProcessTemplateFile(srcPath, destPath string, variables map[string]vos.Variable) error
+	// ProcessTemplateFile lee un archivo de plantilla (o todos los archivos de un directorio),
+	// interpola las variables y escribe las modificaciones.
+	ProcessTemplate(path string, variables map[string]vos.Variable) error
 
 	// ExtractVariable implements the logic previously defined in the VariableExtractor interface.
 	// It uses an OutputProbe's regular expression to find and extract a new variable from a text log.

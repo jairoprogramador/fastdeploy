@@ -44,7 +44,7 @@ func (dom *DeploymentObjectModel) VerifyAndUpdateIDs(idGen services.IDGenerator)
 			dom.product.Team(),
 			dom.product.Organization())
 
-			if err != nil {
+		if err != nil {
 			return false, err
 		}
 		dom.product = updatedProduct

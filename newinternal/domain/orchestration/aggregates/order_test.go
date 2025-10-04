@@ -38,8 +38,8 @@ func (m *MockVariableResolver) Interpolate(template string, variables map[string
 	return args.String(0), args.Error(1)
 }
 
-func (m *MockVariableResolver) ProcessTemplateFile(srcPath, destPath string, variables map[string]vos.Variable) error {
-	args := m.Called(srcPath, destPath, variables)
+func (m *MockVariableResolver) ProcessTemplate(pathFile string, variables map[string]vos.Variable) error {
+	args := m.Called(pathFile, variables)
 	return args.Error(0)
 }
 
@@ -121,8 +121,8 @@ func TestNewOrder(t *testing.T) {
 				// Verificar el mapa de variables inicial
 				assert.Contains(t, order.VariableMap(), VARIABLE_ENVIRONMENT)
 				assert.Contains(t, order.VariableMap(), VARIABLE_ORDER_ID)
-				assert.Equal(t, ENV_STAGING_VALUE, order.VariableMap()[VARIABLE_ENVIRONMENT].Value())
-				assert.Equal(t, orderID.String(), order.VariableMap()[VARIABLE_ORDER_ID].Value())
+				assert.Equal(t, ENV_STAGING_VALUE, order.VariableMap()[VARIABLE_ENVIRONMENT])
+				assert.Equal(t, orderID.String(), order.VariableMap()[VARIABLE_ORDER_ID])
 
 				// Verificar pasos omitidos
 				if tc.expectedSkipped != nil {
@@ -194,7 +194,7 @@ func TestOrder_MarkCommandAsCompleted_StateTransition(t *testing.T) {
 		err := order.MarkCommandAsCompleted(STEP_TEST, cmdWithProbeName, "resolved", outputTextVariableValue, 0, resolver)
 		assert.NoError(t, err)
 		assert.Contains(t, order.VariableMap(), variableNewVarName)
-		assert.Equal(t, variableNewVarValue, order.VariableMap()[variableNewVarName].Value())
+		assert.Equal(t, variableNewVarValue, order.VariableMap()[variableNewVarName])
 		resolver.AssertExpectations(t)
 	})
 }

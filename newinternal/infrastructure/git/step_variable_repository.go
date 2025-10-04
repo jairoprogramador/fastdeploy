@@ -1,53 +1,47 @@
 package git
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
+
 	"gopkg.in/yaml.v3"
 
-	"github.com/jairoprogramador/fastdeploy/newinternal/domain/deployment/entities"
+	"github.com/jairoprogramador/fastdeploy/newinternal/domain/orchestration/ports"
+	"github.com/jairoprogramador/fastdeploy/newinternal/domain/orchestration/vos"
 	"github.com/jairoprogramador/fastdeploy/newinternal/infrastructure/git/dto"
 	"github.com/jairoprogramador/fastdeploy/newinternal/infrastructure/git/mapper"
-	orchestrationvos "github.com/jairoprogramador/fastdeploy/newinternal/domain/orchestration/vos"
-	deploymentvos "github.com/jairoprogramador/fastdeploy/newinternal/domain/deployment/vos"
-	"github.com/jairoprogramador/fastdeploy/newinternal/domain/orchestration/ports"
 )
 
-// VariableRepository implementa la interfaz ports.StepVariableRepository.
+// StepVariableRepository implementa la interfaz ports.StepVariableRepository.
 // Es un adaptador que carga las variables desde archivos YAML dentro de la estructura
 // del repositorio de plantillas Git.
-type VariableRepository struct {
+type StepVariableRepository struct {
 	// Este repositorio necesita conocer la ruta local del repositorio ya clonado y verificado.
 	// El servicio de aplicación se la proporcionará.
 	repoPath string
 }
 
-// NewVariableRepository crea una nueva instancia del repositorio de variables.
-func NewVariableRepository(repoPath string) ports.StepVariableRepository {
-	return &VariableRepository{
+// NewStepVariableRepository crea una nueva instancia del repositorio de variables.
+func NewStepVariableRepository(repoPath string) ports.StepVariableRepository {
+	return &StepVariableRepository{
 		repoPath: repoPath,
 	}
 }
 
 // Load busca y parsea el archivo de variables para una combinación específica de ambiente y paso.
-func (r *VariableRepository) Load(
-	_ context.Context,
-	environment deploymentvos.Environment,
-	stepDefinition entities.StepDefinition,
-) ([]orchestrationvos.Variable, error) {
+func (r *StepVariableRepository) Load(environment string, stepName string) ([]vos.Variable, error) {
 	// La convención de ruta es: <repo>/variables/<valor_ambiente>/<nombre_paso>.yaml
 	varsPath := filepath.Join(
 		r.repoPath,
 		"variables",
-		environment.Value(),
-		fmt.Sprintf("%s.yaml", stepDefinition.Name()),
+		environment,
+		fmt.Sprintf("%s.yaml", stepName),
 	)
 
 	// Es válido que un paso no tenga un archivo de variables.
 	if _, err := os.Stat(varsPath); os.IsNotExist(err) {
-		return []orchestrationvos.Variable{}, nil
+		return []vos.Variable{}, nil
 	}
 
 	data, err := os.ReadFile(varsPath)

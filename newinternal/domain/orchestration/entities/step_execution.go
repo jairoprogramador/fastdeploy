@@ -60,7 +60,7 @@ func NewStepExecution(def deploymententities.StepDefinition) (*StepExecution, er
 func (se *StepExecution) CompleteCommand(
 	commandName, resolvedCmd, log string,
 	exitCode int,
-	extractor services.VariableResolver,
+	resolver services.VariableResolver,
 ) error {
 	var targetCmd *CommandExecution
 	for _, cmd := range se.commandExecutions {
@@ -73,7 +73,7 @@ func (se *StepExecution) CompleteCommand(
 		return fmt.Errorf("no se encontró el comando '%s' en el paso '%s'", commandName, se.name)
 	}
 
-	err := targetCmd.Execute(resolvedCmd, log, exitCode, extractor)
+	err := targetCmd.Execute(resolvedCmd, log, exitCode, resolver)
 	if err != nil {
 		return err
 	}

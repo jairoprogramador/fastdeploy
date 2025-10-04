@@ -8,6 +8,7 @@ import (
 	"github.com/jairoprogramador/fastdeploy/newinternal/domain/orchestration/entities"
 	"github.com/jairoprogramador/fastdeploy/newinternal/domain/orchestration/services"
 	"github.com/jairoprogramador/fastdeploy/newinternal/domain/orchestration/vos"
+
 )
 
 // Order es el Agregado Raíz para el contexto de Orquestación de Ejecución.
@@ -62,18 +63,12 @@ func NewOrder(
 	}
 
 	variableMap := make(map[string]vos.Variable)
-	for _, v := range initialVariables {
-		variableMap[v.Key()] = v
+	for _, variable := range initialVariables {
+		variableMap[variable.Key()] = variable
 	}
 
-	// Añadir variables del ambiente al mapa.
-	// Usamos un prefijo "env." para evitar colisiones.
-	//envNameVar, _ := vos.NewVariable("env.name", targetEnvironment.Name())
-	envValueVar, _ := vos.NewVariable("environment", targetEnvironment.Value())
-	orderIdVar, _ := vos.NewVariable("order_id", id.String())
-	//variableMap[envNameVar.Key()] = envNameVar
-	variableMap[envValueVar.Key()] = envValueVar
-	variableMap[orderIdVar.Key()] = orderIdVar
+	variableOrderId, _ := vos.NewVariable("order_id", id.String())
+	variableMap[variableOrderId.Key()] = variableOrderId
 
 	return &Order{
 		id:     id,
@@ -93,7 +88,9 @@ func (o *Order) updateStatus() {
 			hasFailed = true
 			break
 		}
-		if step.Status() != vos.StepStatusSuccessful && step.Status() != vos.StepStatusSkipped {
+		if step.Status() != vos.StepStatusSuccessful &&
+		step.Status() != vos.StepStatusSkipped &&
+		step.Status() != vos.StepStatusCached {
 			allCompleted = false
 		}
 	}
@@ -113,7 +110,7 @@ func (o *Order) updateStatus() {
 func (o *Order) MarkCommandAsCompleted(
 	stepName, commandName, resolvedCmd, log string,
 	exitCode int,
-	extractor services.VariableResolver,
+	resolver services.VariableResolver,
 ) error {
 	var targetStep *entities.StepExecution
 	for _, step := range o.stepExecutions {
@@ -127,15 +124,15 @@ func (o *Order) MarkCommandAsCompleted(
 	}
 
 	// Delegamos la ejecución del comando al StepExecution.
-	err := targetStep.CompleteCommand(commandName, resolvedCmd, log, exitCode, extractor)
+	err := targetStep.CompleteCommand(commandName, resolvedCmd, log, exitCode, resolver)
 	if err != nil {
 		return fmt.Errorf("error al completar el comando '%s' en el paso '%s': %w", commandName, stepName, err)
 	}
 
 	// Tras la ejecución, las nuevas variables se añaden al mapa compartido.
 	newVars := targetStep.CollectNewVariables(commandName)
-	for _, v := range newVars {
-		o.variableMap[v.Key()] = v
+	for _, variable := range newVars {
+		o.variableMap[variable.Key()] = variable
 	}
 
 	// Finalmente, actualizamos el estado general de la Orden.
@@ -147,10 +144,11 @@ func (o *Order) MarkCommandAsCompleted(
 func (o *Order) MarkStepAsCached(stepName string) {
 	for _, step := range o.stepExecutions {
 		if step.Name() == stepName {
-			step.MarkAsCached() // <-- NUEVO MÉTODO EN StepExecution
+			step.MarkAsCached()
 			break
 		}
 	}
+	o.updateStatus()
 }
 
 // ID devuelve el identificador de la Orden.
@@ -187,4 +185,15 @@ func (o *Order) StepExecutions() []*entities.StepExecution {
 // VariableMap devuelve el mapa de variables compartido de la orden.
 func (o *Order) VariableMap() map[string]vos.Variable {
 	return o.variableMap
+}
+
+func (o *Order) AddVariable(key, value string) {
+	variable, _ := vos.NewVariable(key, value)
+	o.variableMap[variable.Key()] = variable
+}
+
+func (o *Order) AddVariables(variables []vos.Variable) {
+	for _, variable := range variables {
+		o.variableMap[variable.Key()] = variable
+	}
 }

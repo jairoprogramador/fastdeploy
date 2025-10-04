@@ -9,6 +9,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/jairoprogramador/fastdeploy/newinternal/domain/dom/aggregates"
+	"github.com/jairoprogramador/fastdeploy/newinternal/domain/dom/ports"
 	"github.com/jairoprogramador/fastdeploy/newinternal/infrastructure/dom/dto"
 	"github.com/jairoprogramador/fastdeploy/newinternal/infrastructure/dom/mapper"
 )
@@ -19,14 +20,11 @@ type DomYAMLRepository struct {
 }
 
 // NewDomYAMLRepository crea una instancia del repositorio DOM.
-func NewDomYAMLRepository(workingDir string) (*DomYAMLRepository, error) {
+func NewDomYAMLRepository(workingDir string) ports.DOMRepository {
 	dirPath := filepath.Join(workingDir, ".fastdeploy")
-	if err := os.MkdirAll(dirPath, 0755); err != nil {
-		return nil, fmt.Errorf("no se pudo crear el directorio .fastdeploy: %w", err)
-	}
 	return &DomYAMLRepository{
 		filePath: filepath.Join(dirPath, "dom.yaml"),
-	}, nil
+	}
 }
 
 // Save serializa y guarda el agregado DOM a dom.yaml.
@@ -46,7 +44,11 @@ func (r *DomYAMLRepository) Save(_ context.Context, dom *aggregates.DeploymentOb
 func (r *DomYAMLRepository) Load(_ context.Context) (*aggregates.DeploymentObjectModel, error) {
 	data, err := os.ReadFile(r.filePath)
 	if err != nil {
-		return nil, err
+		if os.IsNotExist(err) {
+			return nil, nil
+		} else {
+			return nil, err
+		}
 	}
 
 	var dto dto.DOMDTO

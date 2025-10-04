@@ -12,9 +12,12 @@ import (
 
 	"github.com/jairoprogramador/fastdeploy/newinternal/application"
 	"github.com/jairoprogramador/fastdeploy/newinternal/application/dto"
-	deploymentvos "github.com/jairoprogramador/fastdeploy/newinternal/domain/deployment/vos"
-	orchestrationvos "github.com/jairoprogramador/fastdeploy/newinternal/domain/orchestration/vos"
+	applicationports "github.com/jairoprogramador/fastdeploy/newinternal/application/ports"
+	deploymentaggregates "github.com/jairoprogramador/fastdeploy/newinternal/domain/deployment/aggregates"
 	domaggregates "github.com/jairoprogramador/fastdeploy/newinternal/domain/dom/aggregates"
+	domports "github.com/jairoprogramador/fastdeploy/newinternal/domain/dom/ports"
+	executionstateports "github.com/jairoprogramador/fastdeploy/newinternal/domain/executionstate/ports"
+	"github.com/jairoprogramador/fastdeploy/newinternal/domain/orchestration/vos"
 	"github.com/jairoprogramador/fastdeploy/newinternal/infrastructure/console"
 	"github.com/jairoprogramador/fastdeploy/newinternal/infrastructure/dom"
 	"github.com/jairoprogramador/fastdeploy/newinternal/infrastructure/executionstate"
@@ -117,16 +120,10 @@ func runInit(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	// --- Ensamblaje de Dependencias para Init ---
 	userInput := console.NewUserInputProvider()
-	idGen := hasher.NewIDGenerator()
-	domRepo, err := dom.NewDomYAMLRepository(workingDir)
-	if err != nil {
-		fmt.Println("Error al inicializar el repositorio DOM:", err)
-		os.Exit(1)
-	}
-
-	initService := application.NewInitService(userInput, idGen, domRepo)
+	idGenerator := hasher.NewIDGenerator()
+	domRepository := dom.NewDomYAMLRepository(workingDir)
+	initService := application.NewInitService(userInput, idGenerator, domRepository)
 
 	// --- Ejecución del Caso de Uso ---
 	req := dto.InitRequest{
@@ -148,67 +145,12 @@ func runExecution(_ *cobra.Command, args []string) {
 	if len(args) == 2 {
 		environment = args[1]
 	}
-
-	workingDir, _ := os.Getwd()
-
-	// --- Ensamblaje de Dependencias Comunes ---
-	cmdExecutor := shell.NewExecutor()
-	varResolver := vars.NewResolver()
-	fpService := fingerprint.NewService()
-	workspaceMgr := workspace.NewManager(projsPath)
-	templateRepo := git.NewTemplateRepository(reposPath, cmdExecutor)
-	orderRepo, _ := state.NewFileOrderRepository(projsPath)
-	historyRepo, _ := executionstate.NewGobHistoryRepository(statePath)
-	domRepo, _ := dom.NewDomYAMLRepository(workingDir)
-	idGen := hasher.NewIDGenerator()
-	userInput := console.NewUserInputProvider()
-
-	// --- Lógica de Carga y Verificación del DOM ---
-	domModel, err := domRepo.Load(ctx)
+	workingDir, err := os.Getwd()
 	if err != nil {
-		if os.IsNotExist(err) {
-			fmt.Println("⚠️ El archivo .fastdeploy/dom.yaml no existe. Por favor, ejecuta 'fd init' primero.")
-		} else {
-			fmt.Printf("❌ Error al cargar .fastdeploy/dom.yaml: %v\n", err)
-		}
+		fmt.Printf("%v", err)
 		os.Exit(1)
 	}
 
-	isModified, err := domModel.VerifyAndUpdateIDs(idGen)
-	if err != nil {
-		fmt.Printf("❌ Error al verificar la integridad del DOM: %v\n", err)
-		os.Exit(1)
-	}
-
-	if isModified {
-		history, _ := historyRepo.Find(ctx, "supply")
-		if history != nil && len(history.Receipts()) > 0 {
-			fmt.Println("⚠️ Se han detectado cambios en .fastdeploy/dom.yaml que afectan a la identidad del proyecto.")
-			confirmed, err := userInput.Confirm(ctx, "¿Continuar? Esto podría causar cambios en la infraestructura existente.", false)
-			if err != nil || !confirmed {
-				fmt.Println("Operación cancelada.")
-				os.Exit(1)
-			}
-		}
-		if err := domRepo.Save(ctx, domModel); err != nil {
-			fmt.Printf("❌ Error al guardar los cambios en .fastdeploy/dom.yaml: %v\n", err)
-			os.Exit(1)
-		}
-		fmt.Println("✅ IDs del proyecto actualizados en .fastdeploy/dom.yaml.")
-	}
-
-	// --- Inyección en el Servicio de Aplicación ---
-	orchestrationService := application.NewOrchestrationService(
-		templateRepo,
-		orderRepo,
-		historyRepo,
-		varResolver,
-		fpService,
-		workspaceMgr,
-		cmdExecutor,
-	)
-
-	// --- Preparación de la Solicitud ---
 	skippedSteps := make(map[string]struct{})
 	if skipTest {
 		skippedSteps["test"] = struct{}{}
@@ -217,42 +159,74 @@ func runExecution(_ *cobra.Command, args []string) {
 		skippedSteps["supply"] = struct{}{}
 	}
 
-	templateSource, err := deploymentvos.NewTemplateSource(domModel.Template().RepositoryURL(), domModel.Template().Ref())
+	domRepository := dom.NewDomYAMLRepository(workingDir)
+	domModel, err := loadDom(ctx, domRepository)
 	if err != nil {
-		fmt.Printf("❌ Error al crear el template source: %v\n", err)
+		fmt.Printf("%v\n", err)
 		os.Exit(1)
 	}
 
-	initVars, err := initVars(domModel, environment)
+	cmdExecutor := shell.NewExecutor()
+	templateResponse, err := loadTemplate(
+		ctx, cmdExecutor, reposPath, domModel)
 	if err != nil {
-		fmt.Printf("❌ Error al crear las variables iniciales: %v\n", err)
+		fmt.Printf("%v\n", err)
 		os.Exit(1)
 	}
 
-	req := dto.ExecuteOrderRequest{
-		Ctx:              ctx,
-		TemplateSource:   templateSource,
-		EnvironmentName:  environment,
-		FinalStepName:    finalStep,
-		ProjectName:      domModel.Project().Name(),
-		ProjectRootPath:  workingDir,
-		SkippedStepNames: skippedSteps,
-		InitialVariables: initVars,
+	validateOrderResponse, err := validateOrder(
+		templateResponse.Template, environment, finalStep)
+	if err != nil {
+		fmt.Printf("%v\n", err)
+		os.Exit(1)
 	}
 
-	// --- Ejecución del Caso de Uso ---
-	order, err := orchestrationService.ExecuteOrder(req)
+	historyRepository, _ := executionstate.NewScopeRepository(statePath, domModel.Project().Name())
+
+	err = updateDOM(
+		ctx,
+		domRepository,
+		historyRepository,
+		domModel,
+		validateOrderResponse.Environment.Name())
 	if err != nil {
-		fmt.Printf("\n❌ %v\n", err)
-		if order != nil {
-			fmt.Printf("Estado final (ID: %s): %s\n", order.ID().String(), order.Status())
-		}
+		fmt.Printf("%v\n", err)
 		os.Exit(1)
 	}
-	if order != nil && order.Status() != orchestrationvos.OrderStatusSuccessful {
+
+	varsRepository, err := executionstate.NewVarsRepository(projsPath, domModel.Project().Name())
+	if err != nil {
+		fmt.Printf("%v\n", err)
 		os.Exit(1)
 	}
-	fmt.Printf("\n✅ Orden finalizada (ID: %s) con estado: %s\n", order.ID().String(), order.Status())
+
+	stateRepository, err := executionstate.NewStateRepository(statePath, domModel.Project().Name())
+	if err != nil {
+		fmt.Printf("%v\n", err)
+		os.Exit(1)
+	}
+
+	orchestrationService := createOrchestrationService(
+		historyRepository,
+		stateRepository,
+		cmdExecutor,
+		varsRepository,
+		templateResponse.TemplatePath,
+	)
+
+	orderRequest := createOrderRequest(
+		ctx, templateResponse,
+		validateOrderResponse,
+		workingDir, domModel, skippedSteps)
+
+	orderResponse, err := orchestrationService.ExecuteOrder(orderRequest)
+	if err != nil {
+		fmt.Printf("%v\n", err)
+		os.Exit(1)
+	}
+	if orderResponse != nil && orderResponse.Status() != vos.OrderStatusSuccessful {
+		os.Exit(1)
+	}
 }
 
 func main() {
@@ -261,35 +235,96 @@ func main() {
 	}
 }
 
-func initVars(domModel *domaggregates.DeploymentObjectModel, environment string) ([]orchestrationvos.Variable, error) {
-	initVars := []orchestrationvos.Variable{}
+func loadDom(
+	ctx context.Context,
+	domRepository domports.DOMRepository) (*domaggregates.DeploymentObjectModel, error) {
 
-	projectId, err := orchestrationvos.NewVariable("project_id", domModel.Project().IdString()[:8])
-	if err != nil {
-		return nil, err
-	}
-	initVars = append(initVars, projectId)
-	projectName, err := orchestrationvos.NewVariable("project_name", domModel.Project().Name())
-	if err != nil {
-		return nil, err
-	}
-	initVars = append(initVars, projectName)
-	projectTeam, err := orchestrationvos.NewVariable("project_team", domModel.Project().Team())
-	if err != nil {
-		return nil, err
-	}
-	initVars = append(initVars, projectTeam)
-	projectVersion, err := orchestrationvos.NewVariable("project_version", domModel.Project().Version())
-	if err != nil {
-		return nil, err
-	}
-	initVars = append(initVars, projectVersion)
+	loadDOMService := application.NewLoadDOMService(domRepository)
+	return loadDOMService.Load(ctx)
+}
 
-	env, err := orchestrationvos.NewVariable("environment", environment)
-	if err != nil {
-		return nil, err
-	}
-	initVars = append(initVars, env)
+func loadTemplate(
+	ctx context.Context,
+	executor applicationports.CommandExecutor,
+	repositoryPath string,
+	domModel *domaggregates.DeploymentObjectModel) (dto.LoadTemplateResponse, error) {
 
-	return initVars, nil
+	templateRepository := git.NewTemplateRepository(repositoryPath, executor)
+	loadTemplateService := application.NewLoadTemplateService(templateRepository)
+	return loadTemplateService.Load(
+		ctx, domModel.Template().RepositoryURL(), domModel.Template().Ref())
+}
+
+func validateOrder(
+	template *deploymentaggregates.DeploymentTemplate,
+	environment string,
+	finalStep string) (dto.ValidateOrderResponse, error) {
+
+	validateOrderService := application.NewValidateOrderService()
+
+	validateOrderRequest := dto.ValidateOrderRequest{
+		Environment: environment,
+		FinalStep:   finalStep,
+	}
+	return validateOrderService.Validate(template, validateOrderRequest)
+}
+
+func updateDOM(
+	ctx context.Context,
+	domRepository domports.DOMRepository,
+	historyRepository executionstateports.ScopeRepository,
+	domModel *domaggregates.DeploymentObjectModel,
+	environment string) error {
+
+	idGenerator := hasher.NewIDGenerator()
+	userInput := console.NewUserInputProvider()
+	updateDOMService := application.NewUpdateDOMService(domRepository, historyRepository, idGenerator, userInput)
+	return updateDOMService.Update(ctx, domModel, environment)
+}
+
+func createOrchestrationService(
+	historyRepository executionstateports.ScopeRepository,
+	stateRepository executionstateports.StateRepository,
+	executor applicationports.CommandExecutor,
+	varsRepository executionstateports.VarsRepository,
+	templatePath string) *application.OrchestrationService {
+
+	varResolver := vars.NewResolver()
+	fpService := fingerprint.NewFingerprintService()
+	workspaceMgr := workspace.NewManager(projsPath, reposPath)
+	orderRepo := state.NewFileOrderRepository(projsPath)
+	stepVariableRepo := git.NewStepVariableRepository(templatePath)
+
+	return application.NewOrchestrationService(
+		stepVariableRepo,
+		orderRepo,
+		historyRepository,
+		varResolver,
+		fpService,
+		workspaceMgr,
+		executor,
+		varsRepository,
+		stateRepository,
+	)
+}
+
+func createOrderRequest(
+	ctx context.Context,
+	templateResponse dto.LoadTemplateResponse,
+	validateOrderResponse dto.ValidateOrderResponse,
+	workingDir string,
+	domModel *domaggregates.DeploymentObjectModel,
+	skippedSteps map[string]struct{}) dto.OrderRequest {
+
+	return dto.OrderRequest{
+		Ctx:              ctx,
+		Template:         templateResponse.Template,
+		TemplatePath:     templateResponse.TemplatePath,
+		RepositoryName:   templateResponse.RepositoryName,
+		ProjectDom:       domModel,
+		Environment:      validateOrderResponse.Environment,
+		FinalStep:        validateOrderResponse.FinalStep,
+		ProjectPath:      workingDir,
+		SkippedStepNames: skippedSteps,
+	}
 }

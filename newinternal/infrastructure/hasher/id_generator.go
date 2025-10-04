@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/jairoprogramador/fastdeploy/newinternal/domain/dom/services"
 	"github.com/jairoprogramador/fastdeploy/newinternal/domain/dom/vos"
 )
 
@@ -13,7 +14,7 @@ import (
 type IDGenerator struct{}
 
 // NewIDGenerator crea una nueva instancia del generador de IDs.
-func NewIDGenerator() *IDGenerator {
+func NewIDGenerator() services.IDGenerator {
 	return &IDGenerator{}
 }
 
