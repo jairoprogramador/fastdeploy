@@ -208,9 +208,9 @@ func (s *OrchestrationService) executeStep(
 	}
 	order.AddVariable("step_workdir", workdirStep)
 
-	fmt.Println("\n-----------------------------------------------")
-	fmt.Printf("------------- EJECUTANDO STEP: %s -------------\n", stepExec.Name())
-	fmt.Println("-----------------------------------------------")
+	fmt.Println("\n--------------------------------------------------------")
+	fmt.Printf("--------------- EJECUTANDO STEP: %s ---------------\n", stepExec.Name())
+	fmt.Println("--------------------------------------------------------")
 	for _, cmdExec := range stepExec.CommandExecutions() {
 		fmt.Printf("-> Ejecutando comando: %s\n", cmdExec.Name())
 
