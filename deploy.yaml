@@ -1,0 +1,13 @@
+organization: fastdeploy
+team: itachi
+project:
+    id: fe12efd779194fa7b460166ba7527a655a19b2a8d9f1160f409b10da3163636c
+    name: fastdeploy
+    type: api
+repository:
+    url: https://github.com/jairoprogramador/mydeploy.git
+technology:
+    name: springboot
+    version: 3.5.4
+deployment:
+    version: v1.0.0

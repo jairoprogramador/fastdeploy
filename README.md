@@ -1,3 +1,8 @@
+nombre de variable
+
+[prefijo]NombreVariable
+por ejmplo: addrFirsName, addrLastName, addrState
+
 # FastDeploy
 
 ## Descripción General
@@ -53,6 +58,10 @@ El sistema está compuesto por los siguientes componentes:
 *(Por definir según las necesidades específicas del proyecto)*
 
 ## Instalación y Configuración
+
+go build -o fd ./cmd/fast
+
+in Mac: ./fd init
 
 *(Por completar con instrucciones de instalación y configuración)*
 
