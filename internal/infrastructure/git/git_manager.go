@@ -4,7 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
-
+	"strings"
 	"github.com/jairoprogramador/fastdeploy/internal/application/ports"
 )
 
@@ -33,6 +33,9 @@ func (g *GitManager) GetCommitHash(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	hash = strings.TrimSpace(hash)
+	hash = strings.ReplaceAll(hash, "|", "")
+	hash = strings.ReplaceAll(hash, "\n", "")
 	return hash, nil
 }
 
