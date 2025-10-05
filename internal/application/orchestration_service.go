@@ -69,11 +69,6 @@ func (s *OrchestrationService) ExecuteOrder(req dto.OrderRequest) (*orchestratio
 		return nil, err
 	}
 
-	for _, stepExec := range stateLatestSteps.GetStateSteps() {
-		fmt.Printf("-------------------STEP: %s---------------------\n", stepExec.GetName())
-		fmt.Printf("-------------------STATUS: %s---------------------\n", stepExec.IsSuccessful())
-	}
-
 	stateCurrentCode, err := s.fpService.CalculateCodeFingerprint(req.Ctx, req.ProjectPath)
 	if err != nil {
 		return nil, err
