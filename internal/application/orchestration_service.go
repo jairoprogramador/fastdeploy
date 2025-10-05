@@ -127,9 +127,6 @@ func (s *OrchestrationService) ExecuteOrder(req dto.OrderRequest) (*orchestratio
 					return order, err
 				}
 			} else {
-				fmt.Println("\n-----------------------------------------------")
-				fmt.Printf("------------- OMITIENDO STEP: %s -------------\n", stepExec.Name())
-				fmt.Println("-----------------------------------------------")
 				order.MarkStepAsCached(stepExec.Name())
 				continue
 			}
@@ -471,15 +468,20 @@ func (s *OrchestrationService) thereAreChanges(
 	for _, verification := range verifications {
 		if verification == deploymentvos.VerificationTypeCode {
 			if stateLatestCodeHistory == nil || stateLatestCodeHistory.FindMatchCode(stateCurrentCode) == nil {
+				fmt.Println("\n-----------------------------------------------")
+				fmt.Printf("------------- OMITIENDO STEP: %s -------------\n", stepName)
+				fmt.Printf("------------- PORQUE NO HAY CAMBIOS EN EL CODIGO -------------\n")
+				fmt.Println("-----------------------------------------------")
 				return true
 			}
 		}
 		if verification == deploymentvos.VerificationTypeEnv {
 			stateLatestEnvironmentHistory, ok := stateLatestEnvironmentHistoryMap[stepName]
-			if !ok {
-				return true
-			}
-			if stateLatestEnvironmentHistory == nil || stateLatestEnvironmentHistory.FindMatchEnvironment(stateCurrentEnvironmentStep) == nil {
+			if !ok || stateLatestEnvironmentHistory == nil || stateLatestEnvironmentHistory.FindMatchEnvironment(stateCurrentEnvironmentStep) == nil {
+				fmt.Println("\n-----------------------------------------------")
+				fmt.Printf("------------- OMITIENDO STEP: %s -------------\n", stepName)
+				fmt.Printf("------------- PORQUE NO HAY CAMBIOS EN EL AMBIENTE -------------\n")
+				fmt.Println("-----------------------------------------------")
 				return true
 			}
 		}
