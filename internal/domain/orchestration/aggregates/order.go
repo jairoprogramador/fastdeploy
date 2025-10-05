@@ -191,9 +191,3 @@ func (o *Order) AddVariable(key, value string) {
 	variable, _ := vos.NewVariable(key, value)
 	o.variableMap[variable.Key()] = variable
 }
-
-func (o *Order) AddVariables(variables []vos.Variable) {
-	for _, variable := range variables {
-		o.variableMap[variable.Key()] = variable
-	}
-}

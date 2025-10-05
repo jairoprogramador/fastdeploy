@@ -37,13 +37,17 @@ func (h *ScopeReceiptHistory) AddReceipt(receipt *ScopeReceipt) {
 }
 
 func (h *ScopeReceiptHistory) findMatch(codeFp, envFp vos.Fingerprint) *ScopeReceipt {
-	for _, receipt := range h.receipts {
-		codeMatch := (receipt.CodeFingerprint() == codeFp)
-		envMatch := (receipt.EnvironmentFingerprint() == envFp)
+	if len(h.receipts) == 0 {
+		return nil
+	}
 
-		if codeMatch && envMatch {
-			return receipt
-		}
+	receipt := h.receipts[0]
+
+	codeMatch := (receipt.CodeFingerprint() == codeFp)
+	envMatch := (receipt.EnvironmentFingerprint() == envFp)
+
+	if codeMatch && envMatch {
+		return receipt
 	}
 	return nil
 }

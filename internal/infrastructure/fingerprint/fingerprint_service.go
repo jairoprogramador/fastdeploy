@@ -100,7 +100,6 @@ func (s *FingerprintService) getStepsToIgnore(stepName string, pathRepository st
 			stepsToIgnore = append(stepsToIgnore, filepath.Join("steps", dirName, "**.*"))
 		}
 	}
-	fmt.Println("-----------stepsToIgnore-----------", stepsToIgnore)
 	return stepsToIgnore, nil
 }
 

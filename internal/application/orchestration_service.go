@@ -2,6 +2,7 @@ package application
 
 import (
 	"fmt"
+	"errors"
 
 	"github.com/jairoprogramador/fastdeploy/internal/application/dto"
 	applicationports "github.com/jairoprogramador/fastdeploy/internal/application/ports"
@@ -99,7 +100,9 @@ func (s *OrchestrationService) ExecuteOrder(req dto.OrderRequest) (*orchestratio
 	fmt.Printf("Iniciando despliegue hasta el paso '%s' en el ambiente '%s'...\n", req.FinalStep, req.Environment.Name())
 	for _, stepExec := range order.StepExecutions() {
 		if stepExec.Status() == orchestrationvos.StepStatusSkipped {
-			fmt.Printf("--- Omitiendo paso: %s ---\n", stepExec.Name())
+			fmt.Println("\n-----------------------------------------------")
+			fmt.Printf("------------- OMITIENDO STEP: %s -------------\n", stepExec.Name())
+			fmt.Println("-----------------------------------------------")
 			continue
 		}
 
@@ -109,8 +112,8 @@ func (s *OrchestrationService) ExecuteOrder(req dto.OrderRequest) (*orchestratio
 		}
 
 		if stateLatestSteps.IsStepAlreadyExecuted(stepExec.Name()) {
-			stepDef := s.findStepDefinition(req.Template.Steps(), stepExec.Name())
 
+			stepDef := s.findStepDefinition(req.Template.Steps(), stepExec.Name())
 			if s.thereAreChanges(
 				stepDef.VerificationTypes(),
 				stepExec.Name(),
@@ -124,11 +127,12 @@ func (s *OrchestrationService) ExecuteOrder(req dto.OrderRequest) (*orchestratio
 					return order, err
 				}
 			} else {
-				fmt.Printf("--- Omitiendo paso: %s ---\n", stepExec.Name())
+				fmt.Println("\n-----------------------------------------------")
+				fmt.Printf("------------- OMITIENDO STEP: %s -------------\n", stepExec.Name())
+				fmt.Println("-----------------------------------------------")
 				order.MarkStepAsCached(stepExec.Name())
 				continue
 			}
-
 		} else {
 			err = s.processStep(req, order, stepExec, stateCurrentCode, stateCurrentEnvironmentStep)
 			if err != nil {
@@ -152,18 +156,19 @@ func (s *OrchestrationService) processStep(
 	stepExec *orchestrationentities.StepExecution,
 	stateCurrentCode executionstatevos.Fingerprint,
 	stateCurrentEnvironmentStep executionstatevos.Fingerprint) error {
-	stepVars, err := s.loadStepVariables(stepExec.Name(), order)
 
 	environmentValue := req.Environment.Value()
+
+	_, err := s.loadStepVariables(stepExec.Name(), order)
 	if err != nil {
 		return err
 	}
-	order.AddVariables(stepVars)
+
 	err = s.executeStep(req, order, stepExec)
 	if err != nil {
 		return err
 	}
-	// ejecutar paso
+
 	err = s.saveVarsStore(environmentValue, order.VariableMap())
 	if err != nil {
 		return err
@@ -182,7 +187,8 @@ func (s *OrchestrationService) processStep(
 	}
 
 	if stepExec.Status() == orchestrationvos.StepStatusFailed {
-		fmt.Printf("❌ La ejecución del paso '%s' ha fallado\n", stepExec.Name())
+		msm := fmt.Sprintf("❌ La ejecución del paso '%s' ha fallado", stepExec.Name())
+		return errors.New(msm)
 	}
 	if stepExec.Status() == orchestrationvos.StepStatusSuccessful {
 		fmt.Printf("🎉 Ejecución del paso '%s' completada con éxito.\n", stepExec.Name())
@@ -204,7 +210,9 @@ func (s *OrchestrationService) executeStep(
 	}
 	order.AddVariable("step_workdir", workdirStep)
 
-	fmt.Printf("--- Ejecutando paso: %s ---\n", stepExec.Name())
+	fmt.Println("\n-----------------------------------------------")
+	fmt.Printf("------------- EJECUTANDO STEP: %s -------------\n", stepExec.Name())
+	fmt.Println("-----------------------------------------------")
 	for _, cmdExec := range stepExec.CommandExecutions() {
 		fmt.Printf("-> Ejecutando comando: %s\n", cmdExec.Name())
 
@@ -279,7 +287,7 @@ func (s *OrchestrationService) saveStateSteps(
 	environmentValue string, steps []*orchestrationentities.StepExecution) error {
 	stateSteps := executionstateaggregates.NewStateSteps()
 	for _, stepExec := range steps {
-		successful := stepExec.Status() == orchestrationvos.StepStatusSuccessful
+		successful := (stepExec.Status() == orchestrationvos.StepStatusSuccessful) || (stepExec.Status() == orchestrationvos.StepStatusCached)
 		step, err := executionstatevos.NewStateStep(stepExec.Name(), successful)
 		if err != nil {
 			return err
@@ -457,10 +465,7 @@ func (s *OrchestrationService) thereAreChanges(
 	for _, verification := range verifications {
 		if verification == deploymentvos.VerificationTypeCode {
 			if stateLatestCodeHistory == nil || stateLatestCodeHistory.FindMatchCode(stateCurrentCode) == nil {
-				fmt.Printf("--- El código ha cambiado o nunca se ha ejecutado el paso '%s' ---\n", stepName)
 				return true
-			} else {
-				fmt.Println("--- El código no ha cambiado ---")
 			}
 		}
 		if verification == deploymentvos.VerificationTypeEnv {
@@ -469,10 +474,7 @@ func (s *OrchestrationService) thereAreChanges(
 				return true
 			}
 			if stateLatestEnvironmentHistory == nil || stateLatestEnvironmentHistory.FindMatchEnvironment(stateCurrentEnvironmentStep) == nil {
-				fmt.Printf("--- El ambiente ha cambiado o nunca se ha ejecutado el paso '%s' ---\n", stepName)
 				return true
-			} else {
-				fmt.Println("--- El ambiente no ha cambiado ---")
 			}
 		}
 	}
@@ -484,6 +486,7 @@ func (s *OrchestrationService) loadStepVariables(stepName string, order *orchest
 	if err != nil {
 		return nil, err
 	}
+
 	stepVars := []orchestrationvos.Variable{}
 
 	for _, stepVar := range loadedStepVars {
@@ -496,6 +499,8 @@ func (s *OrchestrationService) loadStepVariables(stepName string, order *orchest
 		if err != nil {
 			return nil, err
 		}
+
+		order.AddVariable(stepVar.Key(), interpolatedVar)
 		stepVars = append(stepVars, variable)
 	}
 
