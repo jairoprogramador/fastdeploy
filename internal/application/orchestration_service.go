@@ -361,25 +361,31 @@ func (s *OrchestrationService) getVariablesProject(domModel *domaggregates.Deplo
 	if err != nil {
 		return nil, err
 	}
-
 	varsProject = append(varsProject, projectId)
+
 	projectName, err := orchestrationvos.NewVariable("project_name", domModel.Project().Name())
 	if err != nil {
 		return nil, err
 	}
-
 	varsProject = append(varsProject, projectName)
+
 	projectTeam, err := orchestrationvos.NewVariable("project_team", domModel.Project().Team())
 	if err != nil {
 		return nil, err
 	}
-
 	varsProject = append(varsProject, projectTeam)
+
 	projectVersion, err := orchestrationvos.NewVariable("project_version", domModel.Project().Version())
 	if err != nil {
 		return nil, err
 	}
 	varsProject = append(varsProject, projectVersion)
+
+	projectRevision, err := orchestrationvos.NewVariable("project_revision", domModel.Project().Revision())
+	if err != nil {
+		return nil, err
+	}
+	varsProject = append(varsProject, projectRevision)
 
 	productId, err := orchestrationvos.NewVariable("product_id", domModel.Product().IdString()[:8])
 	if err != nil {
