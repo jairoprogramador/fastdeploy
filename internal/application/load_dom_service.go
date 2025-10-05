@@ -28,6 +28,5 @@ func (s *LoadDOMService) Load(ctx context.Context) (*aggregates.DeploymentObject
 		return &aggregates.DeploymentObjectModel{},
 		errors.New("el archivo .fastdeploy/dom.yaml no existe. Por favor, ejecutar 'fd init' primero")
 	}
-
 	return domModel, nil
 }

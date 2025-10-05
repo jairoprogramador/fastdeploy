@@ -76,3 +76,7 @@ func (dom *DeploymentObjectModel) Product() *vos.Product       { return dom.prod
 func (dom *DeploymentObjectModel) Project() *vos.Project       { return dom.project }
 func (dom *DeploymentObjectModel) Template() *vos.Template     { return dom.template }
 func (dom *DeploymentObjectModel) Technology() *vos.Technology { return dom.technology }
+
+func (dom *DeploymentObjectModel) SetProjectRevision(revision string) {
+	dom.project = dom.project.WithRevision(revision)
+}

@@ -2,7 +2,6 @@ package application
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/jairoprogramador/fastdeploy/internal/application/dto"
 	"github.com/jairoprogramador/fastdeploy/internal/application/ports"
@@ -36,7 +35,7 @@ func NewInitService(
 func (s *InitService) InitializeDOM(req dto.InitRequest) (*domaggregates.DeploymentObjectModel, error) {
 	defaultProductName := req.WorkingDirectory
 	defaultProjectName := req.WorkingDirectory
-	defaultProjectVersion := time.Now().Format("2006.01.02")
+	defaultProjectVersion := "1.0.0"
 
 	var err error
 	var val string

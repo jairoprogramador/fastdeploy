@@ -167,6 +167,7 @@ func runExecution(_ *cobra.Command, args []string) {
 	}
 
 	cmdExecutor := shell.NewExecutor()
+
 	templateResponse, err := loadTemplate(
 		ctx, cmdExecutor, reposPath, domModel)
 	if err != nil {
@@ -180,6 +181,15 @@ func runExecution(_ *cobra.Command, args []string) {
 		fmt.Printf("%v\n", err)
 		os.Exit(1)
 	}
+
+	revisionProject, err := loadRevisionProject(
+		ctx, cmdExecutor, workingDir, domModel.Project().Revision(),
+		validateOrderResponse.FinalStep)
+	if err != nil {
+		fmt.Printf("%v\n", err)
+		os.Exit(1)
+	}
+	domModel.SetProjectRevision(revisionProject)
 
 	historyRepository, _ := executionstate.NewScopeRepository(statePath, domModel.Project().Name())
 
@@ -233,6 +243,18 @@ func main() {
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
 	}
+}
+
+func loadRevisionProject(
+	ctx context.Context,
+	cmdExecutor applicationports.CommandExecutor,
+	workingDir string,
+	revisionDefault string,
+	finalStep string) (string, error) {
+
+	gitManager := git.NewGitManager(cmdExecutor, workingDir)
+	revisionProjectService := application.NewRevisionProjectService(gitManager)
+	return revisionProjectService.LoadProjectRevision(ctx, revisionDefault, finalStep)
 }
 
 func loadDom(
