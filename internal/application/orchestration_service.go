@@ -112,7 +112,6 @@ func (s *OrchestrationService) ExecuteOrder(req dto.OrderRequest) (*orchestratio
 		}
 
 		if stateLatestSteps.IsStepAlreadyExecuted(stepExec.Name()) {
-
 			stepDef := s.findStepDefinition(req.Template.Steps(), stepExec.Name())
 			if s.thereAreChanges(
 				stepDef.VerificationTypes(),
@@ -128,6 +127,8 @@ func (s *OrchestrationService) ExecuteOrder(req dto.OrderRequest) (*orchestratio
 				}
 			} else {
 				order.MarkStepAsCached(stepExec.Name())
+				fmt.Printf("---------------- OMITIENDO STEP: %s -----------------\n", stepExec.Name())
+				fmt.Println("-------------------------------------------------------")
 				continue
 			}
 		} else {
@@ -468,21 +469,19 @@ func (s *OrchestrationService) thereAreChanges(
 	for _, verification := range verifications {
 		if verification == deploymentvos.VerificationTypeCode {
 			if stateLatestCodeHistory == nil || stateLatestCodeHistory.FindMatchCode(stateCurrentCode) == nil {
-				fmt.Println("\n-----------------------------------------------")
-				fmt.Printf("------------- OMITIENDO STEP: %s -------------\n", stepName)
-				fmt.Printf("------------- PORQUE NO HAY CAMBIOS EN EL CODIGO -------------\n")
-				fmt.Println("-----------------------------------------------")
 				return true
+			} else {
+				fmt.Println("\n-------------------------------------------------------")
+				fmt.Printf("------------- NO HAY CAMBIOS EN EL CODIGO -------------\n")
 			}
 		}
 		if verification == deploymentvos.VerificationTypeEnv {
 			stateLatestEnvironmentHistory, ok := stateLatestEnvironmentHistoryMap[stepName]
 			if !ok || stateLatestEnvironmentHistory == nil || stateLatestEnvironmentHistory.FindMatchEnvironment(stateCurrentEnvironmentStep) == nil {
-				fmt.Println("\n-----------------------------------------------")
-				fmt.Printf("------------- OMITIENDO STEP: %s -------------\n", stepName)
-				fmt.Printf("------------- PORQUE NO HAY CAMBIOS EN EL AMBIENTE -------------\n")
-				fmt.Println("-----------------------------------------------")
 				return true
+			} else {
+				fmt.Println("\n-------------------------------------------------------")
+				fmt.Printf("------------- NO HAY CAMBIOS EN EL AMBIENTE -------------\n")
 			}
 		}
 	}
