@@ -69,6 +69,11 @@ func (s *OrchestrationService) ExecuteOrder(req dto.OrderRequest) (*orchestratio
 		return nil, err
 	}
 
+	for _, stepExec := range stateLatestSteps.GetStateSteps() {
+		fmt.Printf("-------------------STEP: %s---------------------\n", stepExec.GetName())
+		fmt.Printf("-------------------STATUS: %s---------------------\n", stepExec.IsSuccessful())
+	}
+
 	stateCurrentCode, err := s.fpService.CalculateCodeFingerprint(req.Ctx, req.ProjectPath)
 	if err != nil {
 		return nil, err
@@ -208,7 +213,6 @@ func (s *OrchestrationService) executeStep(
 	}
 	order.AddVariable("step_workdir", workdirStep)
 
-	fmt.Println("\n--------------------------------------------------------")
 	fmt.Printf("--------------- EJECUTANDO STEP: %s ---------------\n", stepExec.Name())
 	fmt.Println("--------------------------------------------------------")
 	for _, cmdExec := range stepExec.CommandExecutions() {
@@ -469,6 +473,8 @@ func (s *OrchestrationService) thereAreChanges(
 	for _, verification := range verifications {
 		if verification == deploymentvos.VerificationTypeCode {
 			if stateLatestCodeHistory == nil || stateLatestCodeHistory.FindMatchCode(stateCurrentCode) == nil {
+				fmt.Println("\n-------------------------------------------------------")
+				fmt.Printf("------------- HAY CAMBIOS EN EL CODIGO -------------\n")
 				return true
 			} else {
 				fmt.Println("\n-------------------------------------------------------")
@@ -478,6 +484,8 @@ func (s *OrchestrationService) thereAreChanges(
 		if verification == deploymentvos.VerificationTypeEnv {
 			stateLatestEnvironmentHistory, ok := stateLatestEnvironmentHistoryMap[stepName]
 			if !ok || stateLatestEnvironmentHistory == nil || stateLatestEnvironmentHistory.FindMatchEnvironment(stateCurrentEnvironmentStep) == nil {
+				fmt.Println("\n-------------------------------------------------------")
+				fmt.Printf("------------- HAY CAMBIOS EN EL AMBIENTE -------------\n")
 				return true
 			} else {
 				fmt.Println("\n-------------------------------------------------------")
