@@ -1,70 +1,150 @@
-nombre de variable
+<div align="center">
+  <!-- <img src="doc/img/FastDeploy.jpg" alt="FastDeploy Logo" width="150"/> -->
+  <h1>fastdeploy (fd)</h1>
+  <p><strong>Despliega cualquier tecnología en cualquier plataforma con solo 3 comandos.</strong></p>
+  <p><i>La infraestructura se convierte en una plantilla.</i></p>
 
-[prefijo]NombreVariable
-por ejmplo: addrFirsName, addrLastName, addrState
+  <p>
+    <a href="https://github.com/jairoprogramador/fastdeploy/releases">
+      <img src="https://img.shields.io/github/v/release/jairoprogramador/fastdeploy?style=for-the-badge" alt="Latest Release">
+    </a>
+    <a href="https://github.com/jairoprogramador/fastdeploy/blob/main/LICENSE">
+      <img src="https://img.shields.io/github/license/jairoprogramador/fastdeploy?style=for-the-badge" alt="License">
+    </a>
+  </p>
+</div>
 
-# FastDeploy
+---
 
-## Descripción General
-FastDeploy es una herramienta de despliegue automatizado que permite gestionar y distribuir aplicaciones a diferentes entornos (desarrollo, pruebas y producción) de manera eficiente y controlada.
+**`fastdeploy` (o `fd`)** es una herramienta CLI diseñada para eliminar la complejidad y la repetición de los procesos de despliegue. Olvídate de los scripts frágiles, los largos `READMEs` y la pregunta "¿cómo se desplegaba esto?". Con `fastdeploy`, estandarizas tus despliegues usando plantillas reutilizables, permitiendo que cualquier desarrollador, en cualquier equipo, pueda desplegar cualquier aplicación de forma segura y predecible.
 
-![arquitectura](./doc/img/FastDeploy.jpg)
+**Define tu proceso de despliegue una vez, y ejecútalo miles de veces con tre simples comandos.**
 
-## Arquitectura del Sistema
+## ✨ Características Principales
 
-El sistema está compuesto por los siguientes componentes:
+*   **⚙️ Agnostico a la Tecnología:** ¿Java, Node.js, Python, Go? ¿Terraform, Docker, Kubernetes? `fastdeploy` orquesta cualquier herramienta que puedas ejecutar en un shell.
+*   **📄 Infraestructura como Plantilla:** Centraliza la lógica de tus despliegues (steps, variables, entornos) en un repositorio de plantillas. Estandariza las buenas prácticas y evoluciona tu infraestructura sin tocar tus microservicios.
+*   **🚀 Despliegues en 3 Pasos:** Clona tu microservicio y ejecuta `fd init`, `fd test`, y `fd deploy`. Eso es todo.
+*   **✅ Verificación Continua:** El estado de cada despliegue se guarda, permitiendo validaciones y evitando ejecuciones accidentales en entornos incorrectos.
+*   **💻 Experiencia de Desarrollador Primero:** Comandos intuitivos, feedback claro y la abstracción perfecta para que los desarrolladores se centren en lo que importa: el código.
 
-### Administrador
-- Gestiona los permisos y configuraciones del sistema
-- Controla el acceso a las diferentes funcionalidades
-- Supervisa el funcionamiento general de la plataforma
+## 🚀 Instalación
 
-### Constructor
-- Responsable de la compilación del código fuente
-- Genera los artefactos necesarios para el despliegue
-- Verifica la integridad de las construcciones
+Instala `fastdeploy` en segundos.
 
-### Supervisor
-- Coordina el proceso de revisión y aprobación de despliegues
-- Comunica con el Administrador para aplicar políticas de seguridad
-- Gestiona el flujo de trabajo entre el Constructor y el Repartidor
+### macOS (Homebrew)
 
-### Almacén
-- Repositorio centralizado de artefactos
-- Almacena versiones históricas de las aplicaciones
-- Mantiene la trazabilidad de los despliegues
+```sh
+brew install jairoprogramador/fastdeploy/fastdeploy
+```
 
-### Repartidor
-- Distribuye los artefactos a los diferentes entornos
-- Gestiona las conexiones con los clientes
-- Monitorea el estado de los despliegues
+### Linux
 
-### Clientes
-- Entornos de destino: Desarrollo (DEV), Control de Calidad (QA) y Producción (PROD)
-- Reciben y ejecutan las actualizaciones
-- Reportan el estado del despliegue al sistema central
+Puedes descargar el paquete `.deb` o `.rpm` desde la [página de Releases](https://github.com/jairoprogramador/fastdeploy/releases) y usar tu gestor de paquetes.
 
-## Flujo de Trabajo
+```sh
+# Para sistemas basados en Debian/Ubuntu
+sudo dpkg -i fastdeploy_*.deb
 
-1. El Constructor prepara los artefactos necesarios
-2. El Supervisor recibe y valida estos artefactos
-3. El Administrador verifica y autoriza los despliegues
-4. El Supervisor envía los artefactos aprobados al Almacén
-5. El Repartidor obtiene los artefactos del Almacén
-6. El Repartidor distribuye los artefactos a los Clientes según su entorno
+# Para sistemas basados en Red Hat/Fedora
+sudo rpm -i fastdeploy_*.rpm
+```
 
-## Requisitos del Sistema
+Alternativamente, puedes descargar el binario directamente:
+```sh
+curl -sL https://github.com/jairoprogramador/fastdeploy/releases/latest/download/fastdeploy_Linux_x86_64.tar.gz | tar xz
+sudo mv fd /usr/local/bin/
+```
 
-*(Por definir según las necesidades específicas del proyecto)*
+### Windows
 
-## Instalación y Configuración
+1.  Descarga el archivo `.zip` desde la [página de Releases](https://github.com/jairoprogramador/fastdeploy/releases).
+2.  Descomprime el archivo.
+3.  Añade el ejecutable `fd.exe` a tu `PATH`.
 
-go build -o fd ./cmd/fast
 
-in Mac: ./fd init
+## 🏁 Guía de Inicio Rápido: Desplegando un Microservicio Java
 
-*(Por completar con instrucciones de instalación y configuración)*
+Vamos a desplegar un microservicio Java que utiliza **Terraform** para provisionar la infraestructura en **Azure** (ACR, AKS) y se empaqueta con **Docker**.
 
-## Licencia
+Toda la lógica de este despliegue está definida en nuestra plantilla de ejemplo:
+➡️ **[jairoprogramador/mydeploy](https://github.com/jairoprogramador/mydeploy)**
 
-*(Por definir según las políticas de la organización)*
+Este repositorio de plantillas contiene los `steps`, `variables` y la definición de los `environments` (ej: `sandbox`, `stagin`, `produccion`).
+
+### Paso 1: Inicializa tu Proyecto
+
+Clona el microservicio que quieres desplegar. Una vez dentro del directorio, ejecuta:
+
+```sh
+fd init
+```
+
+`fastdeploy` detectará que no está inicializado y te hará un par de preguntas para crear el archivo de configuración local `.fastdeploy/dom.yaml`. Este archivo vincula tu proyecto con la plantilla de despliegue.
+
+```yaml
+# .fastdeploy/dom.yaml (Ejemplo generado)
+product:
+  name: "core-banking"
+project:
+  name: "accounts-ms"
+  revision: "v1.0.0"
+technology:
+  type: "backend"
+  solution: microservicio
+  stack: springboot
+template:
+  repository_url: "https://github.com/jairoprogramador/mydeploy.git"
+  ref: "main"
+```
+
+### Paso 2: Prueba el Despliegue en un Entorno
+
+Antes de desplegar, puedes validar que todo está en el entorno de desarrollo. El comando `test` ejecuta los comandos definidos en la plantilla referentes a las pruebas.
+
+```sh
+# Ejecuta los pasos de prueba para el entorno 'sand'
+fd test sand
+```
+
+Esto podría, por ejemplo, ejecutar los test unitarios, la conexión con Azure, validar la versión de Terraform, compilar el proyecto, verificar pull request sin desplegarlo.
+
+### Paso 3: Despliega
+
+Una vez que las pruebas pasan, estás listo para desplegar. El comando `deploy` ejecuta la secuencia completa de pasos definidos en la plantilla, por ejemplo para el entorno de sandbox.
+
+```sh
+# Despliega en el entorno 'sand'
+fd deploy sand
+```
+`fastdeploy` orquestará todo el proceso:
+1.  Clonará la plantilla `mydeploy`.
+2.  Ejecutará `terraform apply` para provisionar ACR y AKS.
+3.  Construirá la imagen Docker de tu microservicio.
+4.  Subirá la imagen al Azure Container Registry (ACR).
+5.  Desplegará la aplicación en Azure Kubernetes Service (AKS).
+
+¡Y listo! Tu microservicio está desplegado.
+
+## 📚 Comandos Básicos
+
+| Comando | Descripción |
+| :--- | :--- |
+| `fd init` | Inicializa un proyecto creando el archivo `.fastdeploy/dom.yaml`. |
+| `fd [step] [env]` | Ejecuta un despliegue hasta el `step` indicado en el entorno `env`. |
+| `fd test [env]` | Ejecuta solo los pasos de verificación (`test`) en el entorno `env`. |
+| `fd supply [env]` | Ejecuta los pasos de aprovisionamiento de infraestructura (`supply`). |
+| `fd deploy [env]` | Ejecuta todos los pasos hasta el despliegue final (`deploy`). |
+
+**Flags comunes:**
+*   `--yes` o `-y`: Salta las confirmaciones interactivas, para `fd init`
+<!-- *   `--skip-test`: Omite los pasos de `test`.
+*   `--skip-supply`: Omite los pasos de `supply`. -->
+
+## 🤝 Contribuciones
+
+¡Las contribuciones son bienvenidas! Si tienes ideas, sugerencias o encuentras un error, por favor abre un [issue](https://github.com/jairoprogramador/fastdeploy/issues) o envía un [pull request](https://github.com/jairoprogramador/fastdeploy/pulls).
+
+## 📄 Licencia
+
+`fastdeploy` está distribuido bajo la [Licencia MIT](https://github.com/jairoprogramador/fastdeploy/blob/main/LICENSE).
