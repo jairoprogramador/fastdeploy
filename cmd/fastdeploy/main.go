@@ -32,6 +32,8 @@ import (
 
 var (
 	version        = "dev"
+	commit         = "none"
+	date           = "unknown"
 	fastdeployHome string
 	reposPath      string
 	projsPath      string
@@ -46,10 +48,9 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use:     "fd [paso] [ambiente]",
-	Short:   "fastdeploy es una herramienta CLI para automatizar despliegues.",
-	Long:    `Una herramienta para orquestar despliegues de software a través de diferentes ambientes`,
-	Version: version,
+	Use:   "fd [paso] [ambiente]",
+	Short: "fastdeploy es una herramienta CLI para automatizar despliegues.",
+	Long:  `Una herramienta para orquestar despliegues de software a través de diferentes ambientes`,
 	// Validamos los argumentos aquí, pero la lógica de ejecución principal está en RunE
 	Args: func(cmd *cobra.Command, args []string) error {
 		// Permitir que los comandos sin argumentos (como 'fd --version') pasen
@@ -81,6 +82,10 @@ var initCmd = &cobra.Command{
 }
 
 func init() {
+	// The --version flag is handled natively by Cobra. We populate the version
+	// string here with all the build details injected by GoReleaser.
+	rootCmd.Version = fmt.Sprintf("%s (commit: %s, built at: %s)", version, commit, date)
+
 	cobra.OnInitialize(initConfig)
 	// Los flags ahora pertenecen al rootCmd, ya que es el que maneja la ejecución.
 	rootCmd.Flags().BoolVarP(&skipTest, "skip-test", "t", false, "Omitir el paso 'test'")

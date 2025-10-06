@@ -1,0 +1,66 @@
+version: 2
+project_name: fastdeploy
+
+builds:
+  - id: fastdeploy
+    main: ./cmd/fastdeploy
+    binary: fd
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+
+archives:
+  - id: archive
+    ids: [fastdeploy]
+    format_overrides:
+      - goos: windows
+        formats: ['zip']
+    files:
+      - LICENSE
+      - README.md
+
+nfpms:
+  - id: fastdeploy
+    package_name: fastdeploy
+    ids: [fastdeploy]
+    maintainer: "Jairo <jairo.jggc@gmail.com>"
+    description: "CLI multiplataforma para despliegues automáticos y rápidos de aplicaciones"
+    homepage: "https://github.com/jairoprogramador/fastdeploy"
+    license: Apache License
+    formats:
+      - deb
+      - rpm
+      - apk
+
+homebrew_casks:
+  - name: fastdeploy
+    ids:
+      - archive
+    repository:
+      owner: jairoprogramador
+      name: homebrew-fastdeploy
+    commit_author:
+      name: Jairo Galvez
+      email: jairo.jggc@gmail.com
+    homepage: "https://github.com/jairoprogramador/fastdeploy"
+    description: "CLI multiplataforma para despliegues automáticos y rápidos de aplicaciones"
+    binary: fd
+
+changelog:
+  use: git
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^chore:'
