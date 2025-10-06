@@ -50,6 +50,7 @@ homebrew_casks:
     repository:
       owner: jairoprogramador
       name: homebrew-fastdeploy
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
     commit_author:
       name: Jairo Galvez
       email: jairo.jggc@gmail.com
