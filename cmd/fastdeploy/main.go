@@ -34,6 +34,7 @@ var (
 	version        = "dev"
 	commit         = "none"
 	date           = "unknown"
+
 	fastdeployHome string
 	reposPath      string
 	projsPath      string
@@ -106,7 +107,6 @@ func initConfig() {
 		os.Exit(1)
 	}
 
-	// Establecer el valor por defecto si la variable de entorno no está definida
 	defaultHome := filepath.Join(homeDir, ".fastdeploy")
 	fastdeployHome = viper.GetString("HOME")
 	if fastdeployHome == "" {
@@ -130,7 +130,6 @@ func runInit(cmd *cobra.Command, args []string) {
 	domRepository := dom.NewDomYAMLRepository(workingDir)
 	initService := application.NewInitService(userInput, idGenerator, domRepository)
 
-	// --- Ejecución del Caso de Uso ---
 	req := dto.InitRequest{
 		Ctx:              ctx,
 		SkipPrompt:       skipPrompt,
@@ -196,43 +195,56 @@ func runExecution(_ *cobra.Command, args []string) {
 	}
 	domModel.SetProjectRevision(revisionProject)
 
-	historyRepository, _ := executionstate.NewScopeRepository(statePath, domModel.Project().Name())
+	historyRepository, _ := executionstate.NewScopeRepository(
+		statePath,
+		domModel.Project().Name(),
+		templateResponse.RepositoryName,
+		validateOrderResponse.Environment.Value())
 
 	err = updateDOM(
 		ctx,
 		domRepository,
 		historyRepository,
-		domModel,
-		validateOrderResponse.Environment.Name())
+		domModel)
 	if err != nil {
 		fmt.Printf("%v\n", err)
 		os.Exit(1)
 	}
 
-	varsRepository, err := executionstate.NewVarsRepository(projsPath, domModel.Project().Name())
+	varsRepository, err := executionstate.NewVarsRepository(
+		statePath,
+		domModel.Project().Name(),
+		templateResponse.RepositoryName,
+		validateOrderResponse.Environment.Value())
 	if err != nil {
 		fmt.Printf("%v\n", err)
 		os.Exit(1)
 	}
 
-	stateRepository, err := executionstate.NewStateRepository(statePath, domModel.Project().Name())
+	stateRepository, err := executionstate.NewStateRepository(
+		statePath,
+		domModel.Project().Name(),
+		templateResponse.RepositoryName,
+		validateOrderResponse.Environment.Value())
 	if err != nil {
 		fmt.Printf("%v\n", err)
 		os.Exit(1)
 	}
+
+	orderRequest := createOrderRequest(
+		ctx, templateResponse,
+		validateOrderResponse,
+		workingDir, domModel, skippedSteps)
 
 	orchestrationService := createOrchestrationService(
 		historyRepository,
 		stateRepository,
 		cmdExecutor,
 		varsRepository,
+		orderRequest,
 		templateResponse.TemplatePath,
+		validateOrderResponse.Environment.Value(),
 	)
-
-	orderRequest := createOrderRequest(
-		ctx, templateResponse,
-		validateOrderResponse,
-		workingDir, domModel, skippedSteps)
 
 	orderResponse, err := orchestrationService.ExecuteOrder(orderRequest)
 	if err != nil {
@@ -300,13 +312,12 @@ func updateDOM(
 	ctx context.Context,
 	domRepository domports.DOMRepository,
 	historyRepository executionstateports.ScopeRepository,
-	domModel *domaggregates.DeploymentObjectModel,
-	environment string) error {
+	domModel *domaggregates.DeploymentObjectModel) error {
 
 	idGenerator := hasher.NewIDGenerator()
 	userInput := console.NewUserInputProvider()
 	updateDOMService := application.NewUpdateDOMService(domRepository, historyRepository, idGenerator, userInput)
-	return updateDOMService.Update(ctx, domModel, environment)
+	return updateDOMService.Update(ctx, domModel)
 }
 
 func createOrchestrationService(
@@ -314,13 +325,31 @@ func createOrchestrationService(
 	stateRepository executionstateports.StateRepository,
 	executor applicationports.CommandExecutor,
 	varsRepository executionstateports.VarsRepository,
-	templatePath string) *application.OrchestrationService {
+	orderRequest dto.OrderRequest,
+	templatePath string,
+	environment string) *application.OrchestrationService {
 
 	varResolver := vars.NewResolver()
-	fpService := fingerprint.NewFingerprintService()
-	workspaceMgr := workspace.NewManager(projsPath, reposPath)
+
+	fpService, err := fingerprint.NewFingerprintService(
+		orderRequest.ProjectPath,
+		reposPath,
+		orderRequest.RepositoryName,
+		environment)
+	if err != nil {
+		fmt.Printf("%v\n", err)
+		os.Exit(1)
+	}
+
+	workspaceMgr, _ := workspace.NewManager(
+		projsPath,
+		reposPath,
+		orderRequest.ProjectDom.Project().Name(),
+		orderRequest.RepositoryName,
+		environment)
+
 	orderRepo := state.NewFileOrderRepository(projsPath)
-	stepVariableRepo := git.NewStepVariableRepository(templatePath)
+	stepVariableRepo := git.NewStepVariableRepository(templatePath, environment)
 
 	return application.NewOrchestrationService(
 		stepVariableRepo,

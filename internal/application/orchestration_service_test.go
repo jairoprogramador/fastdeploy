@@ -26,8 +26,8 @@ type MockStepVariableRepository struct {
 	mock.Mock
 }
 
-func (m *MockStepVariableRepository) Load(environment, stepName string) ([]orchestrationvos.Variable, error) {
-	args := m.Called(environment, stepName)
+func (m *MockStepVariableRepository) Load(stepName string) ([]orchestrationvos.Variable, error) {
+	args := m.Called(stepName)
 	return args.Get(0).([]orchestrationvos.Variable), args.Error(1)
 }
 
@@ -35,8 +35,8 @@ type MockOrderRepository struct {
 	mock.Mock
 }
 
-func (m *MockOrderRepository) Save(ctx context.Context, order *orchestrationaggregates.Order, projectName string) error {
-	args := m.Called(ctx, order, projectName)
+func (m *MockOrderRepository) Save(order *orchestrationaggregates.Order, projectName string) error {
+	args := m.Called(order, projectName)
 	return args.Error(0)
 }
 
@@ -54,13 +54,13 @@ func (m *MockScopeRepository) SaveCodeStateHistory(history *executionstateaggreg
 	return args.Error(0)
 }
 
-func (m *MockScopeRepository) FindEnvironmentStateHistory(environment, stepName string) (*executionstateaggregates.ScopeReceiptHistory, error) {
-	args := m.Called(environment, stepName)
+func (m *MockScopeRepository) FindStepStateHistory(stepName string) (*executionstateaggregates.ScopeReceiptHistory, error) {
+	args := m.Called(stepName)
 	return args.Get(0).(*executionstateaggregates.ScopeReceiptHistory), args.Error(1)
 }
 
-func (m *MockScopeRepository) SaveEnvironmentStateHistory(history *executionstateaggregates.ScopeReceiptHistory, environment, stepName string) error {
-	args := m.Called(history, environment, stepName)
+func (m *MockScopeRepository) SaveStepStateHistory(history *executionstateaggregates.ScopeReceiptHistory, stepName string) error {
+	args := m.Called(history, stepName)
 	return args.Error(0)
 }
 
@@ -90,13 +90,13 @@ type MockFingerprintService struct {
 	mock.Mock
 }
 
-func (m *MockFingerprintService) CalculateCodeFingerprint(ctx context.Context, path string) (executionstatevos.Fingerprint, error) {
-	args := m.Called(ctx, path)
+func (m *MockFingerprintService) CalculateCodeFingerprint() (executionstatevos.Fingerprint, error) {
+	args := m.Called()
 	return args.Get(0).(executionstatevos.Fingerprint), args.Error(1)
 }
 
-func (m *MockFingerprintService) CalculateEnvironmentFingerprint(ctx context.Context, stepName, path string) (executionstatevos.Fingerprint, error) {
-	args := m.Called(ctx, stepName, path)
+func (m *MockFingerprintService) CalculateStepFingerprint(stepName string) (executionstatevos.Fingerprint, error) {
+	args := m.Called(stepName)
 	return args.Get(0).(executionstatevos.Fingerprint), args.Error(1)
 }
 
@@ -104,8 +104,8 @@ type MockWorkspaceManager struct {
 	mock.Mock
 }
 
-func (m *MockWorkspaceManager) PrepareStepWorkspace(projectName, environment, stepName, repositoryName string) (string, error) {
-	args := m.Called(projectName, environment, stepName, repositoryName)
+func (m *MockWorkspaceManager) Prepare(stepName string) (string, error) {
+	args := m.Called(stepName)
 	return args.String(0), args.Error(1)
 }
 
@@ -127,13 +127,13 @@ type MockVarsRepository struct {
 	mock.Mock
 }
 
-func (m *MockVarsRepository) GetStore(environment string) ([]orchestrationvos.Variable, error) {
-	args := m.Called(environment)
+func (m *MockVarsRepository) FindAll() ([]orchestrationvos.Variable, error) {
+	args := m.Called()
 	return args.Get(0).([]orchestrationvos.Variable), args.Error(1)
 }
 
-func (m *MockVarsRepository) Save(vars []orchestrationvos.Variable, environment string) error {
-	args := m.Called(vars, environment)
+func (m *MockVarsRepository) Save(vars []orchestrationvos.Variable) error {
+	args := m.Called(vars)
 	return args.Error(0)
 }
 
@@ -141,13 +141,13 @@ type MockStateRepository struct {
 	mock.Mock
 }
 
-func (m *MockStateRepository) FindStateSteps(environment string) (executionstateaggregates.StateSteps, error) {
-	args := m.Called(environment)
+func (m *MockStateRepository) FindStepStatus() (executionstateaggregates.StateSteps, error) {
+	args := m.Called()
 	return args.Get(0).(executionstateaggregates.StateSteps), args.Error(1)
 }
 
-func (m *MockStateRepository) SaveStateSteps(stateSteps executionstateaggregates.StateSteps, environment string) error {
-	args := m.Called(stateSteps, environment)
+func (m *MockStateRepository) SaveStepStatus(stateSteps executionstateaggregates.StateSteps) error {
+	args := m.Called(stateSteps)
 	return args.Error(0)
 }
 

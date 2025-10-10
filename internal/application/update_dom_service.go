@@ -32,14 +32,14 @@ func NewUpdateDOMService(
 }
 
 func (s *UpdateDOMService) Update(
-	ctx context.Context, domModel *aggregates.DeploymentObjectModel, environment string) error {
+	ctx context.Context, domModel *aggregates.DeploymentObjectModel) error {
 	isModified, err := domModel.VerifyAndUpdateIDs(s.idGenerator)
 	if err != nil {
 		return err
 	}
 
 	if isModified {
-		history, _ := s.scopeRepository.FindEnvironmentStateHistory(environment, "supply")
+		history, _ := s.scopeRepository.FindStepStateHistory("supply")
 		if history != nil && len(history.Receipts()) > 0 {
 			fmt.Println("⚠️ Se han detectado cambios en .fastdeploy/dom.yaml que afectan a la identidad del proyecto.")
 			confirmed, err := s.userInput.Confirm(ctx, "¿Continuar? Esto podría causar cambios en la infraestructura existente.", false)

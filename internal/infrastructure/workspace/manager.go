@@ -9,66 +9,77 @@ import (
 	"github.com/jairoprogramador/fastdeploy/internal/application/ports"
 )
 
-// Manager implementa la interfaz ports.WorkspaceManager.
-// Es responsable de preparar los directorios de trabajo para la ejecución de cada paso.
 type Manager struct {
-	projectsBasePath string
-	respositoriesBasePath string
+	pathProjectRootFastDeploy string
+	pathRepositoryRootFastDeploy string
+	projectName string
+	repositoryName string
+	environment string
+	pathRepository string
+	pathProject string
 }
 
-// NewManager crea una nueva instancia del WorkspaceManager.
-func NewManager(projectsBasePath string, respositoriesBasePath string) ports.WorkspaceManager {
-	return &Manager{
-		projectsBasePath: projectsBasePath,
-		respositoriesBasePath: respositoriesBasePath,
+func NewManager(
+	pathProjectRootFastDeploy,
+	pathRepositoryRootFastDeploy,
+	projectName,
+	repositoryName,
+	environment string) (ports.WorkspaceManager, error) {
+
+	if pathProjectRootFastDeploy == "" {
+		return nil, fmt.Errorf("path project root fast deploy is required")
 	}
+	if pathRepositoryRootFastDeploy == "" {
+		return nil, fmt.Errorf("path repository root fast deploy is required")
+	}
+	if projectName == "" {
+		return nil, fmt.Errorf("project name is required")
+	}
+	if repositoryName == "" {
+		return nil, fmt.Errorf("repository name is required")
+	}
+	if environment == "" {
+		return nil, fmt.Errorf("environment is required")
+	}
+
+	pathRepository := filepath.Join(pathRepositoryRootFastDeploy, repositoryName)
+	pathProject := filepath.Join(pathProjectRootFastDeploy, projectName)
+
+	return &Manager {
+		pathProjectRootFastDeploy: pathProjectRootFastDeploy,
+		pathRepositoryRootFastDeploy: pathRepositoryRootFastDeploy,
+		projectName: projectName,
+		repositoryName: repositoryName,
+		environment: environment,
+		pathRepository: pathRepository,
+		pathProject: pathProject,
+	}, nil
 }
 
-// PrepareStepWorkspace crea un directorio de trabajo limpio y copia los archivos de la plantilla del paso.
-func (m *Manager) PrepareStepWorkspace(
-	projectName string,
-	environment string,
-	stepName string,
-	repositoryName string,
-) (string, error) {
-	// 1. Encontrar el directorio de origen del paso en la plantilla.
-	sourceDir, err := m.findStepSourceDir(repositoryName, stepName)
-	if err != nil {
-		// Si no hay un directorio de plantilla para el paso, no es un error.
-		// Simplemente creamos un directorio de trabajo vacío.
-		if os.IsNotExist(err) {
-			sourceDir = ""
-		} else {
-			return "", err
-		}
+func (m *Manager) Prepare(stepName string) (string, error) {
+	pathStepSource, err := m.getPathStepSource(stepName)
+	if err != nil && !os.IsNotExist(err) {
+		return "", err
+	} else if os.IsNotExist(err) {
+		return "", nil
 	}
 
-	// 2. Construir la ruta de destino.
-	destPath := filepath.Join(m.projectsBasePath, projectName, environment, stepName)
+	destPath := filepath.Join(m.pathProject, m.repositoryName, m.environment, stepName)
 
-	// 3. Limpiar y recrear el directorio de destino para asegurar un estado prístino.
-	/* if err := os.RemoveAll(destPath); err != nil {
-		return "", fmt.Errorf("error al limpiar el workspace del paso anterior: %w", err)
-	} */
 	if err := os.MkdirAll(destPath, 0755); err != nil {
 		return "", fmt.Errorf("error al crear el workspace del paso: %w", err)
 	}
 
-	// 4. Copiar los archivos de la plantilla si existe un directorio de origen.
-	if sourceDir != "" {
-		if err := copyDir(sourceDir, destPath); err != nil {
-			return "", fmt.Errorf("error al copiar los archivos de la plantilla al workspace: %w", err)
-		}
+	if err := copyDir(pathStepSource, destPath); err != nil {
+		return "", fmt.Errorf("error al copiar los archivos de la plantilla al workspace: %w", err)
 	}
 
 	return destPath, nil
 }
 
-// findStepSourceDir busca en el directorio "steps" el subdirectorio que corresponde a un nombre de paso.
-// Ej: para stepName "test", busca un directorio como "01-test".
-func (m *Manager) findStepSourceDir(repositoryName, stepName string) (string, error) {
-	stepsRoot := filepath.Join(m.respositoriesBasePath, repositoryName, "steps")
-	entries, err := os.ReadDir(stepsRoot)
+func (m *Manager) getPathStepSource(stepName string) (string, error) {
+	pathSteps := filepath.Join(m.pathRepository, "steps")
+	entries, err := os.ReadDir(pathSteps)
 	if err != nil {
 		return "", err
 	}
@@ -76,14 +87,13 @@ func (m *Manager) findStepSourceDir(repositoryName, stepName string) (string, er
 	regex := regexp.MustCompile(fmt.Sprintf(`^\d+-%s$`, regexp.QuoteMeta(stepName)))
 	for _, entry := range entries {
 		if entry.IsDir() && regex.MatchString(entry.Name()) {
-			return filepath.Join(stepsRoot, entry.Name()), nil
+			return filepath.Join(pathSteps, entry.Name()), nil
 		}
 	}
 
-	return "", os.ErrNotExist // Devuelve un error específico si no se encuentra.
+	return "", os.ErrNotExist
 }
 
-// copyDir copia el contenido de un directorio a otro de forma recursiva.
 func copyDir(src, dst string) error {
 	return filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -104,7 +114,6 @@ func copyDir(src, dst string) error {
 	})
 }
 
-// copyFile copia un único archivo.
 func copyFile(src, dst string, info os.FileInfo) error {
 	srcFile, err := os.Open(src)
 	if err != nil {

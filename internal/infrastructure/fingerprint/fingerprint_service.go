@@ -1,7 +1,6 @@
 package fingerprint
 
 import (
-	"context"
 	"crypto/sha256"
 	"fmt"
 	"io"
@@ -15,61 +14,87 @@ import (
 	gitignore "github.com/sabhiram/go-gitignore"
 )
 
-// Service implementa la interfaz services.FingerprintService.
-type FingerprintService struct{}
-
-// NewService crea una nueva instancia del servicio de fingerprint.
-func NewFingerprintService() services.FingerprintService {
-	return &FingerprintService{}
+type FingerprintService struct {
+	pathProjectApp string
+	pathRepository string
+	environment    string
 }
 
-// CalculateCodeFingerprint calcula un hash del contenido de un directorio, respetando un archivo .fdignore.
-func (s *FingerprintService) CalculateCodeFingerprint(_ context.Context, pathProject string) (vos.Fingerprint, error) {
-	pathGitIgnore := filepath.Join(pathProject, ".gitignore")
+func NewFingerprintService(
+	pathProjectApp string,
+	pathRepositoryRootFastDeploy string,
+	repositoryName string,
+	environment string,
+) (services.FingerprintService, error) {
+
+	if pathProjectApp == "" {
+		return nil, fmt.Errorf("path project root fast deploy is required")
+	}
+	if pathRepositoryRootFastDeploy == "" {
+		return nil, fmt.Errorf("path repository root fast deploy is required")
+	}
+	if repositoryName == "" {
+		return nil, fmt.Errorf("project name is required")
+	}
+	if environment == "" {
+		return nil, fmt.Errorf("environment is required")
+	}
+
+	pathRepository := filepath.Join(pathRepositoryRootFastDeploy, repositoryName)
+
+	return &FingerprintService{
+		pathProjectApp: pathProjectApp,
+		pathRepository: pathRepository,
+		environment:    environment,
+	}, nil
+}
+
+func (s *FingerprintService) CalculateCodeFingerprint() (vos.Fingerprint, error) {
+	pathGitIgnore := filepath.Join(s.pathProjectApp, ".gitignore")
 	lines := []string{".git", ".gitignore"}
 
 	ignoreMatcher, err := gitignore.CompileIgnoreFileAndLines(pathGitIgnore, lines...)
 	if err != nil && !os.IsNotExist(err) {
 		return vos.Fingerprint{}, fmt.Errorf("error al leer el archivo .gitignore: %w", err)
 	}
-	if err != nil { // El archivo no existe, creamos un matcher vacío.
+	if err != nil {
 		ignoreMatcher = &gitignore.GitIgnore{}
 	}
 
-	return s.calculateDirectoryHash(pathProject, ignoreMatcher)
+	return s.calculateDirectoryHash(s.pathProjectApp, ignoreMatcher)
 }
 
-// CalculateEnvironmentFingerprint calcula un hash del contenido de un directorio sin ignorar archivos.
-func (s *FingerprintService) CalculateEnvironmentFingerprint(_ context.Context, stepName string, pathRepository string) (vos.Fingerprint, error) {
-
-	pathGitIgnore := filepath.Join(pathRepository, ".gitignore")
+func (s *FingerprintService) CalculateStepFingerprint(stepName string) (vos.Fingerprint, error) {
+	pathGitIgnore := filepath.Join(s.pathRepository, ".gitignore")
 	lines := []string{".git", ".gitignore"}
 
-	// Agregar directorios de steps a ignorar (excepto el stepName actual)
-	stepsToIgnore, err := s.getStepsToIgnore(stepName, pathRepository)
+	stepsToIgnore, err := s.getStepsToIgnore(stepName)
 	if err != nil {
-		return vos.Fingerprint{}, fmt.Errorf("error al obtener directorios de steps a ignorar: %w", err)
+		return vos.Fingerprint{}, err
 	}
 	lines = append(lines, stepsToIgnore...)
 
+	variablesToIgnore, err := s.getVariablesFileToIgnore(stepName)
+	if err != nil {
+		return vos.Fingerprint{}, err
+	}
+	lines = append(lines, variablesToIgnore...)
+
 	ignoreMatcher, err := gitignore.CompileIgnoreFileAndLines(pathGitIgnore, lines...)
 	if err != nil && !os.IsNotExist(err) {
 		return vos.Fingerprint{}, fmt.Errorf("error al leer el archivo .gitignore: %w", err)
 	}
-	if err != nil { // El archivo no existe, creamos un matcher vacío.
+	if err != nil {
 		ignoreMatcher = &gitignore.GitIgnore{}
 	}
-	return s.calculateDirectoryHash(pathRepository, ignoreMatcher)
+	return s.calculateDirectoryHash(s.pathRepository, ignoreMatcher)
 }
 
-// getStepsToIgnore obtiene los directorios de steps que deben ser ignorados
-// excepto el stepName actual. Los directorios siguen el patrón: "01-test", "02-supply", etc.
-func (s *FingerprintService) getStepsToIgnore(stepName string, pathRepository string) ([]string, error) {
-	stepsPath := filepath.Join(pathRepository, "steps")
+func (s *FingerprintService) getStepsToIgnore(stepName string) ([]string, error) {
+	stepsPath := filepath.Join(s.pathRepository, "steps")
 
-	// Verificar si el directorio steps existe
 	if _, err := os.Stat(stepsPath); os.IsNotExist(err) {
-		return []string{}, nil // No hay directorio steps, no hay nada que ignorar
+		return []string{}, nil
 	}
 
 	entries, err := os.ReadDir(stepsPath)
@@ -77,8 +102,6 @@ func (s *FingerprintService) getStepsToIgnore(stepName string, pathRepository st
 		return nil, fmt.Errorf("error al leer el directorio steps: %w", err)
 	}
 
-	// Crear regex para el patrón: dígitos + guión + stepName
-	// Escapar caracteres especiales en stepName para regex
 	escapedStepName := regexp.QuoteMeta(stepName)
 	pattern := fmt.Sprintf(`^\d+-%s$`, escapedStepName)
 	stepRegex, err := regexp.Compile(pattern)
@@ -95,7 +118,6 @@ func (s *FingerprintService) getStepsToIgnore(stepName string, pathRepository st
 
 		dirName := entry.Name()
 
-		// Si el directorio NO coincide con el patrón del stepName actual, lo ignoramos
 		if !stepRegex.MatchString(dirName) {
 			stepsToIgnore = append(stepsToIgnore, filepath.Join("steps", dirName, "**.*"))
 		}
@@ -103,7 +125,74 @@ func (s *FingerprintService) getStepsToIgnore(stepName string, pathRepository st
 	return stepsToIgnore, nil
 }
 
-// calculateDirectoryHash es la lógica central para hashear un directorio.
+func (s *FingerprintService) getVariablesFileToIgnore(stepName string) ([]string, error) {
+	variablesPath := filepath.Join(s.pathRepository, "variables")
+
+	if _, err := os.Stat(variablesPath); os.IsNotExist(err) {
+		return []string{}, nil
+	}
+
+	entriesVariables, err := os.ReadDir(variablesPath)
+	if err != nil {
+		return nil, fmt.Errorf("error al leer el directorio variables: %w", err)
+	}
+
+	var variablesToIgnore []string
+
+	for _, entryVariable := range entriesVariables {
+		entryVariableName := entryVariable.Name()
+
+		if entryVariableName == s.environment {
+			variablesStepFileToIgnore, err := s.getVariablesStepFileToIgnore(stepName)
+			if err != nil {
+				return nil, fmt.Errorf("error al obtener directorios de variables del step: %w", err)
+			}
+			variablesToIgnore = append(variablesToIgnore, variablesStepFileToIgnore...)
+			continue
+		}
+
+		if !entryVariable.IsDir() {
+			variablesToIgnore = append(variablesToIgnore, filepath.Join("variables", entryVariableName))
+			continue
+		}
+
+		if entryVariableName != s.environment {
+			variablesToIgnore = append(variablesToIgnore, filepath.Join("variables", entryVariableName, "**.*"))
+		}
+	}
+	return variablesToIgnore, nil
+}
+
+func (s *FingerprintService) getVariablesStepFileToIgnore(stepName string) ([]string, error) {
+	var variablesStepFileToIgnore []string
+
+	pathStepVariables := filepath.Join(s.pathRepository, "variables", s.environment)
+
+	entriesStepVariables, err := os.ReadDir(pathStepVariables)
+	if err != nil {
+		return nil, fmt.Errorf("error al leer el directorio variables del step: %w", err)
+	}
+
+	for _, entryStepVariables := range entriesStepVariables {
+		fileStepName := fmt.Sprintf("%s.yaml", stepName)
+
+		if !entryStepVariables.IsDir() && entryStepVariables.Name() == fileStepName {
+			continue
+		}
+
+		if !entryStepVariables.IsDir() {
+			variablesStepFileToIgnore = append(
+				variablesStepFileToIgnore,
+				filepath.Join("variables", s.environment, entryStepVariables.Name()))
+		} else {
+			variablesStepFileToIgnore = append(
+				variablesStepFileToIgnore,
+				filepath.Join("variables", s.environment, entryStepVariables.Name(), "**.*"))
+		}
+	}
+	return variablesStepFileToIgnore, nil
+}
+
 func (s *FingerprintService) calculateDirectoryHash(rootPath string, ignorer *gitignore.GitIgnore) (vos.Fingerprint, error) {
 	fileHashes := make(map[string]string)
 
@@ -136,7 +225,6 @@ func (s *FingerprintService) calculateDirectoryHash(rootPath string, ignorer *gi
 		return vos.Fingerprint{}, err
 	}
 
-	// Combinar todos los hashes de archivos en un hash final y estable.
 	finalHash, err := s.combineHashes(fileHashes)
 	if err != nil {
 		return vos.Fingerprint{}, err
@@ -164,7 +252,6 @@ func (s *FingerprintService) combineHashes(fileHashes map[string]string) (string
 		return "d41d8cd98f00b204e9800998ecf8427e", nil // Hash SHA-1 de una cadena vacía, un valor constante.
 	}
 
-	// Ordenar las rutas de los archivos es CRÍTICO para un hash estable.
 	paths := make([]string, 0, len(fileHashes))
 	for path := range fileHashes {
 		paths = append(paths, path)

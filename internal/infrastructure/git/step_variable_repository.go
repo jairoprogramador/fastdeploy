@@ -14,36 +14,42 @@ import (
 )
 
 type StepVariableRepository struct {
-	repoPath string
+	pathResposioryRootFastDeploy string
+	environment string
 }
 
-func NewStepVariableRepository(repoPath string) ports.StepVariableRepository {
+func NewStepVariableRepository(pathResposioryRootFastDeploy string, environment string) ports.StepVariableRepository {
 	return &StepVariableRepository{
-		repoPath: repoPath,
+		pathResposioryRootFastDeploy: pathResposioryRootFastDeploy,
+		environment: environment,
 	}
 }
 
-func (r *StepVariableRepository) Load(environment string, stepName string) ([]vos.Variable, error) {
-	varsPath := filepath.Join(
-		r.repoPath,
-		"variables",
-		environment,
-		fmt.Sprintf("%s.yaml", stepName),
-	)
+func (r *StepVariableRepository) Load(stepName string) ([]vos.Variable, error) {
+	pathFile := r.getPathFile(stepName)
 
-	if _, err := os.Stat(varsPath); os.IsNotExist(err) {
+	if _, err := os.Stat(pathFile); os.IsNotExist(err) {
 		return []vos.Variable{}, nil
 	}
 
-	data, err := os.ReadFile(varsPath)
+	data, err := os.ReadFile(pathFile)
 	if err != nil {
-		return nil, fmt.Errorf("no se pudo leer el archivo de variables '%s': %w", varsPath, err)
+		return nil, fmt.Errorf("no se pudo leer el archivo de variables '%s': %w", pathFile, err)
 	}
 
 	var dtos []dto.VariableDTO
 	if err := yaml.Unmarshal(data, &dtos); err != nil {
-		return nil, fmt.Errorf("error al parsear YAML en '%s': %w", varsPath, err)
+		return nil, fmt.Errorf("error al parsear YAML en '%s': %w", pathFile, err)
 	}
 
 	return mapper.VariablesToDomain(dtos)
+}
+
+func (r *StepVariableRepository) getPathFile(stepName string) string {
+	return filepath.Join(
+		r.pathResposioryRootFastDeploy,
+		"variables",
+		r.environment,
+		fmt.Sprintf("%s.yaml", stepName),
+	)
 }

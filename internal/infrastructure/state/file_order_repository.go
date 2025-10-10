@@ -1,7 +1,6 @@
 package state
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,22 +8,19 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/jairoprogramador/fastdeploy/internal/domain/orchestration/aggregates"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/orchestration/ports"
 	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/state/mapper"
 )
 
-// FileOrderRepository implementa la interfaz ports.OrderRepository utilizando el sistema de archivos.
-// Persiste el estado de cada orden como un archivo YAML separado.
 type FileOrderRepository struct {
-	basePath string
+	pathProjectRootFastDeploy string
 }
 
-// NewFileOrderRepository crea una nueva instancia del repositorio de órdenes.
-func NewFileOrderRepository(basePath string) *FileOrderRepository {
-	return &FileOrderRepository{basePath: basePath}
+func NewFileOrderRepository(pathProjectRootFastDeploy string) ports.OrderRepository {
+	return &FileOrderRepository{pathProjectRootFastDeploy: pathProjectRootFastDeploy}
 }
 
-// Save serializa el agregado Order a un archivo YAML.
-func (r *FileOrderRepository) Save(_ context.Context, order *aggregates.Order, nameProject string) error {
+func (r *FileOrderRepository) Save(order *aggregates.Order, nameProject string) error {
 	orderDTO := mapper.OrderToDTO(order)
 
 	data, err := yaml.Marshal(orderDTO)
@@ -32,12 +28,11 @@ func (r *FileOrderRepository) Save(_ context.Context, order *aggregates.Order, n
 		return fmt.Errorf("error al serializar la orden a YAML: %w", err)
 	}
 
-	filePath := filepath.Join(r.basePath, nameProject, "state.yaml")
+	filePath := filepath.Join(r.pathProjectRootFastDeploy, nameProject, "state.yaml")
 	if err := os.MkdirAll(filepath.Dir(filePath), 0755); err != nil {
 		return fmt.Errorf("error al crear el directorio para el estado de la orden: %w", err)
 	}
 
-	//filePath := filepath.Join(r.basePath, nameProject, fmt.Sprintf("%s.yaml", order.ID().String()))
 	if err := os.WriteFile(filePath, data, 0644); err != nil {
 		return fmt.Errorf("error al guardar el archivo de estado de la orden: %w", err)
 	}

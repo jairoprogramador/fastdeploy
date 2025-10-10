@@ -2,7 +2,6 @@ package application
 
 import (
 	"context"
-
 	"github.com/jairoprogramador/fastdeploy/internal/application/dto"
 	"github.com/jairoprogramador/fastdeploy/internal/domain/deployment/ports"
 	"github.com/jairoprogramador/fastdeploy/internal/domain/deployment/vos"
@@ -27,6 +26,7 @@ func (s *LoadTemplateService) Load(ctx context.Context, repositoryURL string, re
 	if err != nil {
 		return dto.LoadTemplateResponse{}, err
 	}
+
 	repositoryName, err := s.templateRepository.GetRepositoryName(repositoryURL)
 	if err != nil {
 		return dto.LoadTemplateResponse{}, err

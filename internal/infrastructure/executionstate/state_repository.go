@@ -1,11 +1,11 @@
 package executionstate
 
 import (
-	"fmt"
-	"path/filepath"
 	"bytes"
 	"encoding/gob"
+	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/jairoprogramador/fastdeploy/internal/domain/executionstate/aggregates"
 	"github.com/jairoprogramador/fastdeploy/internal/domain/executionstate/ports"
@@ -16,20 +16,31 @@ type StateRepository struct {
 	pathStateProjectFastDeploy string
 }
 
-func NewStateRepository(pathStateFastDeploy string, projectName string) (ports.StateRepository, error) {
+func NewStateRepository(
+	pathStateRootFastDeploy string,
+	projectName string,
+	repositoryName string,
+	environment string) (ports.StateRepository, error) {
+
+	if pathStateRootFastDeploy == "" {
+		return nil, fmt.Errorf("path state root is required")
+	}
 	if projectName == "" {
 		return nil, fmt.Errorf("project name is required")
 	}
-	if pathStateFastDeploy == "" {
-		return nil, fmt.Errorf("base path is required")
+	if repositoryName == "" {
+		return nil, fmt.Errorf("repository name is required")
+	}
+	if environment == "" {
+		return nil, fmt.Errorf("environment is required")
 	}
 
-	pathStateProject := filepath.Join(pathStateFastDeploy, projectName)
+	pathStateProject := filepath.Join(pathStateRootFastDeploy, projectName, repositoryName, environment)
 
 	return &StateRepository{pathStateProjectFastDeploy: pathStateProject}, nil
 }
 
-func (r *StateRepository) SaveStateSteps(stateSteps aggregates.StateSteps, environmentName string) error {
+func (r *StateRepository) SaveStepStatus(stateSteps aggregates.StateSteps) error {
 	dto := mapper.StateStepsToDTO(stateSteps)
 	var buffer bytes.Buffer
 	encoder := gob.NewEncoder(&buffer)
@@ -37,7 +48,7 @@ func (r *StateRepository) SaveStateSteps(stateSteps aggregates.StateSteps, envir
 		return fmt.Errorf("error al serializar a formato gob: %w", err)
 	}
 
-	stateFilePath := r.getPathFileEnvironment(environmentName)
+	stateFilePath := r.getPathFileExecution()
 
 	if err := os.MkdirAll(filepath.Dir(stateFilePath), 0755); err != nil {
 		return fmt.Errorf("no se pudo crear el directorio base: %w", err)
@@ -46,8 +57,8 @@ func (r *StateRepository) SaveStateSteps(stateSteps aggregates.StateSteps, envir
 	return os.WriteFile(stateFilePath, buffer.Bytes(), 0644)
 }
 
-func (r *StateRepository) FindStateSteps(environmentName string) (aggregates.StateSteps, error) {
-	filePath := r.getPathFileEnvironment(environmentName)
+func (r *StateRepository) FindStepStatus() (aggregates.StateSteps, error) {
+	filePath := r.getPathFileExecution()
 
 	data, err := os.ReadFile(filePath)
 	if err != nil {
@@ -67,6 +78,6 @@ func (r *StateRepository) FindStateSteps(environmentName string) (aggregates.Sta
 	return mapper.StateStepsToDomain(dto)
 }
 
-func (r *StateRepository) getPathFileEnvironment(environmentName string) string {
-	return filepath.Join(r.pathStateProjectFastDeploy, "steps", fmt.Sprintf("%s.state", environmentName))
+func (r *StateRepository) getPathFileExecution() string {
+	return filepath.Join(r.pathStateProjectFastDeploy, "execution.state")
 }

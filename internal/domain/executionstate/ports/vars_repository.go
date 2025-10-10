@@ -5,6 +5,6 @@ import (
 )
 
 type VarsRepository interface {
-	Save(vars []vos.Variable, environment string) error
-	GetStore(environment string) ([]vos.Variable, error)
+	Save(vars []vos.Variable) error
+	FindAll() ([]vos.Variable, error)
 }

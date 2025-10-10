@@ -5,6 +5,6 @@ import (
 )
 
 type StateRepository interface {
-	SaveStateSteps(history aggregates.StateSteps, environmentName string) error
-	FindStateSteps(environmentName string) (aggregates.StateSteps, error)
+	SaveStepStatus(history aggregates.StateSteps) error
+	FindStepStatus() (aggregates.StateSteps, error)
 }

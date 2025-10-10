@@ -57,29 +57,28 @@ func NewOrchestrationService(
 }
 
 func (s *OrchestrationService) ExecuteOrder(req dto.OrderRequest) (*orchestrationaggregates.Order, error) {
-	environmentValue := req.Environment.Value()
 
-	allVars, err := s.getVariablesInit(req, environmentValue)
+	allVars, err := s.getVariablesInit(req)
 	if err != nil {
 		return nil, err
 	}
 
-	stateLatestSteps, err := s.stateRepo.FindStateSteps(environmentValue)
+	statusLatestSteps, err := s.stateRepo.FindStepStatus()
 	if err != nil {
 		return nil, err
 	}
 
-	stateCurrentCode, err := s.fpService.CalculateCodeFingerprint(req.Ctx, req.ProjectPath)
+	stateCurrentCode, err := s.fpService.CalculateCodeFingerprint()
 	if err != nil {
 		return nil, err
 	}
 
-	stateLatestCodeHistory, err := s.scopeRepo.FindCodeStateHistory()
+	latestCodeStatusHistory, err := s.scopeRepo.FindCodeStateHistory()
 	if err != nil {
 		return nil, err
 	}
 
-	stateLatestEnvironmentHistoryMap, err := s.findEnvironmentStateHistory(req)
+	latestEnvironmentStatusHistoryMap, err := s.findEnvironmentStateHistory(req)
 	if err != nil {
 		return nil, err
 	}
@@ -106,20 +105,20 @@ func (s *OrchestrationService) ExecuteOrder(req dto.OrderRequest) (*orchestratio
 			continue
 		}
 
-		stateCurrentEnvironmentStep, err := s.fpService.CalculateEnvironmentFingerprint(req.Ctx, stepExec.Name(), req.TemplatePath)
+		stateCurrentEnvironmentStep, err := s.fpService.CalculateStepFingerprint(stepExec.Name())
 		if err != nil {
 			return order, err
 		}
 
-		if stateLatestSteps.IsStepAlreadyExecuted(stepExec.Name()) {
+		if statusLatestSteps.IsStepAlreadyExecuted(stepExec.Name()) {
 			stepDef := s.findStepDefinition(req.Template.Steps(), stepExec.Name())
 			if s.thereAreChanges(
 				stepDef.VerificationTypes(),
 				stepExec.Name(),
 				stateCurrentCode,
 				stateCurrentEnvironmentStep,
-				stateLatestCodeHistory,
-				stateLatestEnvironmentHistoryMap) {
+				latestCodeStatusHistory,
+				latestEnvironmentStatusHistoryMap) {
 
 				err = s.processStep(req, order, stepExec, stateCurrentCode, stateCurrentEnvironmentStep)
 				if err != nil {
@@ -155,8 +154,6 @@ func (s *OrchestrationService) processStep(
 	stateCurrentCode executionstatevos.Fingerprint,
 	stateCurrentEnvironmentStep executionstatevos.Fingerprint) error {
 
-	environmentValue := req.Environment.Value()
-
 	_, err := s.loadStepVariables(stepExec.Name(), order)
 	if err != nil {
 		return err
@@ -167,20 +164,20 @@ func (s *OrchestrationService) processStep(
 		return err
 	}
 
-	err = s.saveVarsStore(environmentValue, order.VariableMap())
+	err = s.saveVarsStore(order.VariableMap())
 	if err != nil {
 		return err
 	}
-	err = s.saveStateSteps(environmentValue, order.StepExecutions())
+	err = s.saveStateSteps(order.StepExecutions())
 	if err != nil {
 		return err
 	}
-	err = s.saveFingerprints(environmentValue, stepExec.Name(), stateCurrentCode, stateCurrentEnvironmentStep)
+	err = s.saveFingerprints(stepExec.Name(), stateCurrentCode, stateCurrentEnvironmentStep)
 	if err != nil {
 		return err
 	}
 
-	if err := s.orderRepo.Save(req.Ctx, order, req.ProjectDom.Project().Name()); err != nil {
+	if err := s.orderRepo.Save(order, req.ProjectDom.Project().Name()); err != nil {
 		return err
 	}
 
@@ -199,10 +196,8 @@ func (s *OrchestrationService) executeStep(
 	order *orchestrationaggregates.Order,
 	stepExec *orchestrationentities.StepExecution) error {
 
-	environmentValue := req.Environment.Value()
+	workdirStep, err := s.workspaceMgr.Prepare(stepExec.Name())
 
-	workdirStep, err := s.workspaceMgr.PrepareStepWorkspace(
-		req.ProjectDom.Project().Name(), environmentValue, stepExec.Name(), req.RepositoryName)
 	if err != nil {
 		return err
 	}
@@ -214,7 +209,7 @@ func (s *OrchestrationService) executeStep(
 		fmt.Printf("-> Ejecutando comando: %s\n", cmdExec.Name())
 
 		workdirCmd := cmdExec.Definition().Workdir()
-		if workdirCmd != "" {
+		if workdirCmd != "" && workdirStep != "" {
 			workdirCmd = s.cmdExecutor.CreateWorkDir(workdirStep, workdirCmd)
 			order.AddVariable("command_workdir", workdirCmd)
 		}
@@ -247,7 +242,6 @@ func (s *OrchestrationService) executeStep(
 }
 
 func (s *OrchestrationService) saveFingerprints(
-	environmentValue string,
 	stepName string,
 	stateCurrentCode executionstatevos.Fingerprint,
 	currentEnvFp executionstatevos.Fingerprint) error {
@@ -270,18 +264,17 @@ func (s *OrchestrationService) saveFingerprints(
 		if err != nil {
 			return err
 		}
-		scopeLatestEnvReceipts, err := s.scopeRepo.FindEnvironmentStateHistory(environmentValue, stepName)
+		scopeLatestEnvReceipts, err := s.scopeRepo.FindStepStateHistory(stepName)
 		if err != nil {
 			return err
 		}
 
 		scopeLatestEnvReceipts.AddReceipt(receiptEnv)
-		return s.scopeRepo.SaveEnvironmentStateHistory(scopeLatestEnvReceipts, environmentValue, stepName)
+		return s.scopeRepo.SaveStepStateHistory(scopeLatestEnvReceipts, stepName)
 	}
 }
 
-func (s *OrchestrationService) saveStateSteps(
-	environmentValue string, steps []*orchestrationentities.StepExecution) error {
+func (s *OrchestrationService) saveStateSteps(steps []*orchestrationentities.StepExecution) error {
 	stateSteps := executionstateaggregates.NewStateSteps()
 	for _, stepExec := range steps {
 		successful := (stepExec.Status() == orchestrationvos.StepStatusSuccessful) || (stepExec.Status() == orchestrationvos.StepStatusCached)
@@ -291,15 +284,15 @@ func (s *OrchestrationService) saveStateSteps(
 		}
 		stateSteps.AddStep(step)
 	}
-	return s.stateRepo.SaveStateSteps(stateSteps, environmentValue)
+	return s.stateRepo.SaveStepStatus(stateSteps)
 }
 
-func (s *OrchestrationService) saveVarsStore(environment string, varsMap map[string]orchestrationvos.Variable) error {
+func (s *OrchestrationService) saveVarsStore(varsMap map[string]orchestrationvos.Variable) error {
 	varsStore := []orchestrationvos.Variable{}
 	for _, variable := range varsMap {
 		varsStore = append(varsStore, variable)
 	}
-	err := s.varsRepo.Save(varsStore, environment)
+	err := s.varsRepo.Save(varsStore)
 	if err != nil {
 		return err
 	}
@@ -315,10 +308,12 @@ func (s *OrchestrationService) findStepDefinition(steps []deploymententities.Ste
 	return deploymententities.StepDefinition{}
 }
 
-func (s *OrchestrationService) getVariablesInit(req dto.OrderRequest, environment string) ([]orchestrationvos.Variable, error) {
+func (s *OrchestrationService) getVariablesInit(req dto.OrderRequest) ([]orchestrationvos.Variable, error) {
+	environment := req.Environment.Value()
+
 	allVarsInit := []orchestrationvos.Variable{}
 
-	storeVars, err := s.varsRepo.GetStore(environment)
+	storeVars, err := s.varsRepo.FindAll()
 	if err != nil {
 		return nil, err
 	}
@@ -436,22 +431,20 @@ func (s *OrchestrationService) getVariablesProject(domModel *domaggregates.Deplo
 }
 
 func (s *OrchestrationService) findEnvironmentStateHistory(req dto.OrderRequest) (map[string]*executionstateaggregates.ScopeReceiptHistory, error) {
-	environmentValue := req.Environment.Value()
-
-	stateLatestEnvironmentHistory := make(map[string]*executionstateaggregates.ScopeReceiptHistory)
+	latestEnvironmentStatusHistoryMap := make(map[string]*executionstateaggregates.ScopeReceiptHistory)
 
 	for _, stepExec := range req.Template.Steps() {
 		if _, ok := req.SkippedStepNames[stepExec.Name()]; ok {
 			continue
 		}
-		stateStepEnvironmentHistory, err := s.scopeRepo.FindEnvironmentStateHistory(environmentValue, stepExec.Name())
+		latestEnvironmentStatusHistory, err := s.scopeRepo.FindStepStateHistory(stepExec.Name())
 		if err != nil {
 			return nil, err
 		}
-		stateLatestEnvironmentHistory[stepExec.Name()] = stateStepEnvironmentHistory
+		latestEnvironmentStatusHistoryMap[stepExec.Name()] = latestEnvironmentStatusHistory
 	}
 
-	return stateLatestEnvironmentHistory, nil
+	return latestEnvironmentStatusHistoryMap, nil
 }
 
 func (s *OrchestrationService) thereAreChanges(
@@ -492,7 +485,7 @@ func (s *OrchestrationService) thereAreChanges(
 }
 
 func (s *OrchestrationService) loadStepVariables(stepName string, order *orchestrationaggregates.Order) ([]orchestrationvos.Variable, error) {
-	loadedStepVars, err := s.stepVariableRepo.Load(order.TargetEnvironment().Value(), stepName)
+	loadedStepVars, err := s.stepVariableRepo.Load(stepName)
 	if err != nil {
 		return nil, err
 	}

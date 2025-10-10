@@ -5,5 +5,5 @@ import (
 )
 
 type StepVariableRepository interface {
-	Load(environment string, stepName string) ([]vos.Variable, error)
+	Load(stepName string) ([]vos.Variable, error)
 }

@@ -20,14 +20,11 @@ import (
 	deploymentports "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/ports"
 )
 
-// TemplateRepository implementa la interfaz ports.TemplateRepository.
-// Es un adaptador que obtiene la definición de un despliegue desde un repositorio Git.
 type TemplateRepository struct {
 	reposBasePath string
 	executor      applicationports.CommandExecutor
 }
 
-// NewTemplateRepository crea una nueva instancia del repositorio de plantillas Git.
 func NewTemplateRepository(
 	reposBasePath string, executor applicationports.CommandExecutor) deploymentports.TemplateRepository {
 	return &TemplateRepository{
@@ -49,20 +46,17 @@ func (r *TemplateRepository) GetRepositoryName(repoURL string) (string, error) {
 	return repositoryName, nil
 }
 
-// GetTemplate orquesta la clonación/actualización y devuelve el agregado y la ruta local.
 func (r *TemplateRepository) GetTemplate(ctx context.Context, source vos.TemplateSource) (*aggregates.DeploymentTemplate, string, error) {
 	repoPath, err := r.ensureRepo(ctx, source.RepoURL())
 	if err != nil {
 		return nil, "", err
 	}
 
-	// Checkout a la referencia específica para asegurar una ejecución reproducible.
 	checkoutCmd := fmt.Sprintf("git checkout %s", source.Ref())
 	if _, _, err := r.executor.Execute(ctx, repoPath, checkoutCmd); err != nil {
 		return nil, "", fmt.Errorf("error al hacer checkout a la referencia '%s' en '%s': %w", source.Ref(), repoPath, err)
 	}
 
-	// Leer y construir el agregado desde los archivos.
 	template, err := r.buildTemplateFromFile(source, repoPath)
 	if err != nil {
 		return nil, "", err
@@ -82,14 +76,12 @@ func (r *TemplateRepository) ensureRepo(ctx context.Context, repoURL string) (st
 	}
 
 	if _, err := os.Stat(filepath.Join(repoPath, ".git")); os.IsNotExist(err) {
-		// Clonar si el repo no existe localmente.
 		cloneCmd := fmt.Sprintf("git clone %s %s", repoURL, repoPath)
 		_, _, err := r.executor.Execute(ctx, r.reposBasePath, cloneCmd)
 		if err != nil {
 			return "", fmt.Errorf("error al clonar el repositorio '%s': %w", repoURL, err)
 		}
 	} else {
-		// Actualizar si ya existe.
 		fetchCmd := "git fetch --all"
 		_, _, err := r.executor.Execute(ctx, repoPath, fetchCmd)
 		if err != nil {
@@ -100,23 +92,19 @@ func (r *TemplateRepository) ensureRepo(ctx context.Context, repoURL string) (st
 }
 
 func (r *TemplateRepository) buildTemplateFromFile(source vos.TemplateSource, repoPath string) (*aggregates.DeploymentTemplate, error) {
-	// Leer environments.yaml
 	environments, err := r.parseEnvironments(repoPath)
 	if err != nil {
 		return nil, err
 	}
 
-	// Leer steps.yaml
 	steps, err := r.parseSteps(repoPath)
 	if err != nil {
 		return nil, err
 	}
 
-	// Usar el constructor del agregado para crear una instancia válida.
 	return aggregates.NewDeploymentTemplate(source, environments, steps)
 }
 
-// parseEnvironments lee y convierte el DTO de environments a objetos de valor del dominio.
 func (r *TemplateRepository) parseEnvironments(repoPath string) ([]vos.Environment, error) {
 	filePath := filepath.Join(repoPath, "environments.yaml")
 	data, err := os.ReadFile(filePath)
@@ -132,8 +120,6 @@ func (r *TemplateRepository) parseEnvironments(repoPath string) ([]vos.Environme
 	return mapper.EnvironmentsToDomain(dtos)
 }
 
-// parseSteps implementa la lógica de descubrimiento de pasos basada en la convención
-// de nomenclatura de directorios con prefijo numérico (e.g., "01-test", "02-supply").
 func (r *TemplateRepository) parseSteps(repoPath string) ([]entities.StepDefinition, error) {
 	stepsRootPath := filepath.Join(repoPath, "steps")
 
@@ -152,8 +138,6 @@ func (r *TemplateRepository) parseSteps(repoPath string) ([]entities.StepDefinit
 		}
 	}
 
-	// Ordenar alfabéticamente asegura el orden de ejecución correcto (01-test, 02-supply, etc.).
-	// sort.Strings(dirNames) // os.ReadDir ya devuelve los resultados ordenados por nombre.
 	var stepsDefinitions []entities.StepDefinition
 	for _, dirName := range dirNames {
 		stepName, err := extractStepName(dirName)
@@ -163,7 +147,6 @@ func (r *TemplateRepository) parseSteps(repoPath string) ([]entities.StepDefinit
 
 		stepDirPath := filepath.Join(stepsRootPath, dirName)
 
-		// Leer metadatos de step.yaml
 		var verifications []vos.VerificationType
 		metaPath := filepath.Join(stepDirPath, "verifications.yaml")
 		if _, err := os.Stat(metaPath); !os.IsNotExist(err) {
@@ -181,7 +164,6 @@ func (r *TemplateRepository) parseSteps(repoPath string) ([]entities.StepDefinit
 			}
 		}
 
-		// Leer commands.yaml
 		var commands []vos.CommandDefinition
 		commandsPath := filepath.Join(stepDirPath, "commands.yaml")
 		if _, err := os.Stat(commandsPath); !os.IsNotExist(err) {
@@ -199,7 +181,6 @@ func (r *TemplateRepository) parseSteps(repoPath string) ([]entities.StepDefinit
 			}
 		}
 
-		// Crear la definición del paso
 		stepDefinition, err := entities.NewStepDefinition(stepName, verifications, commands)
 		if err != nil {
 			return nil, fmt.Errorf("error al crear la definición del paso '%s': %w", stepName, err)
@@ -212,8 +193,6 @@ func (r *TemplateRepository) parseSteps(repoPath string) ([]entities.StepDefinit
 
 var stepNameRegex = regexp.MustCompile(`^\d+-(.*)$`)
 
-// extractStepName extrae el nombre limpio de un paso desde el nombre del directorio,
-// validando que siga la convención "NN-nombre".
 func extractStepName(dirName string) (string, error) {
 	matches := stepNameRegex.FindStringSubmatch(dirName)
 	if len(matches) < 2 {
@@ -222,7 +201,6 @@ func extractStepName(dirName string) (string, error) {
 	return matches[1], nil
 }
 
-// repoPathFromURL genera un nombre de directorio local seguro a partir de una URL de repo.
 func (r *TemplateRepository) repoPathFromURL(repoURL string) (string, error) {
 	repositoryName, err := r.GetRepositoryName(repoURL)
 	if err != nil {

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/jairoprogramador/fastdeploy/internal/domain/executionstate/aggregates"
 	"github.com/jairoprogramador/fastdeploy/internal/domain/executionstate/ports"
@@ -13,21 +14,30 @@ import (
 	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/executionstate/mapper"
 )
 
-// ScopeRepository implementa la interfaz ports.ScopeRepository usando archivos binarios gob.
 type ScopeRepository struct {
 	pathStateProjectFastDeploy string
 }
 
-// NewScopeRepository crea una nueva instancia del repositorio de historiales.
-func NewScopeRepository(pathStateFastDeploy string, projectName string) (ports.ScopeRepository, error) {
+func NewScopeRepository(
+	pathStateRootFastDeploy string,
+	projectName string,
+	repositoryName string,
+	environment string) (ports.ScopeRepository, error) {
+
+	if pathStateRootFastDeploy == "" {
+		return nil, fmt.Errorf("path state root is required")
+	}
 	if projectName == "" {
 		return nil, fmt.Errorf("project name is required")
 	}
-	if pathStateFastDeploy == "" {
-		return nil, fmt.Errorf("base path is required")
+	if repositoryName == "" {
+		return nil, fmt.Errorf("repository name is required")
+	}
+	if environment == "" {
+		return nil, fmt.Errorf("environment is required")
 	}
 
-	pathStateProject := filepath.Join(pathStateFastDeploy, projectName)
+	pathStateProject := filepath.Join(pathStateRootFastDeploy, projectName, repositoryName, environment)
 
 	return &ScopeRepository{pathStateProjectFastDeploy: pathStateProject}, nil
 }
@@ -50,7 +60,7 @@ func (r *ScopeRepository) SaveCodeStateHistory(history *aggregates.ScopeReceiptH
 	return os.WriteFile(stateFilePath, buffer.Bytes(), 0644)
 }
 
-func (r *ScopeRepository) SaveEnvironmentStateHistory(history *aggregates.ScopeReceiptHistory, environmentName string, stepName string) error {
+func (r *ScopeRepository) SaveStepStateHistory(history *aggregates.ScopeReceiptHistory, stepName string) error {
 	dto := mapper.ScopeReceiptHistoryToDTO(history)
 
 	var buffer bytes.Buffer
@@ -59,7 +69,7 @@ func (r *ScopeRepository) SaveEnvironmentStateHistory(history *aggregates.ScopeR
 		return fmt.Errorf("error al serializar el historial a formato gob: %w", err)
 	}
 
-	stateFilePath := r.getPathFileEnvironment(environmentName, stepName)
+	stateFilePath := r.getPathFileStep(stepName)
 
 	if err := os.MkdirAll(filepath.Dir(stateFilePath), 0755); err != nil {
 		return fmt.Errorf("no se pudo crear el directorio base para el estado de ejecución: %w", err)
@@ -68,14 +78,12 @@ func (r *ScopeRepository) SaveEnvironmentStateHistory(history *aggregates.ScopeR
 	return os.WriteFile(stateFilePath, buffer.Bytes(), 0644)
 }
 
-// Find deserializa un historial desde un archivo .state o crea uno nuevo si no existe.
-func (r *ScopeRepository) FindEnvironmentStateHistory(environmentName string, stepName string) (*aggregates.ScopeReceiptHistory, error) {
-	filePath := r.getPathFileEnvironment(environmentName, stepName)
+func (r *ScopeRepository) FindStepStateHistory(stepName string) (*aggregates.ScopeReceiptHistory, error) {
+	filePath := r.getPathFileStep(stepName)
 
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			// Si el historial no existe, creamos uno nuevo y vacío como dicta el contrato.
 			return aggregates.NewScopeReceiptHistory()
 		}
 		return nil, fmt.Errorf("error al leer el archivo de scope environment: %w", err)
@@ -91,14 +99,12 @@ func (r *ScopeRepository) FindEnvironmentStateHistory(environmentName string, st
 	return mapper.ScopeReceiptHistoryToDomain(dto), nil
 }
 
-// Find deserializa un historial desde un archivo .state o crea uno nuevo si no existe.
 func (r *ScopeRepository) FindCodeStateHistory() (*aggregates.ScopeReceiptHistory, error) {
 	filePath := r.getPathFileCode()
 
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			// Si el historial no existe, creamos uno nuevo y vacío como dicta el contrato.
 			return aggregates.NewScopeReceiptHistory()
 		}
 		return nil, fmt.Errorf("error al leer el archivo de scope code: %w", err)
@@ -115,9 +121,12 @@ func (r *ScopeRepository) FindCodeStateHistory() (*aggregates.ScopeReceiptHistor
 }
 
 func (r *ScopeRepository) getPathFileCode() string {
-	return filepath.Join(r.pathStateProjectFastDeploy, "code.state")
+	return filepath.Join(r.pathStateProjectFastDeploy, "filesCode.state")
 }
 
-func (r *ScopeRepository) getPathFileEnvironment(environmentName string, stepName string) string {
-	return filepath.Join(r.pathStateProjectFastDeploy, "environment", environmentName, fmt.Sprintf("%s.state", stepName))
+func (r *ScopeRepository) getPathFileStep(stepName string) string {
+	if len(stepName) > 0 {
+		stepName = strings.ToUpper(string(stepName[0])) + strings.ToLower(stepName[1:])
+	}
+	return filepath.Join(r.pathStateProjectFastDeploy, fmt.Sprintf("files%s.state", stepName))
 }

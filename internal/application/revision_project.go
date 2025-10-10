@@ -18,18 +18,18 @@ func NewRevisionProjectService(gitManager appports.GitManager) *RevisionProjectS
 }
 
 func (s *RevisionProjectService) LoadProjectRevision(ctx context.Context, revisionDefault string, stepFinalName string) (string, error) {
-	git, err := s.gitManager.IsGit()
+	isGit, err := s.gitManager.IsGit()
 	if err != nil {
 		return "", err
 	}
 
-	if git {
+	if isGit {
 		existChanges, err := s.gitManager.ExistChanges(ctx)
 		if err != nil {
 			return "", err
 		}
 		if existChanges {
-			if stepFinalName == "test"{
+			if stepFinalName == "test" {
 				return revisionDefault, nil
 			}
 

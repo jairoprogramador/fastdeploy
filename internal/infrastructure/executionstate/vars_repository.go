@@ -12,32 +12,43 @@ import (
 )
 
 type VarsRepository struct {
-	pathProjectFastDeploy string
+	pathStateProjectFastDeploy string
 }
 
-func NewVarsRepository(pathProjectsFastDeploy string, projectName string) (ports.VarsRepository, error) {
+func NewVarsRepository(
+	pathStateRootFastDeploy string,
+	projectName string,
+	repositoryName string,
+	environment string) (ports.VarsRepository, error) {
+
+	if pathStateRootFastDeploy == "" {
+		return nil, fmt.Errorf("path state root is required")
+	}
 	if projectName == "" {
 		return nil, fmt.Errorf("project name is required")
 	}
-	if pathProjectsFastDeploy == "" {
-		return nil, fmt.Errorf("base path is required")
+	if repositoryName == "" {
+		return nil, fmt.Errorf("repository name is required")
+	}
+	if environment == "" {
+		return nil, fmt.Errorf("environment is required")
 	}
 
-	basePathProject := filepath.Join(pathProjectsFastDeploy, projectName)
+	pathStateProject := filepath.Join(pathStateRootFastDeploy, projectName, repositoryName, environment)
 
-	return &VarsRepository{pathProjectFastDeploy: basePathProject}, nil
+	return &VarsRepository{pathStateProjectFastDeploy: pathStateProject}, nil
 }
 
-func (r *VarsRepository) Save(variables []vos.Variable, environment string) error {
-	varsMap := mapper.VarsToDTO(variables)
+func (r *VarsRepository) Save(variables []vos.Variable) error {
+	varsMapDto := mapper.VarsToDTO(variables)
 
 	var buffer bytes.Buffer
 	encoder := gob.NewEncoder(&buffer)
-	if err := encoder.Encode(varsMap); err != nil {
+	if err := encoder.Encode(varsMapDto); err != nil {
 		return fmt.Errorf("error al serializar las variables a formato gob: %w", err)
 	}
 
-	varsFilePath := r.getPathFileEnvironment(environment)
+	varsFilePath := r.getPathFileVars()
 
 	if err := os.MkdirAll(filepath.Dir(varsFilePath), 0755); err != nil {
 		return fmt.Errorf("no se pudo crear el directorio base para las variables: %w", err)
@@ -46,8 +57,8 @@ func (r *VarsRepository) Save(variables []vos.Variable, environment string) erro
 	return os.WriteFile(varsFilePath, buffer.Bytes(), 0644)
 }
 
-func (r *VarsRepository) GetStore(environment string) ([]vos.Variable, error) {
-	filePath := r.getPathFileEnvironment(environment)
+func (r *VarsRepository) FindAll() ([]vos.Variable, error) {
+	filePath := r.getPathFileVars()
 
 	data, err := os.ReadFile(filePath)
 	if err != nil {
@@ -67,6 +78,6 @@ func (r *VarsRepository) GetStore(environment string) ([]vos.Variable, error) {
 	return mapper.VarsToDomain(varsMap), nil
 }
 
-func (r *VarsRepository) getPathFileEnvironment(environmentName string) string {
-	return filepath.Join(r.pathProjectFastDeploy, "environment", fmt.Sprintf("%s.vars", environmentName))
+func (r *VarsRepository) getPathFileVars() string {
+	return filepath.Join(r.pathStateProjectFastDeploy, "vars.state")
 }
