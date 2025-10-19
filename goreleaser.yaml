@@ -3,7 +3,7 @@ project_name: fastdeploy
 
 builds:
   - id: fastdeploy
-    main: ./cmd/fastdeploy
+    main: ./cmd
     binary: fd
     env:
       - CGO_ENABLED=0
