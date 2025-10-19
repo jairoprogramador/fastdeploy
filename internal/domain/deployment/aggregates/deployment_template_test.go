@@ -4,41 +4,44 @@ import (
 	"testing"
 
 	"github.com/jairoprogramador/fastdeploy/internal/domain/deployment/entities"
-	"github.com/jairoprogramador/fastdeploy/internal/domain/deployment/vos"
+	deploymentvos "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/vos"
+	sharedvos "github.com/jairoprogramador/fastdeploy/internal/domain/shared/vos"
 )
 
 const ENV_STAGING = "staging"
 const STEP_TEST = "test"
+
 // --- Helper para crear datos de prueba ---
-func createValidTemplateSource(t *testing.T) vos.TemplateSource {
+func createValidTemplateSource(t *testing.T) sharedvos.TemplateSource {
 	t.Helper()
-	source, err := vos.NewTemplateSource("http://test.com/repo.git", "main")
+	source, err := sharedvos.NewTemplateSource("http://test.com/repo.git", "main")
 	if err != nil {
 		t.Fatalf("fallo al crear helper TemplateSource: %v", err)
 	}
 	return source
 }
 
-func createValidEnvironments(t *testing.T) []vos.Environment {
+func createValidEnvironments(t *testing.T) []deploymentvos.Environment {
 	t.Helper()
-	env1, err1 := vos.NewEnvironment(ENV_STAGING, "Staging Env", "stag")
-	env2, err2 := vos.NewEnvironment("production", "Production Env", "prod")
+	env1, err1 := deploymentvos.NewEnvironment(ENV_STAGING, "stag")
+	env2, err2 := deploymentvos.NewEnvironment("production", "prod")
 	if err1 != nil || err2 != nil {
 		t.Fatalf("fallo al crear helpers Environment: %v, %v", err1, err2)
 	}
-	return []vos.Environment{env1, env2}
+	return []deploymentvos.Environment{env1, env2}
 }
 
 func createValidSteps(t *testing.T) []entities.StepDefinition {
 	t.Helper()
-	verifications := []vos.VerificationType{vos.VerificationTypeCode}
-	verifications2 := []vos.VerificationType{vos.VerificationTypeEnv}
-	cmd, err := vos.NewCommandDefinition("test-cmd", "echo")
+	validVariable, _ := deploymentvos.NewVariable("test-var", "hello")
+	verifications := []deploymentvos.Trigger{deploymentvos.ScopeCode}
+	verifications2 := []deploymentvos.Trigger{deploymentvos.ScopeVars}
+	cmd, err := deploymentvos.NewCommandDefinition("test-cmd", "echo")
 	if err != nil {
 		t.Fatalf("fallo al crear helper CommandDefinition: %v", err)
 	}
-	step1, err1 := entities.NewStepDefinition(STEP_TEST, verifications, []vos.CommandDefinition{cmd})
-	step2, err2 := entities.NewStepDefinition("deploy", verifications2, []vos.CommandDefinition{cmd})
+	step1, err1 := entities.NewStepDefinition(STEP_TEST, verifications, []deploymentvos.CommandDefinition{cmd}, []deploymentvos.Variable{validVariable})
+	step2, err2 := entities.NewStepDefinition("deploy", verifications2, []deploymentvos.CommandDefinition{cmd}, []deploymentvos.Variable{validVariable})
 	if err1 != nil || err2 != nil {
 		t.Fatalf("fallo al crear helpers StepDefinition: %v, %v", err1, err2)
 	}
@@ -51,21 +54,22 @@ func TestNewDeploymentTemplate(t *testing.T) {
 	validEnvs := createValidEnvironments(t)
 	validSteps := createValidSteps(t)
 
-	verifications := []vos.VerificationType{vos.VerificationTypeCode}
+	verifications := []deploymentvos.Trigger{deploymentvos.ScopeCode}
+	validVariable, _ := deploymentvos.NewVariable("test-var", "hello")
 
 	// Crear un environment duplicado para el caso de prueba de fallo
-	envDupe, _ := vos.NewEnvironment(ENV_STAGING, "Duplicated Staging", "stag-dupe")
+	envDupe, _ := deploymentvos.NewEnvironment(ENV_STAGING, "stag-dupe")
 	dupeEnvs := append(validEnvs, envDupe)
 
 	// Crear un paso duplicado
-	cmd, _ := vos.NewCommandDefinition("cmd", "c")
-	stepDupe, _ := entities.NewStepDefinition(STEP_TEST, verifications, []vos.CommandDefinition{cmd})
+	cmd, _ := deploymentvos.NewCommandDefinition("cmd", "c")
+	stepDupe, _ := entities.NewStepDefinition(STEP_TEST, verifications, []deploymentvos.CommandDefinition{cmd}, []deploymentvos.Variable{validVariable})
 	dupeSteps := append(validSteps, stepDupe)
 
 	testCases := []struct {
 		testName     string
-		source       vos.TemplateSource
-		environments []vos.Environment
+		source       sharedvos.TemplateSource
+		environments []deploymentvos.Environment
 		steps        []entities.StepDefinition
 		expectError  bool
 	}{
@@ -79,7 +83,7 @@ func TestNewDeploymentTemplate(t *testing.T) {
 		{
 			testName:     "Fallo por environments vacios",
 			source:       validSource,
-			environments: []vos.Environment{},
+			environments: []deploymentvos.Environment{},
 			steps:        validSteps,
 			expectError:  true,
 		},
@@ -128,7 +132,7 @@ func TestDeploymentTemplate_DefensiveCopying(t *testing.T) {
 		template, _ := NewDeploymentTemplate(originalSource, originalEnvs, originalSteps)
 
 		retrievedEnvs := template.Environments()
-		modifiedEnv, _ := vos.NewEnvironment("MODIFIED", "desc", "val")
+		modifiedEnv, _ := deploymentvos.NewEnvironment("MODIFIED", "val")
 		retrievedEnvs[0] = modifiedEnv
 
 		if template.Environments()[0].Name() == "MODIFIED" {
@@ -141,11 +145,12 @@ func TestDeploymentTemplate_DefensiveCopying(t *testing.T) {
 		originalEnvs := createValidEnvironments(t)
 		originalSource := createValidTemplateSource(t)
 		template, _ := NewDeploymentTemplate(originalSource, originalEnvs, originalSteps)
-		verifications := []vos.VerificationType{vos.VerificationTypeCode}
+		verifications := []deploymentvos.Trigger{deploymentvos.ScopeCode}
+		validVariable, _ := deploymentvos.NewVariable("test-var", "hello")
 
 		retrievedSteps := template.Steps()
-		cmd, _ := vos.NewCommandDefinition("c", "c")
-		modifiedStep, _ := entities.NewStepDefinition("MODIFIED", verifications, []vos.CommandDefinition{cmd})
+		cmd, _ := deploymentvos.NewCommandDefinition("c", "c")
+		modifiedStep, _ := entities.NewStepDefinition("MODIFIED", verifications, []deploymentvos.CommandDefinition{cmd}, []deploymentvos.Variable{validVariable})
 		retrievedSteps[0] = modifiedStep
 
 		if template.Steps()[0].Name() == "MODIFIED" {

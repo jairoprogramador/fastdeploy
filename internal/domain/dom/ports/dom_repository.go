@@ -1,13 +1,10 @@
 package ports
 
 import (
-	"context"
-
 	"github.com/jairoprogramador/fastdeploy/internal/domain/dom/aggregates"
 )
 
-// DOMRepository define el contrato para la persistencia del agregado DeploymentObjectModel.
-type DOMRepository interface {
-	Save(ctx context.Context, dom *aggregates.DeploymentObjectModel) error
-	Load(ctx context.Context) (*aggregates.DeploymentObjectModel, error)
+type DomRepository interface {
+	Save(dom *aggregates.DeploymentObjectModel) error
+	Load() (*aggregates.DeploymentObjectModel, error)
 }

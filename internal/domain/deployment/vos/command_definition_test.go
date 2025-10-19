@@ -7,58 +7,56 @@ import (
 
 func TestNewCommandDefinition(t *testing.T) {
 	// Creamos un OutputProbe válido para usar en los tests
-	validProbe, _ := NewOutputProbe("test_probe", "a probe", ".*")
+	validProbe, _ := NewOutput("test_probe", ".*")
 
 	testCases := []struct {
-		testName         string
-		name             string
-		cmdTemplate      string
-		opts             []CommandOption
-		expectError      bool
-		expectedCmdDef   CommandDefinition
+		testName       string
+		name           string
+		cmd    string
+		opts           []CommandOption
+		expectError    bool
+		expectedCmdDef CommandDefinition
 	}{
 		{
 			testName:    "Creacion basica valida",
 			name:        "run-script",
-			cmdTemplate: "bash script.sh",
+			cmd: "bash script.sh",
 			opts:        nil,
 			expectError: false,
 			expectedCmdDef: CommandDefinition{
-				name:        "run-script",
-				cmdTemplate: "bash script.sh",
+				name: "run-script",
+				cmd:  "bash script.sh",
 			},
 		},
 		{
 			testName:    "Creacion valida con todas las opciones",
 			name:        "full-command",
-			cmdTemplate: "kubectl apply -f .",
+			cmd: "kubectl apply -f .",
 			opts: []CommandOption{
-				WithDescription("Apply k8s manifests"),
 				WithWorkdir("./k8s"),
 				WithTemplateFiles([]string{"a.yaml", "b.yaml"}),
-				WithOutputs([]OutputProbe{validProbe}),
+				WithOutputs([]Output{validProbe}),
 			},
 			expectError: false,
 			expectedCmdDef: CommandDefinition{
 				name:          "full-command",
-				description:   "Apply k8s manifests",
-				cmdTemplate:   "kubectl apply -f .",
+				cmd:           "kubectl apply -f .",
 				workdir:       "./k8s",
 				templateFiles: []string{"a.yaml", "b.yaml"},
-				outputs:       []OutputProbe{validProbe},
+				outputs:       []Output{validProbe},
 			},
 		},
 		{
 			testName:    "Fallo por nombre vacio",
 			name:        "",
-			cmdTemplate: "some-cmd",
+			cmd: "some-cmd",
 			opts:        nil,
 			expectError: true,
 		},
 		{
 			testName:    "Fallo por plantilla de comando vacia",
 			name:        "no-cmd",
-			cmdTemplate: "",
+			cmd: "",
 			opts:        nil,
 			expectError: true,
 		},
@@ -66,7 +64,7 @@ func TestNewCommandDefinition(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.testName, func(t *testing.T) {
-			cmdDef, err := NewCommandDefinition(tc.name, tc.cmdTemplate, tc.opts...)
+			cmdDef, err := NewCommandDefinition(tc.name, tc.cmd, tc.opts...)
 
 			if tc.expectError {
 				if err == nil {
@@ -106,8 +104,8 @@ func TestCommandDefinition_DefensiveCopying(t *testing.T) {
 	})
 
 	t.Run("Outputs debe devolver una copia", func(t *testing.T) {
-		probe, _ := NewOutputProbe("name", "description", ".*")
-		originalOutputs := []OutputProbe{probe}
+		probe, _ := NewOutput("name", ".*")
+		originalOutputs := []Output{probe}
 		cmdDef, _ := NewCommandDefinition("cmd", "do", WithOutputs(originalOutputs))
 
 		retrievedOutputs := cmdDef.Outputs()

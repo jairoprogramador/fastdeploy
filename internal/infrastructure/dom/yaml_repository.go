@@ -1,35 +1,32 @@
 package dom
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/jairoprogramador/fastdeploy/internal/domain/dom/aggregates"
-	"github.com/jairoprogramador/fastdeploy/internal/domain/dom/ports"
-	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/dom/dto"
-	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/dom/mapper"
+	domAgg "github.com/jairoprogramador/fastdeploy/internal/domain/dom/aggregates"
+	domPor "github.com/jairoprogramador/fastdeploy/internal/domain/dom/ports"
+
+	iDomDto "github.com/jairoprogramador/fastdeploy/internal/infrastructure/dom/dto"
+	iDomMap "github.com/jairoprogramador/fastdeploy/internal/infrastructure/dom/mapper"
 )
 
-// DomYAMLRepository implementa la interfaz ports.DOMRepository.
 type DomYAMLRepository struct {
 	filePath string
 }
 
-// NewDomYAMLRepository crea una instancia del repositorio DOM.
-func NewDomYAMLRepository(workingDir string) ports.DOMRepository {
+func NewDomYAMLRepository(workingDir string) domPor.DomRepository {
 	dirPath := filepath.Join(workingDir, ".fastdeploy")
 	return &DomYAMLRepository{
 		filePath: filepath.Join(dirPath, "dom.yaml"),
 	}
 }
 
-// Save serializa y guarda el agregado DOM a dom.yaml.
-func (r *DomYAMLRepository) Save(_ context.Context, dom *aggregates.DeploymentObjectModel) error {
-	dto := mapper.ToDTO(dom)
+func (r *DomYAMLRepository) Save(dom *domAgg.DeploymentObjectModel) error {
+	dto := iDomMap.DomToDTO(dom)
 	data, err := yaml.Marshal(dto)
 	if err != nil {
 		return fmt.Errorf("error al serializar dom.yaml: %w", err)
@@ -40,8 +37,7 @@ func (r *DomYAMLRepository) Save(_ context.Context, dom *aggregates.DeploymentOb
 	return os.WriteFile(r.filePath, data, 0644)
 }
 
-// Load lee y deserializa el archivo dom.yaml en el agregado DOM.
-func (r *DomYAMLRepository) Load(_ context.Context) (*aggregates.DeploymentObjectModel, error) {
+func (r *DomYAMLRepository) Load() (*domAgg.DeploymentObjectModel, error) {
 	data, err := os.ReadFile(r.filePath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -51,10 +47,10 @@ func (r *DomYAMLRepository) Load(_ context.Context) (*aggregates.DeploymentObjec
 		}
 	}
 
-	var dto dto.DOMDTO
+	var dto iDomDto.DomDTO
 	if err := yaml.Unmarshal(data, &dto); err != nil {
 		return nil, fmt.Errorf("error al deserializar dom.yaml: %w", err)
 	}
 
-	return mapper.ToDomain(dto)
+	return iDomMap.DomToDomain(dto)
 }

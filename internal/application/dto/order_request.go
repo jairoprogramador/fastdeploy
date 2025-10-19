@@ -3,19 +3,19 @@ package dto
 import (
 	"context"
 
-	deploymentaggregates "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/aggregates"
-	"github.com/jairoprogramador/fastdeploy/internal/domain/deployment/vos"
-	domaggregates "github.com/jairoprogramador/fastdeploy/internal/domain/dom/aggregates"
+	depAgg "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/aggregates"
+	depVos "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/vos"
+	domAgg "github.com/jairoprogramador/fastdeploy/internal/domain/dom/aggregates"
 )
 
 type OrderRequest struct {
 	Ctx              context.Context
-	Environment      vos.Environment
+	Environment      depVos.Environment
 	FinalStep        string
-	Template         *deploymentaggregates.DeploymentTemplate
+	Template         *depAgg.DeploymentTemplate
 	TemplatePath     string
 	RepositoryName   string
-	ProjectDom       *domaggregates.DeploymentObjectModel
+	ProjectDom       *domAgg.DeploymentObjectModel
 	ProjectPath      string
 	SkippedStepNames map[string]struct{}
 }

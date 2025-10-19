@@ -4,14 +4,14 @@ import (
 	"errors"
 	"context"
 
-	appports "github.com/jairoprogramador/fastdeploy/internal/application/ports"
+	appPor "github.com/jairoprogramador/fastdeploy/internal/application/ports"
 )
 
 type RevisionProjectService struct {
-	gitManager appports.GitManager
+	gitManager appPor.GitManager
 }
 
-func NewRevisionProjectService(gitManager appports.GitManager) *RevisionProjectService {
+func NewRevisionProjectService(gitManager appPor.GitManager) *RevisionProjectService {
 	return &RevisionProjectService{
 		gitManager: gitManager,
 	}

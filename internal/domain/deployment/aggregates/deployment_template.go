@@ -3,22 +3,24 @@ package aggregates
 import (
 	"errors"
 	"fmt"
-	"github.com/jairoprogramador/fastdeploy/internal/domain/deployment/vos"
-	"github.com/jairoprogramador/fastdeploy/internal/domain/deployment/entities"
+
+	sharedVos "github.com/jairoprogramador/fastdeploy/internal/domain/shared/vos"
+
+	depEnt "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/entities"
+	depVos "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/vos"
 )
 
-// DeploymentTemplate es el Agregado Raíz para el contexto de Definición de Despliegue.
-// Representa la "receta" completa y consistente de un despliegue, cargada desde una fuente específica.
 type DeploymentTemplate struct {
-	source       vos.TemplateSource
-	environments []vos.Environment
-	steps        []entities.StepDefinition
+	source       sharedVos.TemplateSource
+	environments []depVos.Environment
+	steps        []depEnt.StepDefinition
 }
 
-// NewDeploymentTemplate es el constructor para el agregado DeploymentTemplate.
-// Actúa como el guardián de las invariantes del agregado, asegurando que
-// solo se puedan crear instancias consistentes y válidas.
-func NewDeploymentTemplate(source vos.TemplateSource, environments []vos.Environment, steps []entities.StepDefinition) (*DeploymentTemplate, error) {
+func NewDeploymentTemplate(
+	source sharedVos.TemplateSource,
+	environments []depVos.Environment,
+	steps []depEnt.StepDefinition) (*DeploymentTemplate, error) {
+
 	if len(environments) == 0 {
 		return nil, errors.New("la plantilla de despliegue debe tener al menos un ambiente")
 	}
@@ -26,25 +28,30 @@ func NewDeploymentTemplate(source vos.TemplateSource, environments []vos.Environ
 		return nil, errors.New("la plantilla de despliegue debe tener al menos un paso")
 	}
 
-	// Validar que no haya nombres de ambiente duplicados
 	envNames := make(map[string]struct{})
 	for _, env := range environments {
 		if _, exists := envNames[env.Name()]; exists {
-			return nil, fmt.Errorf("nombre de ambiente duplicado encontrado: %s", env.Name())
+			return nil, fmt.Errorf("nombre de ambiente duplicado: %s", env.Name())
 		}
 		envNames[env.Name()] = struct{}{}
 	}
 
-	// Validar que no haya nombres de paso duplicados
+	envValues := make(map[string]struct{})
+	for _, env := range environments {
+		if _, exists := envValues[env.Value()]; exists {
+			return nil, fmt.Errorf("valor de ambiente duplicado: %s", env.Value())
+		}
+		envValues[env.Value()] = struct{}{}
+	}
+
 	stepNames := make(map[string]struct{})
 	for _, step := range steps {
 		if _, exists := stepNames[step.Name()]; exists {
-			return nil, fmt.Errorf("nombre de paso duplicado encontrado: %s", step.Name())
+			return nil, fmt.Errorf("nombre de paso duplicado: %s", step.Name())
 		}
 		stepNames[step.Name()] = struct{}{}
 	}
 
-	// Devolvemos puntero porque los agregados suelen tener un ciclo de vida más complejo.
 	return &DeploymentTemplate{
 		source:       source,
 		environments: environments,
@@ -52,21 +59,27 @@ func NewDeploymentTemplate(source vos.TemplateSource, environments []vos.Environ
 	}, nil
 }
 
-// Source devuelve la identidad de la plantilla.
-func (dt *DeploymentTemplate) Source() vos.TemplateSource {
+/* func (dt *DeploymentTemplate) SearchStep(stepName string) (*entities.StepDefinition, error) {
+	for _, step := range dt.steps {
+		if step.Name() == stepName {
+			return &step, nil
+		}
+	}
+	return nil, fmt.Errorf("no se encontró el paso '%s' en la plantilla", stepName)
+} */
+
+func (dt *DeploymentTemplate) Source() sharedVos.TemplateSource {
 	return dt.source
 }
 
-// Environments devuelve una copia de los ambientes definidos en la plantilla.
-func (dt *DeploymentTemplate) Environments() []vos.Environment {
-	envsCopy := make([]vos.Environment, len(dt.environments))
+func (dt *DeploymentTemplate) Environments() []depVos.Environment {
+	envsCopy := make([]depVos.Environment, len(dt.environments))
 	copy(envsCopy, dt.environments)
 	return envsCopy
 }
 
-// Steps devuelve una copia de los pasos definidos en la plantilla.
-func (dt *DeploymentTemplate) Steps() []entities.StepDefinition {
-	stepsCopy := make([]entities.StepDefinition, len(dt.steps))
+func (dt *DeploymentTemplate) Steps() []depEnt.StepDefinition {
+	stepsCopy := make([]depEnt.StepDefinition, len(dt.steps))
 	copy(stepsCopy, dt.steps)
 	return stepsCopy
 }

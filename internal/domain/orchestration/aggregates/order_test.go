@@ -10,7 +10,8 @@ import (
 	deploymentaggregates "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/aggregates"
 	deploymententities "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/entities"
 	deploymentvos "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/vos"
-	"github.com/jairoprogramador/fastdeploy/internal/domain/orchestration/vos"
+	orchestrationvos "github.com/jairoprogramador/fastdeploy/internal/domain/orchestration/vos"
+	sharedvos "github.com/jairoprogramador/fastdeploy/internal/domain/shared/vos"
 )
 
 const ENV_STAGING_NAME = "staging"
@@ -24,34 +25,36 @@ const VARIABLE_ENVIRONMENT = "environment"
 const VARIABLE_ORDER_ID = "order_id"
 
 // --- Mocks y Helpers ---
-type MockVariableResolver struct {
+type MockResolver struct {
 	mock.Mock
 }
 
-func (m *MockVariableResolver) ExtractVariable(probe deploymentvos.OutputProbe, text string) (vos.Variable, bool, error) {
+func (m *MockResolver) ResolveOutput(probe orchestrationvos.Output, text string) (orchestrationvos.Output, bool, error) {
 	args := m.Called(probe, text)
-	return args.Get(0).(vos.Variable), args.Bool(1), args.Error(2)
+	return args.Get(0).(orchestrationvos.Output), args.Bool(1), args.Error(2)
 }
 
-func (m *MockVariableResolver) Interpolate(template string, variables map[string]vos.Variable) (string, error) {
+func (m *MockResolver) ResolveTemplate(template string, variables map[string]orchestrationvos.Output) (string, error) {
 	args := m.Called(template, variables)
 	return args.String(0), args.Error(1)
 }
 
-func (m *MockVariableResolver) ProcessTemplate(pathFile string, variables map[string]vos.Variable) error {
-	args := m.Called(pathFile, variables)
+func (m *MockResolver) ResolvePath(path string, variables map[string]orchestrationvos.Output) error {
+	args := m.Called(path, variables)
 	return args.Error(0)
 }
 
 func createTestTemplate(t *testing.T) *deploymentaggregates.DeploymentTemplate {
 	t.Helper()
-	source, _ := deploymentvos.NewTemplateSource("http://test.com/repo.git", "main")
-	env, _ := deploymentvos.NewEnvironment(ENV_STAGING_NAME, "staging description", ENV_STAGING_VALUE)
+	source, _ := sharedvos.NewTemplateSource("http://test.com/repo.git", "main")
+	env, _ := deploymentvos.NewEnvironment(ENV_STAGING_NAME, ENV_STAGING_VALUE)
 	cmd, _ := deploymentvos.NewCommandDefinition("cmd", "echo")
-	verifications := []deploymentvos.VerificationType{deploymentvos.VerificationTypeCode}
-	stepTest, _ := deploymententities.NewStepDefinition(STEP_TEST, verifications, []deploymentvos.CommandDefinition{cmd})
-	stepSupply, _ := deploymententities.NewStepDefinition(STEP_SUPPLY, verifications, []deploymentvos.CommandDefinition{cmd})
-	stepDeploy, _ := deploymententities.NewStepDefinition(STEP_DEPLOY, verifications, []deploymentvos.CommandDefinition{cmd})
+	verifications := []deploymentvos.Trigger{deploymentvos.ScopeCode}
+	validVariable, _ := deploymentvos.NewVariable("test-var", "hello")
+
+	stepTest, _ := deploymententities.NewStepDefinition(STEP_TEST, verifications, []deploymentvos.CommandDefinition{cmd}, []deploymentvos.Variable{validVariable})
+	stepSupply, _ := deploymententities.NewStepDefinition(STEP_SUPPLY, verifications, []deploymentvos.CommandDefinition{cmd}, []deploymentvos.Variable{validVariable})
+	stepDeploy, _ := deploymententities.NewStepDefinition(STEP_DEPLOY, verifications, []deploymentvos.CommandDefinition{cmd}, []deploymentvos.Variable{validVariable})
 
 	template, err := deploymentaggregates.NewDeploymentTemplate(
 		source,
@@ -65,7 +68,7 @@ func createTestTemplate(t *testing.T) *deploymentaggregates.DeploymentTemplate {
 func TestNewOrder(t *testing.T) {
 	template := createTestTemplate(t)
 	env := template.Environments()[0]
-	orderID := vos.NewOrderID()
+	orderID := orchestrationvos.NewOrderID()
 
 	testCases := []struct {
 		testName          string
@@ -115,20 +118,20 @@ func TestNewOrder(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 				assert.NotNil(t, order)
-				assert.Len(t, order.StepExecutions(), tc.expectedStepCount)
-				assert.Equal(t, vos.OrderStatusInProgress, order.Status())
+				assert.Len(t, order.StepsRecord(), tc.expectedStepCount)
+				assert.Equal(t, orchestrationvos.OrderStatusInProgress, order.Status())
 
 				// Verificar el mapa de variables inicial
-				assert.Contains(t, order.VariableMap(), VARIABLE_ENVIRONMENT)
-				assert.Contains(t, order.VariableMap(), VARIABLE_ORDER_ID)
-				assert.Equal(t, ENV_STAGING_VALUE, order.VariableMap()[VARIABLE_ENVIRONMENT])
-				assert.Equal(t, orderID.String(), order.VariableMap()[VARIABLE_ORDER_ID])
+				assert.Contains(t, order.Outputs(), VARIABLE_ENVIRONMENT)
+				assert.Contains(t, order.Outputs(), VARIABLE_ORDER_ID)
+				assert.Equal(t, ENV_STAGING_VALUE, order.Outputs()[VARIABLE_ENVIRONMENT])
+				assert.Equal(t, orderID.String(), order.Outputs()[VARIABLE_ORDER_ID])
 
 				// Verificar pasos omitidos
 				if tc.expectedSkipped != nil {
-					for _, stepExec := range order.StepExecutions() {
+					for _, stepExec := range order.StepsRecord() {
 						shouldBeSkipped := tc.expectedSkipped[stepExec.Name()]
-						isSkipped := stepExec.Status() == vos.StepStatusSkipped
+						isSkipped := stepExec.Status() == orchestrationvos.StepStatusSkipped
 						assert.Equal(t, shouldBeSkipped, isSkipped, "El estado de omision para el paso '%s' no es el esperado", stepExec.Name())
 					}
 				}
@@ -140,33 +143,33 @@ func TestNewOrder(t *testing.T) {
 func TestOrder_MarkCommandAsCompleted_StateTransition(t *testing.T) {
 	template := createTestTemplate(t)
 	env := template.Environments()[0]
-	resolver := new(MockVariableResolver)
+	resolver := new(MockResolver)
 
 	t.Run("Transicion a Successful", func(t *testing.T) {
-		order, _ := NewOrder(vos.NewOrderID(), template, env, STEP_SUPPLY, nil, nil)
+		order, _ := NewOrder(orchestrationvos.NewOrderID(), template, env, STEP_SUPPLY, nil, nil)
 
 		// Simular ejecución exitosa
-		err := order.MarkCommandAsCompleted(STEP_TEST, "cmd", "resolved", "log", 0, resolver)
+		err := order.FinalizeCommand(STEP_TEST, "cmd", "resolved", "log", 0, resolver)
 		assert.NoError(t, err)
-		assert.Equal(t, vos.OrderStatusInProgress, order.Status())
+		assert.Equal(t, orchestrationvos.OrderStatusInProgress, order.Status())
 
-		err = order.MarkCommandAsCompleted(STEP_SUPPLY, "cmd", "resolved", "log", 0, resolver)
+		err = order.FinalizeCommand(STEP_SUPPLY, "cmd", "resolved", "log", 0, resolver)
 		assert.NoError(t, err)
-		assert.Equal(t, vos.OrderStatusSuccessful, order.Status()) // Último paso tuvo éxito
+		assert.Equal(t, orchestrationvos.OrderStatusSuccessful, order.Status()) // Último paso tuvo éxito
 	})
 
 	t.Run("Transicion a Failed", func(t *testing.T) {
-		order, _ := NewOrder(vos.NewOrderID(), template, env, STEP_DEPLOY, nil, nil)
+		order, _ := NewOrder(orchestrationvos.NewOrderID(), template, env, STEP_DEPLOY, nil, nil)
 
 		// Simular ejecución exitosa del primer paso
-		err := order.MarkCommandAsCompleted(STEP_TEST, "cmd", "resolved", "log", 0, resolver)
+		err := order.FinalizeCommand(STEP_TEST, "cmd", "resolved", "log", 0, resolver)
 		assert.NoError(t, err)
-		assert.Equal(t, vos.OrderStatusInProgress, order.Status())
+		assert.Equal(t, orchestrationvos.OrderStatusInProgress, order.Status())
 
 		// Simular fallo en el segundo paso
-		err = order.MarkCommandAsCompleted(STEP_SUPPLY, "cmd", "resolved", "log", 1, resolver)
+		err = order.FinalizeCommand(STEP_SUPPLY, "cmd", "resolved", "log", 1, resolver)
 		assert.NoError(t, err)
-		assert.Equal(t, vos.OrderStatusFailed, order.Status())
+		assert.Equal(t, orchestrationvos.OrderStatusFailed, order.Status())
 	})
 
 	t.Run("Recopilacion de variables", func(t *testing.T) {
@@ -174,27 +177,28 @@ func TestOrder_MarkCommandAsCompleted_StateTransition(t *testing.T) {
 		variableNewVarName := "new_var"
 		variableNewVarValue := "secret"
 		outputTextVariableValue := fmt.Sprintf("val=%s", variableNewVarValue)
-		verifications := []deploymentvos.VerificationType{deploymentvos.VerificationTypeCode}
+		verifications := []deploymentvos.Trigger{deploymentvos.ScopeCode}
+		validVariable, _ := deploymentvos.NewVariable("test-var", "hello")
 
-		outputProbe, _ := deploymentvos.NewOutputProbe(variableNewVarName, "description", "val=(.*)")
+		outputProbe, _ := deploymentvos.NewOutput(variableNewVarName, "val=(.*)")
 		cmdWithProbe, _ := deploymentvos.NewCommandDefinition(
-			cmdWithProbeName, "echo", deploymentvos.WithOutputs([]deploymentvos.OutputProbe{outputProbe}))
-		stepWithProbe, _ := deploymententities.NewStepDefinition(STEP_TEST, verifications, []deploymentvos.CommandDefinition{cmdWithProbe})
+			cmdWithProbeName, "echo", deploymentvos.WithOutputs([]deploymentvos.Output{outputProbe}))
+		stepWithProbe, _ := deploymententities.NewStepDefinition(STEP_TEST, verifications, []deploymentvos.CommandDefinition{cmdWithProbe}, []deploymentvos.Variable{validVariable})
 
 		templateProbe, _ := deploymentaggregates.NewDeploymentTemplate(
 			template.Source(),
 			[]deploymentvos.Environment{env},
 			[]deploymententities.StepDefinition{stepWithProbe})
 
-		newVar, _ := vos.NewVariable(variableNewVarName, variableNewVarValue)
+		newVar, _ := orchestrationvos.NewOutputFromNameAndValue(variableNewVarName, variableNewVarValue)
 		resolver.On("ExtractVariable", outputProbe, outputTextVariableValue).Return(newVar, true, nil).Once()
 
-		order, _ := NewOrder(vos.NewOrderID(), templateProbe, env, STEP_TEST, nil, nil)
+		order, _ := NewOrder(orchestrationvos.NewOrderID(), templateProbe, env, STEP_TEST, nil, nil)
 
-		err := order.MarkCommandAsCompleted(STEP_TEST, cmdWithProbeName, "resolved", outputTextVariableValue, 0, resolver)
+		err := order.FinalizeCommand(STEP_TEST, cmdWithProbeName, "resolved", outputTextVariableValue, 0, resolver)
 		assert.NoError(t, err)
-		assert.Contains(t, order.VariableMap(), variableNewVarName)
-		assert.Equal(t, variableNewVarValue, order.VariableMap()[variableNewVarName])
+		assert.Contains(t, order.Outputs(), variableNewVarName)
+		assert.Equal(t, variableNewVarValue, order.Outputs()[variableNewVarName])
 		resolver.AssertExpectations(t)
 	})
 }

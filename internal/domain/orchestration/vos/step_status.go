@@ -1,57 +1,48 @@
 package vos
 
-// StepStatus representa el estado de un StepExecution.
-// Es un Objeto de Valor que utiliza un tipo enumerado.
 type StepStatus int
 
 const (
-	// StepStatusPending indica que el paso aún no ha comenzado.
 	StepStatusPending StepStatus = iota
-	// StepStatusInProgress indica que el paso se está ejecutando actualmente.
 	StepStatusInProgress
-	// StepStatusSkipped indica que el paso fue omitido por el usuario.
 	StepStatusSkipped
-	// StepStatusCached indica que el paso fue omitido por caché.
 	StepStatusCached
-	// StepStatusSuccessful indica que el paso y todos sus comandos se completaron exitosamente.
 	StepStatusSuccessful
-	// StepStatusFailed indica que el paso falló porque uno de sus comandos falló.
 	StepStatusFailed
 )
 
-// String devuelve la representación en cadena del estado.
 func (s StepStatus) String() string {
 	switch s {
 	case StepStatusPending:
-		return "Pendiente"
+		return StatusPending.String()
 	case StepStatusInProgress:
-		return "En Progreso"
+		return StatusInProgress.String()
 	case StepStatusSkipped:
-		return "Omitido"
+		return StatusSkipped.String()
 	case StepStatusCached:
-		return "En Caché"
+		return StatusCached.String()
 	case StepStatusSuccessful:
-		return "Exitoso"
+		return StatusSuccessful.String()
 	case StepStatusFailed:
-		return "Fallido"
+		return StatusFailed.String()
 	default:
-		return "Desconocido"
+		return StatusUnknown.String()
 	}
 }
 
 func StepStatusFromString(status string) StepStatus {
 	switch status {
-	case "Pendiente":
+	case StatusPending.String():
 		return StepStatusPending
-	case "En Progreso":
+	case StatusInProgress.String():
 		return StepStatusInProgress
-	case "Omitido":
+	case StatusSkipped.String():
 		return StepStatusSkipped
-	case "En Caché":
+	case StatusCached.String():
 		return StepStatusCached
-	case "Exitoso":
+	case StatusSuccessful.String():
 		return StepStatusSuccessful
-	case "Fallido":
+	case StatusFailed.String():
 		return StepStatusFailed
 	default:
 		return StepStatus(99)

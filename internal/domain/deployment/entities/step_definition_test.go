@@ -8,50 +8,55 @@ import (
 )
 
 func TestNewStepDefinition(t *testing.T) {
-	// Helper para crear un comando válido reutilizable
 	validCmd, _ := vos.NewCommandDefinition("test-cmd", "echo 'hello'")
-	validVerifications := []vos.VerificationType{vos.VerificationTypeCode}
+	validTriggers := []vos.Trigger{vos.ScopeCode}
+	validVariable, _ := vos.NewVariable("test-var", "hello")
 
 	testCases := []struct {
-		testName    string
-		name        string
-		commands    []vos.CommandDefinition
-		verifications []vos.VerificationType
-		expectError bool
+		testName      string
+		name          string
+		commands      []vos.CommandDefinition
+		verifications []vos.Trigger
+		variables     []vos.Variable
+		expectError   bool
 	}{
 		{
-			testName:    "Creacion valida",
-			name:        "test",
-			commands:    []vos.CommandDefinition{validCmd},
-			verifications: validVerifications,
-			expectError: false,
+			testName:      "Creacion valida",
+			name:          "test",
+			commands:      []vos.CommandDefinition{validCmd},
+			verifications: validTriggers,
+			variables:     []vos.Variable{validVariable},
+			expectError:   false,
 		},
 		{
-			testName:    "Fallo por nombre vacio",
-			name:        "",
-			commands:    []vos.CommandDefinition{validCmd},
-			verifications: validVerifications,
-			expectError: true,
+			testName:      "Fallo por nombre vacio",
+			name:          "",
+			commands:      []vos.CommandDefinition{validCmd},
+			verifications: validTriggers,
+			variables:     []vos.Variable{validVariable},
+			expectError:   true,
 		},
 		{
-			testName:    "Fallo por lista de comandos vacia",
-			name:        "test",
-			commands:    []vos.CommandDefinition{},
-			verifications: validVerifications,
-			expectError: true,
+			testName:      "Fallo por lista de comandos vacia",
+			name:          "test",
+			commands:      []vos.CommandDefinition{},
+			verifications: validTriggers,
+			variables:     []vos.Variable{validVariable},
+			expectError:   true,
 		},
 		{
-			testName:    "Fallo por lista de comandos nula",
-			name:        "test",
-			commands:    nil,
-			verifications: validVerifications,
-			expectError: true,
+			testName:      "Fallo por lista de comandos nula",
+			name:          "test",
+			commands:      nil,
+			verifications: validTriggers,
+			variables:     []vos.Variable{validVariable},
+			expectError:   true,
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.testName, func(t *testing.T) {
-			stepDef, err := NewStepDefinition(tc.name, tc.verifications, tc.commands)
+			stepDef, err := NewStepDefinition(tc.name, tc.verifications, tc.commands, tc.variables)
 
 			if tc.expectError {
 				if err == nil {
@@ -64,7 +69,7 @@ func TestNewStepDefinition(t *testing.T) {
 				if stepDef.Name() != tc.name {
 					t.Errorf("Se esperaba el nombre '%s', pero se obtuvo '%s'", tc.name, stepDef.Name())
 				}
-				if !reflect.DeepEqual(stepDef.VerificationTypes(), tc.verifications) {
+				if !reflect.DeepEqual(stepDef.TriggersInt(), tc.verifications) {
 					t.Errorf("La lista de verificaciones no coincide")
 				}
 				if !reflect.DeepEqual(stepDef.Commands(), tc.commands) {
@@ -76,21 +81,22 @@ func TestNewStepDefinition(t *testing.T) {
 }
 
 func TestStepDefinition_DefensiveCopying(t *testing.T) {
+	validVariable, _ := vos.NewVariable("test-var", "hello")
 	validCmd1, _ := vos.NewCommandDefinition("cmd1", "echo 1")
 	validCmd2, _ := vos.NewCommandDefinition("cmd2", "echo 2")
 	originalCommands := []vos.CommandDefinition{validCmd1, validCmd2}
-	originalVerifications := []vos.VerificationType{vos.VerificationTypeCode}
+	originalTriggers := []vos.Trigger{vos.ScopeCode}
 
-	stepDef, _ := NewStepDefinition("test-step", originalVerifications, originalCommands)
+	stepDef, _ := NewStepDefinition("test-step", originalTriggers, originalCommands, []vos.Variable{validVariable})
 
 	retrievedCommands := stepDef.Commands()
 	if len(retrievedCommands) == 0 {
 		t.Fatal("Commands() no debería devolver un slice vacío")
 	}
 
-	retrievedVerifications := stepDef.VerificationTypes()
-	if len(retrievedVerifications) == 0 {
-		t.Fatal("VerificationTypes() no debería devolver un slice vacío")
+	retrievedTriggers := stepDef.TriggersInt()
+	if len(retrievedTriggers) == 0 {
+		t.Fatal("Triggers() no debería devolver un slice vacío")
 	}
 
 	// Modificamos el slice obtenido
@@ -103,9 +109,9 @@ func TestStepDefinition_DefensiveCopying(t *testing.T) {
 		t.Errorf("El estado interno de StepDefinition fue modificado. Se esperaba 'cmd1', se obtuvo '%s'", internalCommands[0].Name())
 	}
 
-	retrievedVerifications[0] = vos.VerificationTypeEnv
+	retrievedTriggers[0] = int(vos.ScopeRecipe)
 
-	if stepDef.VerificationTypes()[0] != vos.VerificationTypeEnv {
-		t.Errorf("El estado interno de StepDefinition fue modificado. Se esperaba 'code', se obtuvo '%s'", stepDef.VerificationTypes()[0])
+	if stepDef.TriggersInt()[0] != int(vos.ScopeRecipe) {
+		t.Errorf("El estado interno de StepDefinition fue modificado. Se esperaba 'code', se obtuvo '%d'", stepDef.TriggersInt()[0])
 	}
 }

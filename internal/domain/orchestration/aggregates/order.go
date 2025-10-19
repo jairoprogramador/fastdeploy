@@ -3,191 +3,190 @@ package aggregates
 import (
 	"fmt"
 
-	deployment "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/aggregates"
-	deploymentvos "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/vos"
-	"github.com/jairoprogramador/fastdeploy/internal/domain/orchestration/entities"
-	"github.com/jairoprogramador/fastdeploy/internal/domain/orchestration/services"
-	"github.com/jairoprogramador/fastdeploy/internal/domain/orchestration/vos"
+	depAgg "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/aggregates"
+	depEnt "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/entities"
+	depVos "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/vos"
 
+	orchEnt "github.com/jairoprogramador/fastdeploy/internal/domain/orchestration/entities"
+	orchSer "github.com/jairoprogramador/fastdeploy/internal/domain/orchestration/services"
+	orchVos "github.com/jairoprogramador/fastdeploy/internal/domain/orchestration/vos"
 )
 
-// Order es el Agregado Raíz para el contexto de Orquestación de Ejecución.
-// Representa una única invocación del comando de despliegue y protege la consistencia
-// de la ejecución de principio a fin.
+const (
+	OutputOrderIdName = "order_id"
+)
+
 type Order struct {
-	id     vos.OrderID
-	status vos.OrderStatus
-	targetEnvironment deploymentvos.Environment // Ambiente específico para esta orden.
-	stepExecutions []*entities.StepExecution
-	variableMap    map[string]vos.Variable
+	id            orchVos.OrderID
+	status        orchVos.OrderStatus
+	environment   string
+	steps         []*orchEnt.StepRecord
+	outputsShared map[string]orchVos.Output
 }
 
-// NewOrder es el constructor y guardián del agregado Order.
-// Encapsula la lógica de negocio para crear una orden válida y consistente,
-// determinando la secuencia de pasos a ejecutar.
 func NewOrder(
-	id vos.OrderID,
-	template *deployment.DeploymentTemplate,
-	targetEnvironment deploymentvos.Environment, // Recibe el VO completo.
+	orderId orchVos.OrderID,
+	template *depAgg.DeploymentTemplate,
+	environment depVos.Environment,
 	finalStepName string,
 	skippedStepNames map[string]struct{},
-	initialVariables []vos.Variable,
+	initialOutputs []orchVos.Output,
 ) (*Order, error) {
 
-	definedSteps := template.Steps()
-	finalStepIndex := -1
-	for i, step := range definedSteps {
-		if step.Name() == finalStepName {
-			finalStepIndex = i
-			break
-		}
-	}
+	stepsRecords := getStepRecordFromTemplate(template.Steps(), skippedStepNames, finalStepName)
 
-	if finalStepIndex == -1 {
-		return nil, fmt.Errorf("el paso final '%s' no existe en la definición de la plantilla", finalStepName)
-	}
-
-	var stepExecutions []*entities.StepExecution
-	// Se incluyen todos los pasos desde el principio hasta el paso final.
-	for i := 0; i <= finalStepIndex; i++ {
-		stepDef := definedSteps[i]
-		stepExec, err := entities.NewStepExecution(stepDef)
-		if err != nil {
-			return nil, fmt.Errorf("error al crear la ejecución para el paso '%s': %w", stepDef.Name(), err)
-		}
-
-		if _, shouldSkip := skippedStepNames[stepDef.Name()]; shouldSkip {
-			stepExec.Skip()
-		}
-		stepExecutions = append(stepExecutions, stepExec)
-	}
-
-	variableMap := make(map[string]vos.Variable)
-	for _, variable := range initialVariables {
-		variableMap[variable.Key()] = variable
-	}
-
-	variableOrderId, _ := vos.NewVariable("order_id", id.String())
-	variableMap[variableOrderId.Key()] = variableOrderId
+	outputsShared := getOutputsInitial(initialOutputs, orderId)
 
 	return &Order{
-		id:     id,
-		status: vos.OrderStatusInProgress,
-		targetEnvironment: targetEnvironment,
-		stepExecutions: stepExecutions,
-		variableMap:    variableMap,
+		id:            orderId,
+		status:        orchVos.OrderStatusInProgress,
+		environment:   environment.Value(),
+		steps:         stepsRecords,
+		outputsShared: outputsShared,
 	}, nil
 }
 
-// updateStatus recalcula el estado general de la Orden basándose en sus pasos.
-func (o *Order) updateStatus() {
-	hasFailed := false
-	allCompleted := true
-	for _, step := range o.stepExecutions {
-		if step.Status() == vos.StepStatusFailed {
-			hasFailed = true
-			break
-		}
-		if step.Status() != vos.StepStatusSuccessful &&
-		step.Status() != vos.StepStatusSkipped &&
-		step.Status() != vos.StepStatusCached {
-			allCompleted = false
-		}
+func getOutputsInitial(initialOutputs []orchVos.Output, orderId orchVos.OrderID) map[string]orchVos.Output {
+	outputsShared := make(map[string]orchVos.Output)
+	for _, output := range initialOutputs {
+		outputsShared[output.Name()] = output
 	}
+	outputOrderId, _ := orchVos.NewOutputFromNameAndValue(OutputOrderIdName, orderId.String())
+	outputsShared[outputOrderId.Name()] = outputOrderId
 
-	if hasFailed {
-		o.status = vos.OrderStatusFailed
-	} else if allCompleted {
-		o.status = vos.OrderStatusSuccessful
-	} else {
-		o.status = vos.OrderStatusInProgress
-	}
+	return outputsShared
 }
 
-// MarkCommandAsCompleted es el método a través del cual el mundo exterior informa
-// a la Orden sobre el resultado de la ejecución de un comando.
-// El agregado se encarga de orquestar la actualización de estado internamente.
-func (o *Order) MarkCommandAsCompleted(
-	stepName, commandName, resolvedCmd, log string,
-	exitCode int,
-	resolver services.VariableResolver,
-) error {
-	var targetStep *entities.StepExecution
-	for _, step := range o.stepExecutions {
-		if step.Name() == stepName {
-			targetStep = step
+func getStepRecordFromTemplate(
+	stepsDef []depEnt.StepDefinition,
+	skippedStepNames map[string]struct{},
+	finalStepName string) []*orchEnt.StepRecord {
+
+	var stepsRecords []*orchEnt.StepRecord
+	for _, stepDef := range stepsDef {
+		stepRecord := orchEnt.NewStepRecord(stepDef)
+
+		if _, shouldSkip := skippedStepNames[stepDef.Name()]; shouldSkip {
+			stepRecord.Skip()
+		}
+		stepsRecords = append(stepsRecords, stepRecord)
+
+		if stepDef.Name() == finalStepName {
 			break
 		}
 	}
-	if targetStep == nil {
-		return fmt.Errorf("no se encontró el paso '%s' en la orden", stepName)
-	}
+	return stepsRecords
+}
 
-	// Delegamos la ejecución del comando al StepExecution.
-	err := targetStep.CompleteCommand(commandName, resolvedCmd, log, exitCode, resolver)
+func (o *Order) SearchStep(stepName string) (*orchEnt.StepRecord, error) {
+	for _, step := range o.steps {
+		if step.Name() == stepName {
+			return step, nil
+		}
+	}
+	return nil, fmt.Errorf("no se encontró el paso '%s' en la orden", stepName)
+}
+
+func (o *Order) FinalizeCommand(
+	stepName, commandName, commandResolved, record string,
+	exitCode int,
+	resolver orchSer.TemplateResolver,
+) error {
+	stepRecord, err := o.SearchStep(stepName)
 	if err != nil {
-		return fmt.Errorf("error al completar el comando '%s' en el paso '%s': %w", commandName, stepName, err)
+		return err
 	}
 
-	// Tras la ejecución, las nuevas variables se añaden al mapa compartido.
-	newVars := targetStep.CollectNewVariables(commandName)
-	for _, variable := range newVars {
-		o.variableMap[variable.Key()] = variable
+	err = stepRecord.FinalizeCommand(commandName, commandResolved, record, exitCode, resolver)
+	if err != nil {
+		return err
 	}
 
-	// Finalmente, actualizamos el estado general de la Orden.
+	commandRecord, err := stepRecord.SearchCommand(commandName)
+	if err != nil {
+		return err
+	}
+
+	for _, variable := range commandRecord.Outputs() {
+		o.outputsShared[variable.Name()] = variable
+	}
+
 	o.updateStatus()
 
 	return nil
 }
 
 func (o *Order) MarkStepAsCached(stepName string) {
-	for _, step := range o.stepExecutions {
-		if step.Name() == stepName {
-			step.MarkAsCached()
+	if stepRecord, err := o.SearchStep(stepName); err == nil {
+		stepRecord.Cached()
+		o.updateStatus()
+	}
+}
+
+func (o *Order) updateStatus() {
+	hasFailed := false
+	allCompleted := true
+
+	for _, step := range o.steps {
+		if step.Status() == orchVos.StepStatusFailed {
+			hasFailed = true
+			break
+		}
+		if step.Status() == orchVos.StepStatusPending ||
+			step.Status() == orchVos.StepStatusInProgress {
+			allCompleted = false
 			break
 		}
 	}
-	o.updateStatus()
-}
 
-// ID devuelve el identificador de la Orden.
-func (o *Order) ID() vos.OrderID {
-	return o.id
-}
-
-// Status devuelve el estado actual de la Orden.
-func (o *Order) Status() vos.OrderStatus {
-	return o.status
-}
-
-// RehydrateOrder reconstruye un agregado Order desde un estado persistido.
-func RehydrateOrder(id vos.OrderID, status vos.OrderStatus, targetEnv deploymentvos.Environment, steps []*entities.StepExecution, varMap map[string]vos.Variable) *Order {
-	return &Order{
-		id:                id,
-		status:            status,
-		targetEnvironment: targetEnv,
-		stepExecutions:    steps,
-		variableMap:       varMap,
+	if hasFailed {
+		o.status = orchVos.OrderStatusFailed
+	} else if allCompleted {
+		o.status = orchVos.OrderStatusSuccessful
+	} else {
+		o.status = orchVos.OrderStatusInProgress
 	}
 }
 
-// TargetEnvironment devuelve el ambiente objetivo de la orden.
-func (o *Order) TargetEnvironment() deploymentvos.Environment {
-	return o.targetEnvironment
+func (o *Order) ID() orchVos.OrderID {
+	return o.id
 }
 
-// StepExecutions devuelve las ejecuciones de paso de la orden.
-func (o *Order) StepExecutions() []*entities.StepExecution {
-	return o.stepExecutions
+func (o *Order) Status() orchVos.OrderStatus {
+	return o.status
 }
 
-// VariableMap devuelve el mapa de variables compartido de la orden.
-func (o *Order) VariableMap() map[string]vos.Variable {
-	return o.variableMap
+func (o *Order) Environment() string {
+	return o.environment
 }
 
-func (o *Order) AddVariable(key, value string) {
-	variable, _ := vos.NewVariable(key, value)
-	o.variableMap[variable.Key()] = variable
+func (o *Order) StepsRecord() []*orchEnt.StepRecord {
+	return o.steps
+}
+
+func (o *Order) Outputs() map[string]orchVos.Output {
+	return o.outputsShared
+}
+
+func (o *Order) AddOutput(key, value string) {
+	variable, _ := orchVos.NewOutputFromNameAndValue(key, value)
+	o.outputsShared[variable.Name()] = variable
+}
+
+func (o *Order) AddOutputsMap(mapVariables map[string]string) {
+	for key, value := range mapVariables {
+		o.AddOutput(key, value)
+	}
+}
+
+func (o *Order) RemoveOutput(key string) {
+	delete(o.outputsShared, key)
+}
+
+func (o *Order) GetOutputMap() map[string]string {
+	varsMap := make(map[string]string)
+	for _, value := range o.outputsShared {
+		varsMap[value.Name()] = value.Value()
+	}
+	return varsMap
 }

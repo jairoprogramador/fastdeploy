@@ -42,7 +42,7 @@ func TestNewOutputProbe(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.testName, func(t *testing.T) {
-			probe, err := NewOutputProbe(tc.name, tc.description, tc.probe)
+			probe, err := NewOutput(tc.name, tc.probe)
 
 			if tc.expectError {
 				if err == nil {
@@ -54,9 +54,6 @@ func TestNewOutputProbe(t *testing.T) {
 				}
 				if probe.Name() != tc.name {
 					t.Errorf("Se esperaba el nombre '%s', pero se obtuvo '%s'", tc.name, probe.Name())
-				}
-				if probe.Description() != tc.description {
-					t.Errorf("Se esperaba la descripción '%s', pero se obtuvo '%s'", tc.description, probe.Description())
 				}
 				if probe.Probe() != tc.probe {
 					t.Errorf("Se esperaba la sonda '%s', pero se obtuvo '%s'", tc.probe, probe.Probe())

@@ -3,11 +3,11 @@ package ports
 import (
 	"context"
 
-	"github.com/jairoprogramador/fastdeploy/internal/domain/deployment/aggregates"
-	"github.com/jairoprogramador/fastdeploy/internal/domain/deployment/vos"
+	sharedVos "github.com/jairoprogramador/fastdeploy/internal/domain/shared/vos"
+
+	depAgg "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/aggregates"
 )
 
 type TemplateRepository interface {
-	GetTemplate(ctx context.Context, source vos.TemplateSource) (template *aggregates.DeploymentTemplate, repoLocalPath string, err error)
-	GetRepositoryName(repoURL string) (string, error)
+	Load(ctx context.Context, source sharedVos.TemplateSource) (template *depAgg.DeploymentTemplate, repositoryLocalPath string, err error)
 }
