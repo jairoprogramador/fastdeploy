@@ -47,7 +47,6 @@ func NewStepDefinition(
 			triggerNames[trigger.String()] = struct{}{}
 		}
 	} else {
-
 		triggersCommon := []depVos.Trigger{
 			depVos.TriggerFromString(shared.ScopeRecipe),
 			depVos.TriggerFromString(shared.ScopeCode),
@@ -61,7 +60,7 @@ func NewStepDefinition(
 			}
 		}
 
-		if name != shared.StepTest {
+		if name == shared.StepTest {
 			triggers = triggersCommon
 		}
 
@@ -111,10 +110,14 @@ func NewStepDefinition(
 	commandsCopy := make([]depVos.CommandDefinition, len(commands))
 	copy(commandsCopy, commands)
 
+	variablesCopy := make([]depVos.Variable, len(variables))
+	copy(variablesCopy, variables)
+
 	return StepDefinition{
 		name:     name,
 		triggers: triggersCopy,
 		commands: commandsCopy,
+		variables: variablesCopy,
 	}, nil
 }
 

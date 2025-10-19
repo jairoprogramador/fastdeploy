@@ -14,14 +14,19 @@ import (
 )
 
 type FileOrderRepository struct {
-	pathProjectRootFastDeploy string
+	myProjectPath string
 }
 
-func NewFileOrderRepository(pathProjectRootFastDeploy string) orcPor.OrderRepository {
-	return &FileOrderRepository{pathProjectRootFastDeploy: pathProjectRootFastDeploy}
+func NewFileOrderRepository(
+	rootProjectsPath string,
+	projectName string,
+	repositoryName string) orcPor.OrderRepository {
+
+	myProjectPath := filepath.Join(rootProjectsPath, projectName, repositoryName)
+	return &FileOrderRepository{myProjectPath: myProjectPath}
 }
 
-func (r *FileOrderRepository) Save(order *orcAgg.Order, nameProject string) error {
+func (r *FileOrderRepository) Save(order *orcAgg.Order) error {
 	orderDTO := iOrcMap.OrderToDTO(order)
 
 	data, err := yaml.Marshal(orderDTO)
@@ -29,7 +34,7 @@ func (r *FileOrderRepository) Save(order *orcAgg.Order, nameProject string) erro
 		return fmt.Errorf("error al serializar la orden a YAML: %w", err)
 	}
 
-	filePath := filepath.Join(r.pathProjectRootFastDeploy, nameProject, "state.yaml")
+	filePath := filepath.Join(r.myProjectPath, "state.yaml")
 	if err := os.MkdirAll(filepath.Dir(filePath), 0755); err != nil {
 		return fmt.Errorf("error al crear el directorio para el estado de la orden: %w", err)
 	}

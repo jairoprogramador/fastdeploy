@@ -23,14 +23,14 @@ import (
 )
 
 type ExecuteOrder struct {
-	orderRepo           orchPor.OrderRepository
-	varResolver         orchSer.TemplateResolver
-	fingerprintService  stateSer.FingerprintService
-	workspaceMgr        appPor.WorkspaceManager
-	cmdExecutor         appPor.CommandExecutor
-	variablesRepository statePor.VariablesRepository
-	stateRepository     statePor.ExecutionStateRepository
-	statePolicyService  stateSer.ExecutionPolicyService
+	orderRepo             orchPor.OrderRepository
+	varResolver           orchSer.TemplateResolver
+	fingerprintService    stateSer.FingerprintService
+	workspaceMgr          appPor.WorkspaceManager
+	cmdExecutor           appPor.CommandExecutor
+	variablesRepository   statePor.VariablesRepository
+	fingerprintRepository statePor.FingerprintRepository
+	statePolicyService    stateSer.FingerprintPolicyService
 }
 
 func NewExecuteOrder(
@@ -40,18 +40,18 @@ func NewExecuteOrder(
 	workspaceMgr appPor.WorkspaceManager,
 	cmdExecutor appPor.CommandExecutor,
 	variablesRepository statePor.VariablesRepository,
-	stateRepository statePor.ExecutionStateRepository,
-	statePolicyService stateSer.ExecutionPolicyService,
+	fingerprintRepository statePor.FingerprintRepository,
+	statePolicyService stateSer.FingerprintPolicyService,
 ) *ExecuteOrder {
 	return &ExecuteOrder{
-		orderRepo:           orderRepo,
-		varResolver:         varResolver,
-		fingerprintService:  fingerprintService,
-		workspaceMgr:        workspaceMgr,
-		cmdExecutor:         cmdExecutor,
-		variablesRepository: variablesRepository,
-		stateRepository:     stateRepository,
-		statePolicyService:  statePolicyService,
+		orderRepo:             orderRepo,
+		varResolver:           varResolver,
+		fingerprintService:    fingerprintService,
+		workspaceMgr:          workspaceMgr,
+		cmdExecutor:           cmdExecutor,
+		variablesRepository:   variablesRepository,
+		fingerprintRepository: fingerprintRepository,
+		statePolicyService:    statePolicyService,
 	}
 }
 
@@ -95,52 +95,32 @@ func (s *ExecuteOrder) Run(req appDto.OrderRequest) (*orchAgg.Order, error) {
 		if err != nil {
 			return order, err
 		}
-		varsMap := make(map[string]string)
-		for key, variable := range order.Outputs() {
-			varsMap[key] = variable.Value()
-		}
 
-		fingerprintCurrentVars, err := s.fingerprintService.GenerateFromStepVariables(varsMap)
-		if err != nil {
-			return order, err
-		}
-
-		fingerprintCurrentStep, err := s.fingerprintService.GenerateFromStepDefinition(req.TemplatePath, stepExec.Name())
-		if err != nil {
-			return order, err
-		}
-
-		stateLatest, err := s.stateRepository.FindByStepName(stepExec.Name())
+		fingerprintsStateStepCurrent, err := s.getFingerprintsStateStepCurrent(stepExec.Name(),
+			req.TemplatePath, fingerprintCurrentCode, order.GetOutputsMapForFingerprint())
 		if err != nil {
 			return nil, err
 		}
 
-		triggerCode := statevos.NewTrigger(int(statevos.ScopeCode))
-		triggerRecipe := statevos.NewTrigger(int(statevos.ScopeRecipe))
-		triggerVars := statevos.NewTrigger(int(statevos.ScopeVars))
-
-		fingerprints := map[statevos.Trigger]statevos.Fingerprint{
-			triggerCode:   fingerprintCurrentCode,
-			triggerRecipe: fingerprintCurrentStep,
-			triggerVars:   fingerprintCurrentVars,
+		fingerprintsStateStepLatest, err := s.getFingerprintsStateStepLatest(stepExec.Name())
+		if err != nil {
+			return nil, err
 		}
 
-		decision := s.statePolicyService.Decide(stateLatest, stepDef.TriggersInt(), fingerprints)
+		decision := s.statePolicyService.Decide(fingerprintsStateStepLatest, stepDef.TriggersInt(), fingerprintsStateStepCurrent)
 
 		if decision.ShouldExecute() {
-			stateCurrent := stateAgg.NewExecutionState(stepExec.Name())
-			stateCurrent.SetFingerprint(triggerCode, fingerprintCurrentCode)
-			stateCurrent.SetFingerprint(triggerRecipe, fingerprintCurrentStep)
-			stateCurrent.SetFingerprint(triggerVars, fingerprintCurrentVars)
+			fmt.Printf("--------------- EJECUTANDO STEP: %s ---------------\n", stepExec.Name())
+			fmt.Printf("------------- %s -------------\n", decision.Reason())
 
-			err = s.processStep(req, order, stepExec, stateCurrent)
+			err = s.processStep(req, order, stepExec, fingerprintsStateStepCurrent)
 			if err != nil {
 				return order, err
 			}
 		} else {
 			order.MarkStepAsCached(stepExec.Name())
 			fmt.Printf("---------------- OMITIENDO STEP: %s -----------------\n", stepExec.Name())
-			fmt.Println("-------------------------------------------------------")
+			fmt.Printf("------------- %s -------------\n", decision.Reason())
 			continue
 		}
 	}
@@ -149,9 +129,58 @@ func (s *ExecuteOrder) Run(req appDto.OrderRequest) (*orchAgg.Order, error) {
 		fmt.Println("❌ La ejecución de la orden ha fallado")
 	}
 	if order.Status() == orchVos.OrderStatusSuccessful {
+		fingerprintsStateCodeCurrent := stateAgg.NewFingerprintState(statevos.ScopeCode.String())
+		fingerprintsStateCodeCurrent.SetFingerprint(statevos.ScopeCode, fingerprintCurrentCode)
+
+		err = s.fingerprintRepository.SaveCode(fingerprintsStateCodeCurrent)
+		if err != nil {
+			return order, err
+		}
+
 		fmt.Println("🎉 Ejecución de la orden completada con éxito.")
 	}
 	return order, nil
+}
+
+func (s *ExecuteOrder) getFingerprintsStateStepCurrent(
+	stepName, templatePath string,
+	fingerprintCurrentCode statevos.Fingerprint,
+	varsMap map[string]string) (*stateAgg.FingerprintState, error) {
+
+	fingerprintCurrentVars, err := s.fingerprintService.GenerateFromStepVariables(varsMap)
+	if err != nil {
+		return &stateAgg.FingerprintState{}, err
+	}
+
+	fingerprintCurrentRecipe, err := s.fingerprintService.GenerateFromStepDefinition(templatePath, stepName)
+	if err != nil {
+		return &stateAgg.FingerprintState{}, err
+	}
+
+	fingerprintsStateStepCurrent := stateAgg.NewFingerprintState(stepName)
+	fingerprintsStateStepCurrent.SetFingerprint(statevos.ScopeCode, fingerprintCurrentCode)
+	fingerprintsStateStepCurrent.SetFingerprint(statevos.ScopeRecipe, fingerprintCurrentRecipe)
+	fingerprintsStateStepCurrent.SetFingerprint(statevos.ScopeVars, fingerprintCurrentVars)
+
+	return fingerprintsStateStepCurrent, nil
+}
+
+func (s *ExecuteOrder) getFingerprintsStateStepLatest(stepName string) (*stateAgg.FingerprintState, error) {
+
+	fingerprintsStateStepLatest, err := s.fingerprintRepository.FindStep(stepName)
+	if err != nil {
+		return nil, err
+	}
+	fingerprintsStateCodeLatest, err := s.fingerprintRepository.FindCode()
+	if err != nil {
+		return nil, err
+	}
+	fingerprintsCodeLatest, ok := fingerprintsStateCodeLatest.GetFingerprint(statevos.ScopeCode)
+	if ok {
+		fingerprintsStateStepLatest.SetFingerprint(statevos.ScopeCode, fingerprintsCodeLatest)
+	}
+
+	return fingerprintsStateStepLatest, nil
 }
 
 func (s *ExecuteOrder) processStepVariables(stepName string, stepDefinition depEnt.StepDefinition, order *orchAgg.Order) error {
@@ -166,7 +195,6 @@ func (s *ExecuteOrder) processStepVariables(stepName string, stepDefinition depE
 		if err != nil {
 			return err
 		}
-
 		order.AddOutput(stepVar.Name(), interpolatedVar)
 	}
 	return nil
@@ -176,7 +204,7 @@ func (s *ExecuteOrder) processStep(
 	req appDto.OrderRequest,
 	order *orchAgg.Order,
 	stepExec *orchEnt.StepRecord,
-	stateCurrent *stateAgg.ExecutionState) error {
+	stateCurrent *stateAgg.FingerprintState) error {
 
 	err := s.executeStep(req, order, stepExec)
 	if err != nil {
@@ -189,17 +217,17 @@ func (s *ExecuteOrder) processStep(
 	}
 
 	if stepExec.Status() == orchVos.StepStatusSuccessful {
-		err = s.variablesRepository.Save(stepExec.Name(), order.GetOutputMap())
+		err = s.variablesRepository.Save(stepExec.Name(), order.GetOutputsMapForSave())
 		if err != nil {
 			return err
 		}
 
-		err = s.stateRepository.Save(stateCurrent)
+		err = s.fingerprintRepository.SaveStep(stateCurrent)
 		if err != nil {
 			return err
 		}
 
-		if err := s.orderRepo.Save(order, req.ProjectDom.Project().Name()); err != nil {
+		if err := s.orderRepo.Save(order); err != nil {
 			return err
 		}
 
@@ -219,20 +247,15 @@ func (s *ExecuteOrder) executeStep(
 		return err
 	}
 
-	var_step_workdir := "step_workdir"
-	var_command_workdir := "command_workdir"
+	order.AddOutput(orchAgg.OutputStepWorkdirKey, workdirStep)
 
-	order.AddOutput(var_step_workdir, workdirStep)
-
-	fmt.Printf("--------------- EJECUTANDO STEP: %s ---------------\n", stepExec.Name())
-	fmt.Println("--------------------------------------------------------")
 	for _, cmdExec := range stepExec.Commands() {
 		fmt.Printf("-> Ejecutando comando: %s\n", cmdExec.Name())
 
 		workdirCmd := cmdExec.Workdir()
 		if workdirCmd != "" && workdirStep != "" {
 			workdirCmd = s.cmdExecutor.CreateWorkDir(workdirStep, workdirCmd)
-			order.AddOutput(var_command_workdir, workdirCmd)
+			order.AddOutput(orchAgg.OutputCommWorkdirKey, workdirCmd)
 		}
 
 		interpolatedCmd, err := s.varResolver.ResolveTemplate(cmdExec.Command(), order.Outputs())
@@ -254,15 +277,14 @@ func (s *ExecuteOrder) executeStep(
 			return err
 		}
 
-		order.RemoveOutput(var_command_workdir)
-
 		err = order.FinalizeCommand(stepExec.Name(), cmdExec.Name(), interpolatedCmd, log, exitCode, s.varResolver)
 		if err != nil {
 			return err
 		}
+		order.RemoveOutput(orchAgg.OutputCommWorkdirKey)
 	}
-	order.RemoveOutput(var_step_workdir)
 
+	order.RemoveOutput(orchAgg.OutputStepWorkdirKey)
 	return nil
 }
 

@@ -1,8 +1,8 @@
 package fastdeploy
 
 import (
-	"errors"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -39,9 +39,9 @@ var (
 	//commit  = "none"
 	//date    = "unknown"
 
-	repositoriesPath      string
-	projectsPath      string
-	statePath      string
+	repositoriesPath string
+	projectsPath     string
+	statePath        string
 
 	skipTest   bool
 	skipSupply bool
@@ -49,8 +49,7 @@ var (
 	skipPrompt bool
 )
 
-
-var rootCmd = &cobra.Command {
+var rootCmd = &cobra.Command{
 	Use:   "fd [paso] [ambiente]",
 	Short: "fastdeploy es una herramienta CLI para automatizar despliegues.",
 	Long:  `Una herramienta para orquestar despliegues de software a través de diferentes ambientes`,
@@ -118,7 +117,7 @@ func getFastdeployHome() string {
 func runOrder(_ *cobra.Command, args []string) {
 	ctx := context.Background()
 	finalStep := args[0]
-	environment := ""
+	environment := "sand"
 	if len(args) == 2 {
 		environment = args[1]
 	}
@@ -168,7 +167,7 @@ func runOrder(_ *cobra.Command, args []string) {
 	}
 	domModel.SetProjectRevision(revisionProject)
 
-	stateRepository, _ := iStaRep.NewStateRepository(
+	stateRepository, _ := iStaRep.NewFileFingerprintRepository(
 		statePath,
 		domModel.Project().Name(),
 		templateResponse.RepositoryName,
@@ -271,7 +270,7 @@ func validateOrder(
 func updateDom(
 	ctx context.Context,
 	domRepository domPor.DomRepository,
-	stateRepository staPor.ExecutionStateRepository,
+	stateRepository staPor.FingerprintRepository,
 	domModel *domAgg.DeploymentObjectModel) error {
 
 	idGenerator := iDom.NewShaGenerator()
@@ -281,7 +280,7 @@ func updateDom(
 }
 
 func createOrchestrationService(
-	stateRepository staPor.ExecutionStateRepository,
+	stateRepository staPor.FingerprintRepository,
 	executor appPor.CommandExecutor,
 	varsRepository staPor.VariablesRepository,
 	orderRequest appDto.OrderRequest,
@@ -295,7 +294,7 @@ func createOrchestrationService(
 		os.Exit(1)
 	}
 
-	statePolicyService := staSer.NewExecutionPolicyService()
+	statePolicyService := staSer.NewFingerprintPolicyService()
 
 	workspaceMgr, _ := iAppli.NewManager(
 		projectsPath,
@@ -304,7 +303,10 @@ func createOrchestrationService(
 		orderRequest.RepositoryName,
 		environment)
 
-	orderRepo := iOrche.NewFileOrderRepository(projectsPath)
+	orderRepo := iOrche.NewFileOrderRepository(
+		projectsPath,
+		orderRequest.ProjectDom.Project().Name(),
+		orderRequest.RepositoryName)
 
 	return applic.NewExecuteOrder(
 		orderRepo,

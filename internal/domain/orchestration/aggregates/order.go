@@ -13,7 +13,9 @@ import (
 )
 
 const (
-	OutputOrderIdName = "order_id"
+	OutputOrderIdKey = "order_id"
+	OutputStepWorkdirKey = "step_workdir"
+	OutputCommWorkdirKey = "comm_workdir"
 )
 
 type Order struct {
@@ -35,25 +37,25 @@ func NewOrder(
 
 	stepsRecords := getStepRecordFromTemplate(template.Steps(), skippedStepNames, finalStepName)
 
-	outputsShared := getOutputsInitial(initialOutputs, orderId)
+	outputsShared := getOutputsInitial(initialOutputs)
 
-	return &Order{
+	newOrder := &Order{
 		id:            orderId,
 		status:        orchVos.OrderStatusInProgress,
 		environment:   environment.Value(),
 		steps:         stepsRecords,
 		outputsShared: outputsShared,
-	}, nil
+	}
+
+	newOrder.AddOutput(OutputOrderIdKey, orderId.String())
+	return newOrder, nil
 }
 
-func getOutputsInitial(initialOutputs []orchVos.Output, orderId orchVos.OrderID) map[string]orchVos.Output {
+func getOutputsInitial(initialOutputs []orchVos.Output) map[string]orchVos.Output {
 	outputsShared := make(map[string]orchVos.Output)
 	for _, output := range initialOutputs {
 		outputsShared[output.Name()] = output
 	}
-	outputOrderId, _ := orchVos.NewOutputFromNameAndValue(OutputOrderIdName, orderId.String())
-	outputsShared[outputOrderId.Name()] = outputOrderId
-
 	return outputsShared
 }
 
@@ -169,8 +171,9 @@ func (o *Order) Outputs() map[string]orchVos.Output {
 }
 
 func (o *Order) AddOutput(key, value string) {
-	variable, _ := orchVos.NewOutputFromNameAndValue(key, value)
-	o.outputsShared[variable.Name()] = variable
+	if variable, err := orchVos.NewOutputFromNameAndValue(key, value); err == nil {
+		o.outputsShared[variable.Name()] = variable
+	}
 }
 
 func (o *Order) AddOutputsMap(mapVariables map[string]string) {
@@ -183,10 +186,22 @@ func (o *Order) RemoveOutput(key string) {
 	delete(o.outputsShared, key)
 }
 
-func (o *Order) GetOutputMap() map[string]string {
+func (o *Order) GetOutputsMapForSave() map[string]string {
 	varsMap := make(map[string]string)
 	for _, value := range o.outputsShared {
 		varsMap[value.Name()] = value.Value()
+	}
+	return varsMap
+}
+
+func (o *Order) GetOutputsMapForFingerprint() map[string]string {
+	varsMap := make(map[string]string)
+	for _, value := range o.outputsShared {
+		if value.Name() != OutputOrderIdKey &&
+		value.Name() != OutputStepWorkdirKey &&
+		value.Name() != OutputCommWorkdirKey {
+			varsMap[value.Name()] = value.Value()
+		}
 	}
 	return varsMap
 }

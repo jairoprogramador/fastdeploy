@@ -5,5 +5,5 @@ import (
 )
 
 type OrderRepository interface {
-	Save(order *aggregates.Order, nameProject string) error
+	Save(order *aggregates.Order) error
 }

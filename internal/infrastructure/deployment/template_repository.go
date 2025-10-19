@@ -23,20 +23,20 @@ import (
 )
 
 type TemplateRepository struct {
-	repositoriesLocalPath string
+	rootRepositoriesPath string
 	environment string
 	executor              appPor.CommandExecutor
 }
 
 func NewTemplateRepository(
-	reposBasePath string,
+	rootRepositoriesPath string,
 	environment string,
 	executor appPor.CommandExecutor) depPor.TemplateRepository {
 
 	return &TemplateRepository{
-		repositoriesLocalPath: reposBasePath,
+		rootRepositoriesPath: rootRepositoriesPath,
 		environment: environment,
-		executor:              executor,
+		executor: executor,
 	}
 }
 
@@ -55,7 +55,7 @@ func (r *TemplateRepository) Load(ctx context.Context, source sharedvos.Template
 }
 
 func (r *TemplateRepository) gitCloneRepository(ctx context.Context, source sharedvos.TemplateSource) (string, error) {
-	repositoryPath := filepath.Join(r.repositoriesLocalPath, source.NameTemplate())
+	repositoryPath := filepath.Join(r.rootRepositoriesPath, source.NameTemplate())
 
 	if err := os.MkdirAll(repositoryPath, 0755); err != nil {
 		return "", err
@@ -63,7 +63,7 @@ func (r *TemplateRepository) gitCloneRepository(ctx context.Context, source shar
 
 	if _, err := os.Stat(filepath.Join(repositoryPath, ".git")); os.IsNotExist(err) {
 		cloneCmd := fmt.Sprintf("git clone %s %s", source.Url(), repositoryPath)
-		_, _, err := r.executor.Execute(ctx, r.repositoriesLocalPath, cloneCmd)
+		_, _, err := r.executor.Execute(ctx, r.rootRepositoriesPath, cloneCmd)
 		if err != nil {
 			return "", fmt.Errorf("error al clonar el repositorio '%s': %w", source.Url(), err)
 		}

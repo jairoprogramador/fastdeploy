@@ -16,14 +16,14 @@ import (
 
 type UpdateDOMService struct {
 	domRepository   domPor.DomRepository
-	stateRepository staPor.ExecutionStateRepository
+	stateRepository staPor.FingerprintRepository
 	idGenerator     domSer.ShaGenerator
 	userInput       appPor.UserInputProvider
 }
 
 func NewUpdateDOMService(
 	domRepository domPor.DomRepository,
-	stateRepository staPor.ExecutionStateRepository,
+	stateRepository staPor.FingerprintRepository,
 	idGenerator domSer.ShaGenerator,
 	userInput appPor.UserInputProvider) *UpdateDOMService {
 	return &UpdateDOMService{
@@ -43,7 +43,7 @@ func (s *UpdateDOMService) Update(
 		if err != nil {
 			return err
 		}
-		executionState, err := s.stateRepository.FindByStepName("supply")
+		executionState, err := s.stateRepository.FindStep("supply")
 		if err != nil {
 			return err
 		}

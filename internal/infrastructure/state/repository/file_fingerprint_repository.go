@@ -10,21 +10,22 @@ import (
 	staAgg "github.com/jairoprogramador/fastdeploy/internal/domain/state/aggregates"
 	staPor "github.com/jairoprogramador/fastdeploy/internal/domain/state/ports"
 	staVos "github.com/jairoprogramador/fastdeploy/internal/domain/state/vos"
+	shared "github.com/jairoprogramador/fastdeploy/internal/domain/shared"
 
 	iStaDto "github.com/jairoprogramador/fastdeploy/internal/infrastructure/state/dto"
 	iStaMap "github.com/jairoprogramador/fastdeploy/internal/infrastructure/state/mapper"
 )
 
-type StateRepository struct {
+type FileFingerprintRepository struct {
 	pathStateEnvironment string
 	pathStateProject     string
 }
 
-func NewStateRepository(
+func NewFileFingerprintRepository(
 	pathStateRootFastDeploy string,
 	projectName string,
 	repositoryName string,
-	environment string) (staPor.ExecutionStateRepository, error) {
+	environment string) (staPor.FingerprintRepository, error) {
 
 	if pathStateRootFastDeploy == "" {
 		return nil, fmt.Errorf("path state root is required")
@@ -41,19 +42,27 @@ func NewStateRepository(
 
 	pathStateEnvironment := filepath.Join(pathStateRootFastDeploy, projectName, repositoryName, environment)
 	pathStateProject := filepath.Join(pathStateRootFastDeploy, projectName, repositoryName)
-	return &StateRepository{
+	return &FileFingerprintRepository{
 		pathStateEnvironment: pathStateEnvironment,
 		pathStateProject:     pathStateProject,
 	}, nil
 }
 
-func (r *StateRepository) FindByStepName(stepName string) (*staAgg.ExecutionState, error) {
-
+func (r *FileFingerprintRepository) FindCode() (*staAgg.FingerprintState, error) {
 	fingerprintCode, err := r.findCode()
 	if err != nil {
 		return nil, err
 	}
 
+	dto := iStaDto.StateFingerprintDTO{
+		StepName: shared.ScopeCode,
+		Fingerprints: map[int]string{int(staVos.ScopeCode): fingerprintCode},
+	}
+
+	return iStaMap.ToDomain(dto), nil
+}
+
+func (r *FileFingerprintRepository) FindStep(stepName string) (*staAgg.FingerprintState, error) {
 	fingerprintRecipe, err := r.findRecipe(stepName)
 	if err != nil {
 		return nil, err
@@ -67,7 +76,6 @@ func (r *StateRepository) FindByStepName(stepName string) (*staAgg.ExecutionStat
 	dto := iStaDto.StateFingerprintDTO{
 		StepName: stepName,
 		Fingerprints: map[int]string{
-			int(staVos.ScopeCode):   fingerprintCode,
 			int(staVos.ScopeRecipe): fingerprintRecipe,
 			int(staVos.ScopeVars):   fingerprintVars,
 		},
@@ -76,20 +84,15 @@ func (r *StateRepository) FindByStepName(stepName string) (*staAgg.ExecutionStat
 	return iStaMap.ToDomain(dto), nil
 }
 
-func (r *StateRepository) Save(state *staAgg.ExecutionState) error {
-	stateDTO := iStaMap.ToDTO(state)
+func (r *FileFingerprintRepository) SaveStep(fingerprints *staAgg.FingerprintState) error {
+	fingerprintDTO := iStaMap.ToDTO(fingerprints)
 
-	err := r.saveCode(stateDTO.Fingerprints)
+	err := r.saveRecipe(fingerprintDTO.StepName, fingerprintDTO.Fingerprints)
 	if err != nil {
 		return err
 	}
 
-	err = r.saveRecipe(stateDTO.StepName, stateDTO.Fingerprints)
-	if err != nil {
-		return err
-	}
-
-	err = r.saveVars(stateDTO.StepName, stateDTO.Fingerprints)
+	err = r.saveVars(fingerprintDTO.StepName, fingerprintDTO.Fingerprints)
 	if err != nil {
 		return err
 	}
@@ -97,37 +100,38 @@ func (r *StateRepository) Save(state *staAgg.ExecutionState) error {
 	return nil
 }
 
-func (r *StateRepository) saveCode(fingerprints map[int]string) error {
+func (r *FileFingerprintRepository) SaveCode(fingerprints *staAgg.FingerprintState) error {
+	fingerprintDTO := iStaMap.ToDTO(fingerprints)
 	codeFilePath := r.getPathFileStateCode()
-	return r.saveState(codeFilePath, int(staVos.ScopeCode), fingerprints)
+	return r.saveState(codeFilePath, int(staVos.ScopeCode), fingerprintDTO.Fingerprints)
 }
 
-func (r *StateRepository) saveRecipe(stepName string, fingerprints map[int]string) error {
+func (r *FileFingerprintRepository) saveRecipe(stepName string, fingerprints map[int]string) error {
 	recipeFilePath := r.getPathFileStateRecipe(stepName)
 	return r.saveState(recipeFilePath, int(staVos.ScopeRecipe), fingerprints)
 }
 
-func (r *StateRepository) saveVars(stepName string, fingerprints map[int]string) error {
+func (r *FileFingerprintRepository) saveVars(stepName string, fingerprints map[int]string) error {
 	varsFilePath := r.getPathFileStateVars(stepName)
 	return r.saveState(varsFilePath, int(staVos.ScopeVars), fingerprints)
 }
 
-func (r *StateRepository) findCode() (string, error) {
+func (r *FileFingerprintRepository) findCode() (string, error) {
 	codeFilePath := r.getPathFileStateCode()
 	return r.findState(codeFilePath)
 }
 
-func (r *StateRepository) findRecipe(stepName string) (string, error) {
+func (r *FileFingerprintRepository) findRecipe(stepName string) (string, error) {
 	recipeFilePath := r.getPathFileStateRecipe(stepName)
 	return r.findState(recipeFilePath)
 }
 
-func (r *StateRepository) findVars(stepName string) (string, error) {
+func (r *FileFingerprintRepository) findVars(stepName string) (string, error) {
 	varsFilePath := r.getPathFileStateVars(stepName)
 	return r.findState(varsFilePath)
 }
 
-func (r *StateRepository) saveState(filePath string, scope int, fingerprints map[int]string) error {
+func (r *FileFingerprintRepository) saveState(filePath string, scope int, fingerprints map[int]string) error {
 	fingerprint, ok := fingerprints[scope]
 
 	if !ok {
@@ -137,17 +141,17 @@ func (r *StateRepository) saveState(filePath string, scope int, fingerprints map
 	var buffer bytes.Buffer
 	encoder := gob.NewEncoder(&buffer)
 	if err := encoder.Encode(fingerprint); err != nil {
-		return fmt.Errorf("error al serializar el estado de %s a formato gob: %w", scope, err)
+		return fmt.Errorf("error al serializar el estado de %d a formato gob: %w", scope, err)
 	}
 
 	if err := os.MkdirAll(filepath.Dir(filePath), 0755); err != nil {
-		return fmt.Errorf("no se pudo crear el directorio base para el estado de %s: %w", scope, err)
+		return fmt.Errorf("no se pudo crear el directorio base para el estado de %d: %w", scope, err)
 	}
 
 	return os.WriteFile(filePath, buffer.Bytes(), 0644)
 }
 
-func (r *StateRepository) findState(filePath string) (string, error) {
+func (r *FileFingerprintRepository) findState(filePath string) (string, error) {
 	dataFile, err := os.ReadFile(filePath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -166,14 +170,14 @@ func (r *StateRepository) findState(filePath string) (string, error) {
 	return fingerprint, nil
 }
 
-func (r *StateRepository) getPathFileStateVars(stepName string) string {
+func (r *FileFingerprintRepository) getPathFileStateVars(stepName string) string {
 	return filepath.Join(r.pathStateEnvironment, fmt.Sprintf("%s.gob", stepName))
 }
 
-func (r *StateRepository) getPathFileStateCode() string {
+func (r *FileFingerprintRepository) getPathFileStateCode() string {
 	return filepath.Join(r.pathStateProject, "code.gob")
 }
 
-func (r *StateRepository) getPathFileStateRecipe(stepName string) string {
+func (r *FileFingerprintRepository) getPathFileStateRecipe(stepName string) string {
 	return filepath.Join(r.pathStateProject, fmt.Sprintf("%s.gob", stepName))
 }
