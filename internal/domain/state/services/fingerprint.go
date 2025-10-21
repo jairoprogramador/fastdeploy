@@ -1,7 +1,7 @@
 package services
 
 import (
-	"github.com/jairoprogramador/fastdeploy/internal/domain/state/vos"
+	"github.com/jairoprogramador/fastdeploy-core/internal/domain/state/vos"
 )
 
 type FingerprintService interface {

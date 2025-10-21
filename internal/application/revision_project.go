@@ -4,7 +4,7 @@ import (
 	"errors"
 	"context"
 
-	appPor "github.com/jairoprogramador/fastdeploy/internal/application/ports"
+	appPor "github.com/jairoprogramador/fastdeploy-core/internal/application/ports"
 )
 
 type RevisionProjectService struct {

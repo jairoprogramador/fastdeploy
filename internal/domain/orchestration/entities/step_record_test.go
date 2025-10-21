@@ -3,9 +3,9 @@ package entities
 import (
 	"testing"
 
-	depEnt "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/entities"
-	depVos "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/vos"
-	"github.com/jairoprogramador/fastdeploy/internal/domain/orchestration/vos"
+	depEnt "github.com/jairoprogramador/fastdeploy-core/internal/domain/deployment/entities"
+	depVos "github.com/jairoprogramador/fastdeploy-core/internal/domain/deployment/vos"
+	"github.com/jairoprogramador/fastdeploy-core/internal/domain/orchestration/vos"
 	"github.com/stretchr/testify/assert"
 )
 

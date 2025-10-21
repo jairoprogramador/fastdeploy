@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	deploymentvos "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/vos"
-	"github.com/jairoprogramador/fastdeploy/internal/domain/orchestration/vos"
+	deploymentvos "github.com/jairoprogramador/fastdeploy-core/internal/domain/deployment/vos"
+	"github.com/jairoprogramador/fastdeploy-core/internal/domain/orchestration/vos"
 )
 
 const CMD_NAME = "test-cmd"

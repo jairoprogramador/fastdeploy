@@ -4,14 +4,14 @@ import (
 	"context"
 	"fmt"
 
-	appPor "github.com/jairoprogramador/fastdeploy/internal/application/ports"
+	appPor "github.com/jairoprogramador/fastdeploy-core/internal/application/ports"
 
-	domAgg "github.com/jairoprogramador/fastdeploy/internal/domain/dom/aggregates"
-	domPor "github.com/jairoprogramador/fastdeploy/internal/domain/dom/ports"
-	domSer "github.com/jairoprogramador/fastdeploy/internal/domain/dom/services"
+	domAgg "github.com/jairoprogramador/fastdeploy-core/internal/domain/dom/aggregates"
+	domPor "github.com/jairoprogramador/fastdeploy-core/internal/domain/dom/ports"
+	domSer "github.com/jairoprogramador/fastdeploy-core/internal/domain/dom/services"
 
-	staPor "github.com/jairoprogramador/fastdeploy/internal/domain/state/ports"
-	staVos "github.com/jairoprogramador/fastdeploy/internal/domain/state/vos"
+	staPor "github.com/jairoprogramador/fastdeploy-core/internal/domain/state/ports"
+	staVos "github.com/jairoprogramador/fastdeploy-core/internal/domain/state/vos"
 )
 
 type UpdateDOMService struct {

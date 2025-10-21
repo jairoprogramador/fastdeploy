@@ -3,13 +3,13 @@ package aggregates
 import (
 	"fmt"
 
-	depAgg "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/aggregates"
-	depEnt "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/entities"
-	depVos "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/vos"
+	depAgg "github.com/jairoprogramador/fastdeploy-core/internal/domain/deployment/aggregates"
+	depEnt "github.com/jairoprogramador/fastdeploy-core/internal/domain/deployment/entities"
+	depVos "github.com/jairoprogramador/fastdeploy-core/internal/domain/deployment/vos"
 
-	orchEnt "github.com/jairoprogramador/fastdeploy/internal/domain/orchestration/entities"
-	orchSer "github.com/jairoprogramador/fastdeploy/internal/domain/orchestration/services"
-	orchVos "github.com/jairoprogramador/fastdeploy/internal/domain/orchestration/vos"
+	orchEnt "github.com/jairoprogramador/fastdeploy-core/internal/domain/orchestration/entities"
+	orchSer "github.com/jairoprogramador/fastdeploy-core/internal/domain/orchestration/services"
+	orchVos "github.com/jairoprogramador/fastdeploy-core/internal/domain/orchestration/vos"
 )
 
 const (

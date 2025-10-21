@@ -1,8 +1,8 @@
 package mapper
 
 import (
-	"github.com/jairoprogramador/fastdeploy/internal/domain/orchestration/aggregates"
-	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/orchestration/dto"
+	"github.com/jairoprogramador/fastdeploy-core/internal/domain/orchestration/aggregates"
+	"github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/orchestration/dto"
 )
 
 func OrderToDTO(order *aggregates.Order) dto.OrderDTO {

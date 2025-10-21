@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/AlecAivazis/survey/v2"
-	"github.com/jairoprogramador/fastdeploy/internal/application/ports"
+	"github.com/jairoprogramador/fastdeploy-core/internal/application/ports"
 )
 
 type UserInputProvider struct{}

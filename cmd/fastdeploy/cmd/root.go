@@ -1,4 +1,4 @@
-package fastdeploy
+package cmd
 
 import (
 	"context"
@@ -10,28 +10,28 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	applic "github.com/jairoprogramador/fastdeploy/internal/application"
-	appDto "github.com/jairoprogramador/fastdeploy/internal/application/dto"
-	appPor "github.com/jairoprogramador/fastdeploy/internal/application/ports"
-	iAppli "github.com/jairoprogramador/fastdeploy/internal/infrastructure/application"
+	applic "github.com/jairoprogramador/fastdeploy-core/internal/application"
+	appDto "github.com/jairoprogramador/fastdeploy-core/internal/application/dto"
+	appPor "github.com/jairoprogramador/fastdeploy-core/internal/application/ports"
+	iAppli "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/application"
 
-	domAgg "github.com/jairoprogramador/fastdeploy/internal/domain/dom/aggregates"
-	domPor "github.com/jairoprogramador/fastdeploy/internal/domain/dom/ports"
-	iDom "github.com/jairoprogramador/fastdeploy/internal/infrastructure/dom"
+	domAgg "github.com/jairoprogramador/fastdeploy-core/internal/domain/dom/aggregates"
+	domPor "github.com/jairoprogramador/fastdeploy-core/internal/domain/dom/ports"
+	iDom "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/dom"
 
-	staPor "github.com/jairoprogramador/fastdeploy/internal/domain/state/ports"
-	staSer "github.com/jairoprogramador/fastdeploy/internal/domain/state/services"
+	staPor "github.com/jairoprogramador/fastdeploy-core/internal/domain/state/ports"
+	staSer "github.com/jairoprogramador/fastdeploy-core/internal/domain/state/services"
 
-	iStaRep "github.com/jairoprogramador/fastdeploy/internal/infrastructure/state/repository"
-	iStaSer "github.com/jairoprogramador/fastdeploy/internal/infrastructure/state/services"
+	iStaRep "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/state/repository"
+	iStaSer "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/state/services"
 
-	depAgg "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/aggregates"
-	iDeplo "github.com/jairoprogramador/fastdeploy/internal/infrastructure/deployment"
+	depAgg "github.com/jairoprogramador/fastdeploy-core/internal/domain/deployment/aggregates"
+	iDeplo "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/deployment"
 
-	orcVos "github.com/jairoprogramador/fastdeploy/internal/domain/orchestration/vos"
-	iOrche "github.com/jairoprogramador/fastdeploy/internal/infrastructure/orchestration"
+	orcVos "github.com/jairoprogramador/fastdeploy-core/internal/domain/orchestration/vos"
+	iOrche "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/orchestration"
 
-	shaVos "github.com/jairoprogramador/fastdeploy/internal/domain/shared/vos"
+	shaVos "github.com/jairoprogramador/fastdeploy-core/internal/domain/shared/vos"
 )
 
 var (

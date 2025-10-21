@@ -3,9 +3,9 @@ package application
 import (
 	"context"
 
-	appDto "github.com/jairoprogramador/fastdeploy/internal/application/dto"
-	depPor "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/ports"
-	shaVos "github.com/jairoprogramador/fastdeploy/internal/domain/shared/vos"
+	appDto "github.com/jairoprogramador/fastdeploy-core/internal/application/dto"
+	depPor "github.com/jairoprogramador/fastdeploy-core/internal/domain/deployment/ports"
+	shaVos "github.com/jairoprogramador/fastdeploy-core/internal/domain/shared/vos"
 )
 
 type LoadTemplateService struct {

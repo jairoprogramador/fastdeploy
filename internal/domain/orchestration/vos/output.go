@@ -3,7 +3,7 @@ package vos
 import (
 	"errors"
 
-	"github.com/jairoprogramador/fastdeploy/internal/domain/deployment/vos"
+	"github.com/jairoprogramador/fastdeploy-core/internal/domain/deployment/vos"
 )
 
 type Output struct {

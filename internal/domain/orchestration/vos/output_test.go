@@ -1,7 +1,7 @@
 package vos
 
 import (
-	deploymentvos "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/vos"
+	deploymentvos "github.com/jairoprogramador/fastdeploy-core/internal/domain/deployment/vos"
 	"testing"
 )
 

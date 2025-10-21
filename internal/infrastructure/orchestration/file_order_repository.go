@@ -7,10 +7,10 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	orcAgg "github.com/jairoprogramador/fastdeploy/internal/domain/orchestration/aggregates"
-	orcPor "github.com/jairoprogramador/fastdeploy/internal/domain/orchestration/ports"
+	orcAgg "github.com/jairoprogramador/fastdeploy-core/internal/domain/orchestration/aggregates"
+	orcPor "github.com/jairoprogramador/fastdeploy-core/internal/domain/orchestration/ports"
 
-	iOrcMap "github.com/jairoprogramador/fastdeploy/internal/infrastructure/orchestration/mapper"
+	iOrcMap "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/orchestration/mapper"
 )
 
 type FileOrderRepository struct {

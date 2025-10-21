@@ -1,8 +1,8 @@
 package mapper
 
 import (
-	"github.com/jairoprogramador/fastdeploy/internal/domain/deployment/vos"
-	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/deployment/dto"
+	"github.com/jairoprogramador/fastdeploy-core/internal/domain/deployment/vos"
+	"github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/deployment/dto"
 )
 
 func OutputsToDomain(dto []dto.OutputProbeDTO) ([]vos.Output, error) {

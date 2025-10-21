@@ -9,17 +9,17 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	appPor "github.com/jairoprogramador/fastdeploy/internal/application/ports"
+	appPor "github.com/jairoprogramador/fastdeploy-core/internal/application/ports"
 
-	sharedvos "github.com/jairoprogramador/fastdeploy/internal/domain/shared/vos"
+	sharedvos "github.com/jairoprogramador/fastdeploy-core/internal/domain/shared/vos"
 
-	depAgg "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/aggregates"
-	depEnt "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/entities"
-	depPor "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/ports"
-	depVos "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/vos"
+	depAgg "github.com/jairoprogramador/fastdeploy-core/internal/domain/deployment/aggregates"
+	depEnt "github.com/jairoprogramador/fastdeploy-core/internal/domain/deployment/entities"
+	depPor "github.com/jairoprogramador/fastdeploy-core/internal/domain/deployment/ports"
+	depVos "github.com/jairoprogramador/fastdeploy-core/internal/domain/deployment/vos"
 
-	iDepDto "github.com/jairoprogramador/fastdeploy/internal/infrastructure/deployment/dto"
-	iDepMap "github.com/jairoprogramador/fastdeploy/internal/infrastructure/deployment/mapper"
+	iDepDto "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/deployment/dto"
+	iDepMap "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/deployment/mapper"
 )
 
 type TemplateRepository struct {

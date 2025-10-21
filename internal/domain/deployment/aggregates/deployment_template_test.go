@@ -3,9 +3,9 @@ package aggregates
 import (
 	"testing"
 
-	"github.com/jairoprogramador/fastdeploy/internal/domain/deployment/entities"
-	deploymentvos "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/vos"
-	sharedvos "github.com/jairoprogramador/fastdeploy/internal/domain/shared/vos"
+	"github.com/jairoprogramador/fastdeploy-core/internal/domain/deployment/entities"
+	deploymentvos "github.com/jairoprogramador/fastdeploy-core/internal/domain/deployment/vos"
+	sharedvos "github.com/jairoprogramador/fastdeploy-core/internal/domain/shared/vos"
 )
 
 const ENV_STAGING = "staging"

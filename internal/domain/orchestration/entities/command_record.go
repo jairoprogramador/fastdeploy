@@ -3,10 +3,10 @@ package entities
 import (
 	"errors"
 
-	depVos "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/vos"
+	depVos "github.com/jairoprogramador/fastdeploy-core/internal/domain/deployment/vos"
 
-	orchSer "github.com/jairoprogramador/fastdeploy/internal/domain/orchestration/services"
-	orchVos "github.com/jairoprogramador/fastdeploy/internal/domain/orchestration/vos"
+	orchSer "github.com/jairoprogramador/fastdeploy-core/internal/domain/orchestration/services"
+	orchVos "github.com/jairoprogramador/fastdeploy-core/internal/domain/orchestration/vos"
 )
 
 type CommandRecord struct {

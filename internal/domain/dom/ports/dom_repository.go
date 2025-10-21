@@ -1,7 +1,7 @@
 package ports
 
 import (
-	"github.com/jairoprogramador/fastdeploy/internal/domain/dom/aggregates"
+	"github.com/jairoprogramador/fastdeploy-core/internal/domain/dom/aggregates"
 )
 
 type DomRepository interface {

@@ -3,7 +3,7 @@ package entities
 import (
 	"github.com/stretchr/testify/mock"
 
-	"github.com/jairoprogramador/fastdeploy/internal/domain/orchestration/vos"
+	"github.com/jairoprogramador/fastdeploy-core/internal/domain/orchestration/vos"
 )
 
 type MockResolver struct {

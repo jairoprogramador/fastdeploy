@@ -1,10 +1,10 @@
 package mapper
 
 import (
-	staAgg "github.com/jairoprogramador/fastdeploy/internal/domain/state/aggregates"
-	staVos "github.com/jairoprogramador/fastdeploy/internal/domain/state/vos"
+	staAgg "github.com/jairoprogramador/fastdeploy-core/internal/domain/state/aggregates"
+	staVos "github.com/jairoprogramador/fastdeploy-core/internal/domain/state/vos"
 
-	staDto "github.com/jairoprogramador/fastdeploy/internal/infrastructure/state/dto"
+	staDto "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/state/dto"
 )
 
 func ToDTO(state *staAgg.FingerprintState) staDto.StateFingerprintDTO {

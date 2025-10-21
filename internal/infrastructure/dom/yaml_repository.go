@@ -7,11 +7,11 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	domAgg "github.com/jairoprogramador/fastdeploy/internal/domain/dom/aggregates"
-	domPor "github.com/jairoprogramador/fastdeploy/internal/domain/dom/ports"
+	domAgg "github.com/jairoprogramador/fastdeploy-core/internal/domain/dom/aggregates"
+	domPor "github.com/jairoprogramador/fastdeploy-core/internal/domain/dom/ports"
 
-	iDomDto "github.com/jairoprogramador/fastdeploy/internal/infrastructure/dom/dto"
-	iDomMap "github.com/jairoprogramador/fastdeploy/internal/infrastructure/dom/mapper"
+	iDomDto "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/dom/dto"
+	iDomMap "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/dom/mapper"
 )
 
 type DomYAMLRepository struct {

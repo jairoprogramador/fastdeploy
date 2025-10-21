@@ -4,10 +4,10 @@ import (
 	"errors"
 	"fmt"
 
-	sharedVos "github.com/jairoprogramador/fastdeploy/internal/domain/shared/vos"
+	sharedVos "github.com/jairoprogramador/fastdeploy-core/internal/domain/shared/vos"
 
-	depEnt "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/entities"
-	depVos "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/vos"
+	depEnt "github.com/jairoprogramador/fastdeploy-core/internal/domain/deployment/entities"
+	depVos "github.com/jairoprogramador/fastdeploy-core/internal/domain/deployment/vos"
 )
 
 type DeploymentTemplate struct {

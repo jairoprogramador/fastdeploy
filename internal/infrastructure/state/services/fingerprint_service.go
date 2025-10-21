@@ -9,8 +9,8 @@ import (
 	"regexp"
 	"sort"
 
-	staSer "github.com/jairoprogramador/fastdeploy/internal/domain/state/services"
-	staVos "github.com/jairoprogramador/fastdeploy/internal/domain/state/vos"
+	staSer "github.com/jairoprogramador/fastdeploy-core/internal/domain/state/services"
+	staVos "github.com/jairoprogramador/fastdeploy-core/internal/domain/state/vos"
 
 	gitignore "github.com/sabhiram/go-gitignore"
 )

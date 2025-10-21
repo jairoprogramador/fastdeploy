@@ -3,15 +3,15 @@ package application
 import (
 	"fmt"
 
-	appDto "github.com/jairoprogramador/fastdeploy/internal/application/dto"
-	appPor "github.com/jairoprogramador/fastdeploy/internal/application/ports"
+	appDto "github.com/jairoprogramador/fastdeploy-core/internal/application/dto"
+	appPor "github.com/jairoprogramador/fastdeploy-core/internal/application/ports"
 
-	domAgg "github.com/jairoprogramador/fastdeploy/internal/domain/dom/aggregates"
-	domPor "github.com/jairoprogramador/fastdeploy/internal/domain/dom/ports"
-	domSer "github.com/jairoprogramador/fastdeploy/internal/domain/dom/services"
-	domVos "github.com/jairoprogramador/fastdeploy/internal/domain/dom/vos"
+	domAgg "github.com/jairoprogramador/fastdeploy-core/internal/domain/dom/aggregates"
+	domPor "github.com/jairoprogramador/fastdeploy-core/internal/domain/dom/ports"
+	domSer "github.com/jairoprogramador/fastdeploy-core/internal/domain/dom/services"
+	domVos "github.com/jairoprogramador/fastdeploy-core/internal/domain/dom/vos"
 
-	shaVos "github.com/jairoprogramador/fastdeploy/internal/domain/shared/vos"
+	shaVos "github.com/jairoprogramador/fastdeploy-core/internal/domain/shared/vos"
 )
 
 type InitService struct {

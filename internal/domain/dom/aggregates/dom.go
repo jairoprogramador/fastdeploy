@@ -3,9 +3,9 @@ package aggregates
 import (
 	"fmt"
 
-	domSer "github.com/jairoprogramador/fastdeploy/internal/domain/dom/services"
-	domVos "github.com/jairoprogramador/fastdeploy/internal/domain/dom/vos"
-	sharedVos "github.com/jairoprogramador/fastdeploy/internal/domain/shared/vos"
+	domSer "github.com/jairoprogramador/fastdeploy-core/internal/domain/dom/services"
+	domVos "github.com/jairoprogramador/fastdeploy-core/internal/domain/dom/vos"
+	sharedVos "github.com/jairoprogramador/fastdeploy-core/internal/domain/shared/vos"
 )
 
 type DeploymentObjectModel struct {

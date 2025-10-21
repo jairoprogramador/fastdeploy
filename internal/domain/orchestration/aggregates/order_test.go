@@ -7,11 +7,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	deploymentaggregates "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/aggregates"
-	deploymententities "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/entities"
-	deploymentvos "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/vos"
-	orchestrationvos "github.com/jairoprogramador/fastdeploy/internal/domain/orchestration/vos"
-	sharedvos "github.com/jairoprogramador/fastdeploy/internal/domain/shared/vos"
+	deploymentaggregates "github.com/jairoprogramador/fastdeploy-core/internal/domain/deployment/aggregates"
+	deploymententities "github.com/jairoprogramador/fastdeploy-core/internal/domain/deployment/entities"
+	deploymentvos "github.com/jairoprogramador/fastdeploy-core/internal/domain/deployment/vos"
+	orchestrationvos "github.com/jairoprogramador/fastdeploy-core/internal/domain/orchestration/vos"
+	sharedvos "github.com/jairoprogramador/fastdeploy-core/internal/domain/shared/vos"
 )
 
 const ENV_STAGING_NAME = "staging"

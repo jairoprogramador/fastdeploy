@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"slices"
 
-	shared "github.com/jairoprogramador/fastdeploy/internal/domain/shared"
+	shared "github.com/jairoprogramador/fastdeploy-core/internal/domain/shared"
 
-	depVos "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/vos"
+	depVos "github.com/jairoprogramador/fastdeploy-core/internal/domain/deployment/vos"
 )
 
 type StepDefinition struct {

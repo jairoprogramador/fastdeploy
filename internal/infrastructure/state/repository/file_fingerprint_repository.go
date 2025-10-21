@@ -7,13 +7,13 @@ import (
 	"os"
 	"path/filepath"
 
-	staAgg "github.com/jairoprogramador/fastdeploy/internal/domain/state/aggregates"
-	staPor "github.com/jairoprogramador/fastdeploy/internal/domain/state/ports"
-	staVos "github.com/jairoprogramador/fastdeploy/internal/domain/state/vos"
-	shared "github.com/jairoprogramador/fastdeploy/internal/domain/shared"
+	staAgg "github.com/jairoprogramador/fastdeploy-core/internal/domain/state/aggregates"
+	staPor "github.com/jairoprogramador/fastdeploy-core/internal/domain/state/ports"
+	staVos "github.com/jairoprogramador/fastdeploy-core/internal/domain/state/vos"
+	shared "github.com/jairoprogramador/fastdeploy-core/internal/domain/shared"
 
-	iStaDto "github.com/jairoprogramador/fastdeploy/internal/infrastructure/state/dto"
-	iStaMap "github.com/jairoprogramador/fastdeploy/internal/infrastructure/state/mapper"
+	iStaDto "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/state/dto"
+	iStaMap "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/state/mapper"
 )
 
 type FileFingerprintRepository struct {

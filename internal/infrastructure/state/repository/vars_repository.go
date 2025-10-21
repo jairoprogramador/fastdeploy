@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/jairoprogramador/fastdeploy/internal/domain/state/ports"
+	"github.com/jairoprogramador/fastdeploy-core/internal/domain/state/ports"
 )
 
 type VarsRepository struct {

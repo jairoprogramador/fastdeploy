@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/jairoprogramador/fastdeploy/internal/domain/dom/services"
-	"github.com/jairoprogramador/fastdeploy/internal/domain/dom/vos"
+	"github.com/jairoprogramador/fastdeploy-core/internal/domain/dom/services"
+	"github.com/jairoprogramador/fastdeploy-core/internal/domain/dom/vos"
 )
 
 type ShaGenerator struct{}

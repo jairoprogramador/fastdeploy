@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"github.com/jairoprogramador/fastdeploy/internal/application/ports"
+	"github.com/jairoprogramador/fastdeploy-core/internal/application/ports"
 )
 
 type GitManager struct{

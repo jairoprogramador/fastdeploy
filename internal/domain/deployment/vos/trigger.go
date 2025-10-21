@@ -1,6 +1,6 @@
 package vos
 
-import "github.com/jairoprogramador/fastdeploy/internal/domain/shared"
+import "github.com/jairoprogramador/fastdeploy-core/internal/domain/shared"
 
 type Trigger int
 

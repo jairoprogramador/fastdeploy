@@ -1,4 +1,4 @@
-package fastdeploy
+package cmd
 
 import (
 	"context"
@@ -7,11 +7,11 @@ import (
 	"path/filepath"
 	"github.com/spf13/cobra"
 
-	applic "github.com/jairoprogramador/fastdeploy/internal/application"
-	appDto "github.com/jairoprogramador/fastdeploy/internal/application/dto"
-	iAppli "github.com/jairoprogramador/fastdeploy/internal/infrastructure/application"
+	applic "github.com/jairoprogramador/fastdeploy-core/internal/application"
+	appDto "github.com/jairoprogramador/fastdeploy-core/internal/application/dto"
+	iAppli "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/application"
 
-	iDom "github.com/jairoprogramador/fastdeploy/internal/infrastructure/dom"
+	iDom "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/dom"
 )
 
 var initCmd = &cobra.Command{

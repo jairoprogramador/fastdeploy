@@ -1,7 +1,7 @@
 package services
 
 import (
-	"github.com/jairoprogramador/fastdeploy/internal/domain/orchestration/vos"
+	"github.com/jairoprogramador/fastdeploy-core/internal/domain/orchestration/vos"
 )
 
 type TemplateResolver interface {

@@ -9,7 +9,7 @@ import (
 	"regexp"
 	"path/filepath"
 
-	"github.com/jairoprogramador/fastdeploy/internal/application/ports"
+	"github.com/jairoprogramador/fastdeploy-core/internal/application/ports"
 )
 
 var ansiRegex = regexp.MustCompile(`\x1b\[[0-9;]*[a-zA-Z]`)

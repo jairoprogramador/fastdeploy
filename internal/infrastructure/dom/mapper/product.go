@@ -1,8 +1,8 @@
 package mapper
 
 import (
-	"github.com/jairoprogramador/fastdeploy/internal/domain/dom/vos"
-	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/dom/dto"
+	"github.com/jairoprogramador/fastdeploy-core/internal/domain/dom/vos"
+	"github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/dom/dto"
 )
 
 func ProductToDomain(dto dto.ProductDTO) (vos.Product, error) {

@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/jairoprogramador/fastdeploy/internal/domain/deployment/vos"
+	"github.com/jairoprogramador/fastdeploy-core/internal/domain/deployment/vos"
 )
 
 func TestNewStepDefinition(t *testing.T) {

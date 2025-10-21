@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"github.com/jairoprogramador/fastdeploy/internal/application/ports"
+	"github.com/jairoprogramador/fastdeploy-core/internal/application/ports"
 )
 
 type Manager struct {

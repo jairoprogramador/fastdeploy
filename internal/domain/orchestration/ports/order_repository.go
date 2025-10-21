@@ -1,7 +1,7 @@
 package ports
 
 import (
-	"github.com/jairoprogramador/fastdeploy/internal/domain/orchestration/aggregates"
+	"github.com/jairoprogramador/fastdeploy-core/internal/domain/orchestration/aggregates"
 )
 
 type OrderRepository interface {

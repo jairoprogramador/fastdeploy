@@ -4,22 +4,22 @@ import (
 	"errors"
 	"fmt"
 
-	appDto "github.com/jairoprogramador/fastdeploy/internal/application/dto"
-	appPor "github.com/jairoprogramador/fastdeploy/internal/application/ports"
+	appDto "github.com/jairoprogramador/fastdeploy-core/internal/application/dto"
+	appPor "github.com/jairoprogramador/fastdeploy-core/internal/application/ports"
 
-	stateAgg "github.com/jairoprogramador/fastdeploy/internal/domain/state/aggregates"
-	statePor "github.com/jairoprogramador/fastdeploy/internal/domain/state/ports"
-	stateSer "github.com/jairoprogramador/fastdeploy/internal/domain/state/services"
-	statevos "github.com/jairoprogramador/fastdeploy/internal/domain/state/vos"
+	stateAgg "github.com/jairoprogramador/fastdeploy-core/internal/domain/state/aggregates"
+	statePor "github.com/jairoprogramador/fastdeploy-core/internal/domain/state/ports"
+	stateSer "github.com/jairoprogramador/fastdeploy-core/internal/domain/state/services"
+	statevos "github.com/jairoprogramador/fastdeploy-core/internal/domain/state/vos"
 
-	orchAgg "github.com/jairoprogramador/fastdeploy/internal/domain/orchestration/aggregates"
-	orchEnt "github.com/jairoprogramador/fastdeploy/internal/domain/orchestration/entities"
-	orchPor "github.com/jairoprogramador/fastdeploy/internal/domain/orchestration/ports"
-	orchSer "github.com/jairoprogramador/fastdeploy/internal/domain/orchestration/services"
-	orchVos "github.com/jairoprogramador/fastdeploy/internal/domain/orchestration/vos"
+	orchAgg "github.com/jairoprogramador/fastdeploy-core/internal/domain/orchestration/aggregates"
+	orchEnt "github.com/jairoprogramador/fastdeploy-core/internal/domain/orchestration/entities"
+	orchPor "github.com/jairoprogramador/fastdeploy-core/internal/domain/orchestration/ports"
+	orchSer "github.com/jairoprogramador/fastdeploy-core/internal/domain/orchestration/services"
+	orchVos "github.com/jairoprogramador/fastdeploy-core/internal/domain/orchestration/vos"
 
-	depEnt "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/entities"
-	domAgg "github.com/jairoprogramador/fastdeploy/internal/domain/dom/aggregates"
+	depEnt "github.com/jairoprogramador/fastdeploy-core/internal/domain/deployment/entities"
+	domAgg "github.com/jairoprogramador/fastdeploy-core/internal/domain/dom/aggregates"
 )
 
 type ExecuteOrder struct {

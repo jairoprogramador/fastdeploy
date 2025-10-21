@@ -1,8 +1,8 @@
 package mapper
 
 import (
-	"github.com/jairoprogramador/fastdeploy/internal/domain/shared/vos"
-	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/dom/dto"
+	"github.com/jairoprogramador/fastdeploy-core/internal/domain/shared/vos"
+	"github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/dom/dto"
 )
 
 

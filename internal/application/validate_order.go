@@ -3,11 +3,11 @@ package application
 import (
 	"fmt"
 
-	appDto "github.com/jairoprogramador/fastdeploy/internal/application/dto"
+	appDto "github.com/jairoprogramador/fastdeploy-core/internal/application/dto"
 
-	depAgg "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/aggregates"
-	depEnt "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/entities"
-	depVos "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/vos"
+	depAgg "github.com/jairoprogramador/fastdeploy-core/internal/domain/deployment/aggregates"
+	depEnt "github.com/jairoprogramador/fastdeploy-core/internal/domain/deployment/entities"
+	depVos "github.com/jairoprogramador/fastdeploy-core/internal/domain/deployment/vos"
 )
 
 type ValidateOrderService struct {

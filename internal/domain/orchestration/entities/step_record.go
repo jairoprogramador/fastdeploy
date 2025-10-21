@@ -3,10 +3,10 @@ package entities
 import (
 	"fmt"
 
-	depEnt "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/entities"
+	depEnt "github.com/jairoprogramador/fastdeploy-core/internal/domain/deployment/entities"
 
-	orchSer "github.com/jairoprogramador/fastdeploy/internal/domain/orchestration/services"
-	orchVos "github.com/jairoprogramador/fastdeploy/internal/domain/orchestration/vos"
+	orchSer "github.com/jairoprogramador/fastdeploy-core/internal/domain/orchestration/services"
+	orchVos "github.com/jairoprogramador/fastdeploy-core/internal/domain/orchestration/vos"
 )
 
 type StepRecord struct {

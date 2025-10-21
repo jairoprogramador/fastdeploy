@@ -3,9 +3,9 @@ package ports
 import (
 	"context"
 
-	sharedVos "github.com/jairoprogramador/fastdeploy/internal/domain/shared/vos"
+	sharedVos "github.com/jairoprogramador/fastdeploy-core/internal/domain/shared/vos"
 
-	depAgg "github.com/jairoprogramador/fastdeploy/internal/domain/deployment/aggregates"
+	depAgg "github.com/jairoprogramador/fastdeploy-core/internal/domain/deployment/aggregates"
 )
 
 type TemplateRepository interface {

@@ -1,7 +1,7 @@
 package mapper
 
 import (
-	"github.com/jairoprogramador/fastdeploy/internal/domain/deployment/vos"
+	"github.com/jairoprogramador/fastdeploy-core/internal/domain/deployment/vos"
 )
 
 func TriggersToDomain(scopes []string) []vos.Trigger {
