@@ -1,0 +1,26 @@
+project:
+  name: "test"
+  version: "1.0.0"
+  team: "shikigami"
+  description: "Mi proyecto de ejemplo"
+  organization: "fastdeploy"
+
+template:
+  repository_url: "https://github.com/jairoprogramador/mydeploytest.git"
+  ref: "main"
+
+technology:
+  stack: "springboot"
+  infrastructure: "azure"
+
+runtime:
+  image:
+    #source: "fastdeploy/runner-java"
+    tag: "1.2.0"
+  volumes:
+    project_mount_path: "/home/fastdeploy/app"
+    state_mount_path: "/home/fastdeploy/.fastdeploy"
+
+state:
+  backend: "local"
+  url: ""
