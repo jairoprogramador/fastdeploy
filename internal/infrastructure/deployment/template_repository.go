@@ -24,8 +24,8 @@ import (
 
 type TemplateRepository struct {
 	rootRepositoriesPath string
-	environment string
-	executor              appPor.CommandExecutor
+	environment          string
+	executor             appPor.CommandExecutor
 }
 
 func NewTemplateRepository(
@@ -35,8 +35,8 @@ func NewTemplateRepository(
 
 	return &TemplateRepository{
 		rootRepositoriesPath: rootRepositoriesPath,
-		environment: environment,
-		executor: executor,
+		environment:          environment,
+		executor:             executor,
 	}
 }
 
@@ -179,12 +179,12 @@ func (r *TemplateRepository) loadTriggersFromSource(directoryStepPath string) ([
 		return nil, fmt.Errorf("no se pudo leer el archivo de triggers '%s': %w", triggersPath, err)
 	}
 
-	var triggerDTO iDepDto.TriggerDTO
-	if err := yaml.Unmarshal(data, &triggerDTO); err != nil {
+	var scopes []string
+	if err := yaml.Unmarshal(data, &scopes); err != nil {
 		return nil, fmt.Errorf("error al parsear archivo YAML en '%s': %w", triggersPath, err)
 	}
 
-	return iDepMap.TriggersToDomain(triggerDTO.Scopes), nil
+	return iDepMap.TriggersToDomain(scopes), nil
 }
 
 func (r *TemplateRepository) loadCommandsFromSource(directoryStepPath string) ([]depVos.CommandDefinition, error) {
@@ -212,7 +212,7 @@ func (r *TemplateRepository) loadCommandsFromSource(directoryStepPath string) ([
 }
 
 func (r *TemplateRepository) loadVariablesFromSource(repositoryPath string, stepName string) ([]depVos.Variable, error) {
-	variablesPath := filepath.Join(repositoryPath,"variables",
+	variablesPath := filepath.Join(repositoryPath, "variables",
 		r.environment, fmt.Sprintf("%s.yaml", stepName))
 
 	data, err := os.ReadFile(variablesPath)

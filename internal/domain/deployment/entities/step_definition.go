@@ -91,17 +91,9 @@ func NewStepDefinition(
 	variableNames := make(map[string]struct{})
 	for _, variable := range variables {
 		if _, exists := variableNames[variable.Name()]; exists {
-			return StepDefinition{}, fmt.Errorf("variable duplicada: %s", variable.Name())
+			return StepDefinition{}, fmt.Errorf("variable %s duplicada", variable.Name())
 		}
 		variableNames[variable.Name()] = struct{}{}
-	}
-
-	variablesValues := make(map[string]struct{})
-	for _, variable := range variables {
-		if _, exists := variablesValues[variable.Value()]; exists {
-			return StepDefinition{}, fmt.Errorf("valor de variable duplicado: %s", variable.Value())
-		}
-		variablesValues[variable.Value()] = struct{}{}
 	}
 
 	triggersCopy := make([]depVos.Trigger, len(triggers))
