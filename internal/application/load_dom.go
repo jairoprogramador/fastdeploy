@@ -7,24 +7,24 @@ import (
 	domPor "github.com/jairoprogramador/fastdeploy-core/internal/domain/dom/ports"
 )
 
-type LoadDOMService struct {
-	domRepository domPor.DomRepository
+type LoadConfigService struct {
+	configRepository domPor.ConfigRepository
 }
 
-func NewLoadDOMService(domRepository domPor.DomRepository) *LoadDOMService {
-	return &LoadDOMService{
-		domRepository: domRepository,
+func NewLoadConfigService(domRepository domPor.ConfigRepository) *LoadConfigService {
+	return &LoadConfigService{
+		configRepository: domRepository,
 	}
 }
 
-func (s *LoadDOMService) Load() (*domAgg.DeploymentObjectModel, error) {
-	domModel, err := s.domRepository.Load()
+func (s *LoadConfigService) Load() (*domAgg.Config, error) {
+	domModel, err := s.configRepository.Load()
 	if err != nil {
-		return &domAgg.DeploymentObjectModel{}, err
+		return &domAgg.Config{}, err
 	}
 
 	if domModel == nil {
-		return &domAgg.DeploymentObjectModel{},
+		return &domAgg.Config{},
 			errors.New("el archivo .fastdeploy/dom.yaml no existe. Por favor, ejecutar 'fd init' primero")
 	}
 	return domModel, nil

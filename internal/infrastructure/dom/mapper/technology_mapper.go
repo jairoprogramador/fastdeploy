@@ -5,20 +5,13 @@ import (
 	"github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/dom/dto"
 )
 
-func TechnologyToDomain(dto dto.TechnologyDTO) (vos.Technology, error) {
-	return vos.NewTechnology(
-		dto.Type,
-		dto.Solution,
-		dto.Stack,
-		dto.Infrastructure,
-	)
+func TechnologyToDomain(dto dto.TechnologyDTO) vos.Technology {
+	return vos.NewTechnology(dto.Stack, dto.Infrastructure)
 }
 
 func TechnologyToDTO(technology vos.Technology) dto.TechnologyDTO {
 	return dto.TechnologyDTO{
-		Type:           technology.TypeTechnology(),
-		Solution:       technology.Solution(),
-		Stack:          technology.Stack(),
+		Stack: technology.Stack(),
 		Infrastructure: technology.Infrastructure(),
 	}
 }

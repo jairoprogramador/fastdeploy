@@ -45,8 +45,6 @@ var (
 
 	skipTest   bool
 	skipSupply bool
-
-	skipPrompt bool
 )
 
 var rootCmd = &cobra.Command{
@@ -83,9 +81,6 @@ func init() {
 
 	rootCmd.Flags().BoolVarP(&skipTest, "skip-test", "t", false, "Omitir el paso 'test'")
 	rootCmd.Flags().BoolVarP(&skipSupply, "skip-supply", "s", false, "Omitir el paso 'supply'")
-	initCmd.Flags().BoolVarP(&skipPrompt, "yes", "y", false, "Omitir preguntas y usar valores por defecto")
-
-	rootCmd.AddCommand(initCmd)
 }
 
 func initConfig() {
@@ -165,23 +160,13 @@ func runOrder(_ *cobra.Command, args []string) {
 		fmt.Printf("%v\n", err)
 		os.Exit(1)
 	}
-	domModel.SetProjectRevision(revisionProject)
+	domModel.Project().SetRevision(revisionProject)
 
 	stateRepository, _ := iStaRep.NewFileFingerprintRepository(
 		statePath,
 		domModel.Project().Name(),
 		templateResponse.RepositoryName,
 		validateOrderResponse.Environment.Value())
-
-	err = updateDom(
-		ctx,
-		domRepository,
-		stateRepository,
-		domModel)
-	if err != nil {
-		fmt.Printf("%v\n", err)
-		os.Exit(1)
-	}
 
 	varsRepository, err := iStaRep.NewVarsRepository(
 		statePath,
@@ -229,9 +214,9 @@ func loadRevisionProject(
 }
 
 func loadDom(
-	domRepository domPor.DomRepository) (*domAgg.DeploymentObjectModel, error) {
+	domRepository domPor.ConfigRepository) (*domAgg.Config, error) {
 
-	loadDOMService := applic.NewLoadDOMService(domRepository)
+	loadDOMService := applic.NewLoadConfigService(domRepository)
 	return loadDOMService.Load()
 }
 
@@ -240,12 +225,12 @@ func loadTemplate(
 	executor appPor.CommandExecutor,
 	repositoryPath string,
 	environment string,
-	domModel *domAgg.DeploymentObjectModel) (appDto.TemplateResponse, error) {
+	domModel *domAgg.Config) (appDto.TemplateResponse, error) {
 
 	templateRepository := iDeplo.NewTemplateRepository(repositoryPath, environment, executor)
 	loadTemplateService := applic.NewLoadTemplateService(templateRepository)
 
-	templateSource, err := shaVos.NewTemplateSource(domModel.Template().Url(), domModel.Template().Ref())
+	templateSource, err := shaVos.NewTemplateSource(domModel.Template().URL(), domModel.Template().Ref())
 	if err != nil {
 		return appDto.TemplateResponse{}, err
 	}
@@ -265,18 +250,6 @@ func validateOrder(
 		FinalStep:   finalStep,
 	}
 	return validateOrderService.Validate(template, validateOrderRequest)
-}
-
-func updateDom(
-	ctx context.Context,
-	domRepository domPor.DomRepository,
-	stateRepository staPor.FingerprintRepository,
-	domModel *domAgg.DeploymentObjectModel) error {
-
-	idGenerator := iDom.NewShaGenerator()
-	userInput := iAppli.NewUserInputProvider()
-	updateDOMService := applic.NewUpdateDOMService(domRepository, stateRepository, idGenerator, userInput)
-	return updateDOMService.Update(ctx, domModel)
 }
 
 func createOrchestrationService(
@@ -325,7 +298,7 @@ func createOrderRequest(
 	templateResponse appDto.TemplateResponse,
 	validateOrderResponse appDto.ValidateOrderResponse,
 	workingDir string,
-	domModel *domAgg.DeploymentObjectModel,
+	domModel *domAgg.Config,
 	skippedSteps map[string]struct{}) appDto.OrderRequest {
 
 	return appDto.OrderRequest{

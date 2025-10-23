@@ -16,6 +16,7 @@ const (
 	OutputOrderIdKey = "order_id"
 	OutputStepWorkdirKey = "step_workdir"
 	OutputCommWorkdirKey = "comm_workdir"
+	OutputProjectRevisionKey = "project_revision"
 )
 
 type Order struct {
@@ -199,7 +200,8 @@ func (o *Order) GetOutputsMapForFingerprint() map[string]string {
 	for _, value := range o.outputsShared {
 		if value.Name() != OutputOrderIdKey &&
 		value.Name() != OutputStepWorkdirKey &&
-		value.Name() != OutputCommWorkdirKey {
+		value.Name() != OutputCommWorkdirKey &&
+		value.Name() != OutputProjectRevisionKey {
 			varsMap[value.Name()] = value.Value()
 		}
 	}

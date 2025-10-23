@@ -5,18 +5,26 @@ import (
 	"time"
 )
 
+const (
+	DefaultProjectVersion = "1.0.0"
+	DefaultProjectTeam    = "shikigami"
+	DefaultProjectDescription = "mi despliegue con fastdeploy"
+	DefaultProjectOrganization = "fastdeploy"
+)
+
 type ProjectID string
 
 type Project struct {
-	id          ProjectID
-	name        string
-	version     string
-	revision    string
-	description string
-	team        string
+	id           ProjectID
+	name         string
+	version      string
+	revision     string
+	team         string
+	description  string
+	organization string
 }
 
-func NewProject(id ProjectID, name, version, description, team string) (Project, error) {
+func NewProject(id ProjectID, name, version, description, team, organization string) (Project, error) {
 	if id == "" {
 		return Project{}, errors.New("el ID del proyecto no puede estar vacío")
 	}
@@ -24,18 +32,25 @@ func NewProject(id ProjectID, name, version, description, team string) (Project,
 		return Project{}, errors.New("el nombre del proyecto no puede estar vacío")
 	}
 	if version == "" {
-		return Project{}, errors.New("la versión del proyecto no puede estar vacía")
+		version = DefaultProjectVersion
 	}
 	if team == "" {
-		return Project{}, errors.New("el equipo del proyecto no puede estar vacío")
+		team = DefaultProjectTeam
+	}
+	if organization == "" {
+		organization = DefaultProjectOrganization
+	}
+	if description == "" {
+		description = DefaultProjectDescription
 	}
 	return Project{
-		id:          id,
-		name:        name,
-		version:     version,
-		revision:    time.Now().Format("20060102150405"),
-		description: description,
-		team:        team,
+		id:           id,
+		name:         name,
+		version:      version,
+		revision:     time.Now().Format("20060102150405"),
+		description:  description,
+		team:         team,
+		organization: organization,
 	}, nil
 }
 
@@ -46,8 +61,8 @@ func (p Project) Description() string { return p.description }
 func (p Project) Team() string        { return p.team }
 func (p Project) Version() string     { return p.version }
 func (p Project) Revision() string    { return p.revision }
+func (p Project) Organization() string { return p.organization }
 
-func (p Project) WithRevision(revision string) Project {
+func (p Project) SetRevision(revision string) {
 	p.revision = revision
-	return p
 }

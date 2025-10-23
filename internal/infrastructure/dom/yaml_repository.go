@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-
 	"gopkg.in/yaml.v3"
 
 	domAgg "github.com/jairoprogramador/fastdeploy-core/internal/domain/dom/aggregates"
@@ -18,26 +17,25 @@ type DomYAMLRepository struct {
 	filePath string
 }
 
-func NewDomYAMLRepository(workingDir string) domPor.DomRepository {
-	dirPath := filepath.Join(workingDir, ".fastdeploy")
+func NewDomYAMLRepository(workingDir string) domPor.ConfigRepository {
 	return &DomYAMLRepository{
-		filePath: filepath.Join(dirPath, "dom.yaml"),
+		filePath: filepath.Join(workingDir, "fdconfig.yaml"),
 	}
 }
 
-func (r *DomYAMLRepository) Save(dom *domAgg.DeploymentObjectModel) error {
-	dto := iDomMap.DomToDTO(dom)
+func (r *DomYAMLRepository) Save(config *domAgg.Config) error {
+	dto := iDomMap.ToDTO(config)
 	data, err := yaml.Marshal(dto)
 	if err != nil {
-		return fmt.Errorf("error al serializar dom.yaml: %w", err)
+		return fmt.Errorf("error al serializar fdconfig.yaml: %w", err)
 	}
 	if err := os.MkdirAll(filepath.Dir(r.filePath), 0755); err != nil {
-		return fmt.Errorf("error al crear el directorio para dom.yaml: %w", err)
+		return fmt.Errorf("error al crear el directorio para fdconfig.yaml: %w", err)
 	}
 	return os.WriteFile(r.filePath, data, 0644)
 }
 
-func (r *DomYAMLRepository) Load() (*domAgg.DeploymentObjectModel, error) {
+func (r *DomYAMLRepository) Load() (*domAgg.Config, error) {
 	data, err := os.ReadFile(r.filePath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -47,10 +45,10 @@ func (r *DomYAMLRepository) Load() (*domAgg.DeploymentObjectModel, error) {
 		}
 	}
 
-	var dto iDomDto.DomDTO
+	var dto iDomDto.FileConfig
 	if err := yaml.Unmarshal(data, &dto); err != nil {
-		return nil, fmt.Errorf("error al deserializar dom.yaml: %w", err)
+		return nil, fmt.Errorf("error al deserializar fdconfig.yaml: %w", err)
 	}
 
-	return iDomMap.DomToDomain(dto)
+	return iDomMap.ToDomain(dto)
 }

@@ -302,7 +302,7 @@ func (s *ExecuteOrder) getVariablesInit(req appDto.OrderRequest) ([]orchVos.Outp
 
 	allVarsInit := []orchVos.Output{}
 
-	varsProject, err := s.getVariablesProject(req.ProjectDom)
+	varsProject, err := s.getVariablesConfig(req.ProjectDom)
 	if err != nil {
 		return nil, err
 	}
@@ -329,86 +329,50 @@ func (s *ExecuteOrder) getVariablesInit(req appDto.OrderRequest) ([]orchVos.Outp
 	return allVarsInit, nil
 }
 
-func (s *ExecuteOrder) getVariablesProject(domModel *domAgg.DeploymentObjectModel) ([]orchVos.Output, error) {
-	varsProject := []orchVos.Output{}
+func (s *ExecuteOrder) getVariablesConfig(config *domAgg.Config) ([]orchVos.Output, error) {
+	varsDeployment := []orchVos.Output{}
 
-	projectId, err := orchVos.NewOutputFromNameAndValue("project_id", domModel.Project().IdString()[:8])
+	projectId, err := orchVos.NewOutputFromNameAndValue("project_id", config.Project().IdString()[:8])
 	if err != nil {
 		return nil, err
 	}
-	varsProject = append(varsProject, projectId)
+	varsDeployment = append(varsDeployment, projectId)
 
-	projectName, err := orchVos.NewOutputFromNameAndValue("project_name", domModel.Project().Name())
+	projectName, err := orchVos.NewOutputFromNameAndValue("project_name", config.Project().Name())
 	if err != nil {
 		return nil, err
 	}
-	varsProject = append(varsProject, projectName)
+	varsDeployment = append(varsDeployment, projectName)
 
-	projectTeam, err := orchVos.NewOutputFromNameAndValue("project_team", domModel.Project().Team())
+	projectTeam, err := orchVos.NewOutputFromNameAndValue("project_team", config.Project().Team())
 	if err != nil {
 		return nil, err
 	}
-	varsProject = append(varsProject, projectTeam)
+	varsDeployment = append(varsDeployment, projectTeam)
 
-	projectVersion, err := orchVos.NewOutputFromNameAndValue("project_version", domModel.Project().Version())
+	projectVersion, err := orchVos.NewOutputFromNameAndValue("project_version", config.Project().Version())
 	if err != nil {
 		return nil, err
 	}
-	varsProject = append(varsProject, projectVersion)
+	varsDeployment = append(varsDeployment, projectVersion)
 
-	projectRevision, err := orchVos.NewOutputFromNameAndValue("project_revision", domModel.Project().Revision())
+	projectRevision, err := orchVos.NewOutputFromNameAndValue("project_revision", config.Project().Revision())
 	if err != nil {
 		return nil, err
 	}
-	varsProject = append(varsProject, projectRevision)
+	varsDeployment = append(varsDeployment, projectRevision)
 
-	productId, err := orchVos.NewOutputFromNameAndValue("product_id", domModel.Product().IdString()[:8])
+	technologyStack, err := orchVos.NewOutputFromNameAndValue("technology_stack", config.Technology().Stack())
 	if err != nil {
 		return nil, err
 	}
-	varsProject = append(varsProject, productId)
+	varsDeployment = append(varsDeployment, technologyStack)
 
-	productName, err := orchVos.NewOutputFromNameAndValue("product_name", domModel.Product().Name())
+	technologyInfrastructure, err := orchVos.NewOutputFromNameAndValue("technology_infrastructure", config.Technology().Infrastructure())
 	if err != nil {
 		return nil, err
 	}
-	varsProject = append(varsProject, productName)
+	varsDeployment = append(varsDeployment, technologyInfrastructure)
 
-	productTeam, err := orchVos.NewOutputFromNameAndValue("product_team", domModel.Product().Team())
-	if err != nil {
-		return nil, err
-	}
-	varsProject = append(varsProject, productTeam)
-
-	productOrganization, err := orchVos.NewOutputFromNameAndValue("product_organization", domModel.Product().Organization())
-	if err != nil {
-		return nil, err
-	}
-	varsProject = append(varsProject, productOrganization)
-
-	technologyType, err := orchVos.NewOutputFromNameAndValue("technology_type", domModel.Technology().TypeTechnology())
-	if err != nil {
-		return nil, err
-	}
-	varsProject = append(varsProject, technologyType)
-
-	technologySolution, err := orchVos.NewOutputFromNameAndValue("technology_solution", domModel.Technology().Solution())
-	if err != nil {
-		return nil, err
-	}
-	varsProject = append(varsProject, technologySolution)
-
-	technologyStack, err := orchVos.NewOutputFromNameAndValue("technology_stack", domModel.Technology().Stack())
-	if err != nil {
-		return nil, err
-	}
-	varsProject = append(varsProject, technologyStack)
-
-	technologyInfrastructure, err := orchVos.NewOutputFromNameAndValue("technology_infrastructure", domModel.Technology().Infrastructure())
-	if err != nil {
-		return nil, err
-	}
-	varsProject = append(varsProject, technologyInfrastructure)
-
-	return varsProject, nil
+	return varsDeployment, nil
 }

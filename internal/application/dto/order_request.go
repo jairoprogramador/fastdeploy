@@ -15,7 +15,7 @@ type OrderRequest struct {
 	Template         *depAgg.DeploymentTemplate
 	TemplatePath     string
 	RepositoryName   string
-	ProjectDom       *domAgg.DeploymentObjectModel
+	ProjectDom       *domAgg.Config
 	ProjectPath      string
 	SkippedStepNames map[string]struct{}
 }

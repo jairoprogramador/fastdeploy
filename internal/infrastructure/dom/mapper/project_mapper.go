@@ -6,22 +6,22 @@ import (
 )
 
 func ProjectToDomain(dto dto.ProjectDTO) (vos.Project, error) {
-	projectId := vos.ProjectID(dto.ID)
 	return vos.NewProject(
-		projectId,
+		vos.ProjectID(dto.ID),
 		dto.Name,
 		dto.Version,
 		dto.Description,
 		dto.Team,
-	)
+		dto.Organization)
 }
 
 func ProjectToDTO(project vos.Project) dto.ProjectDTO {
 	return dto.ProjectDTO{
-		ID:          string(project.ID()),
-		Name:        project.Name(),
-		Version:     project.Version(),
+		ID: string(project.ID()),
+		Name: project.Name(),
+		Version: project.Version(),
 		Description: project.Description(),
-		Team:        project.Team(),
+		Team: project.Team(),
+		Organization: project.Organization(),
 	}
 }
