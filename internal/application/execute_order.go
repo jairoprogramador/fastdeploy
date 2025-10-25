@@ -362,17 +362,5 @@ func (s *ExecuteOrder) getVariablesConfig(config *domAgg.Config) ([]orchVos.Outp
 	}
 	varsDeployment = append(varsDeployment, projectRevision)
 
-	technologyStack, err := orchVos.NewOutputFromNameAndValue("technology_stack", config.Technology().Stack())
-	if err != nil {
-		return nil, err
-	}
-	varsDeployment = append(varsDeployment, technologyStack)
-
-	technologyInfrastructure, err := orchVos.NewOutputFromNameAndValue("technology_infrastructure", config.Technology().Infrastructure())
-	if err != nil {
-		return nil, err
-	}
-	varsDeployment = append(varsDeployment, technologyInfrastructure)
-
 	return varsDeployment, nil
 }
