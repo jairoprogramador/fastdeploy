@@ -273,7 +273,7 @@ func (s *ExecuteOrder) executeStep(
 		}
 
 		log, exitCode, err := s.cmdExecutor.Execute(req.Ctx, workdirCmd, interpolatedCmd)
-		if err != nil {
+		if err != nil || exitCode != 0 {
 			return err
 		}
 
@@ -361,6 +361,12 @@ func (s *ExecuteOrder) getVariablesConfig(config *domAgg.Config) ([]orchVos.Outp
 		return nil, err
 	}
 	varsDeployment = append(varsDeployment, projectRevision)
+
+	projectOrganization, err := orchVos.NewOutputFromNameAndValue("project_organization", config.Project().Organization())
+	if err != nil {
+		return nil, err
+	}
+	varsDeployment = append(varsDeployment, projectOrganization)
 
 	return varsDeployment, nil
 }
