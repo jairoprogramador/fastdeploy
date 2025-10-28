@@ -20,6 +20,7 @@ import (
 
 	depEnt "github.com/jairoprogramador/fastdeploy-core/internal/domain/deployment/entities"
 	domAgg "github.com/jairoprogramador/fastdeploy-core/internal/domain/dom/aggregates"
+	"github.com/jairoprogramador/fastdeploy-core/internal/domain/logger/aggregates"
 )
 
 type ExecuteOrder struct {
@@ -31,6 +32,7 @@ type ExecuteOrder struct {
 	variablesRepository   statePor.VariablesRepository
 	fingerprintRepository statePor.FingerprintRepository
 	statePolicyService    stateSer.FingerprintPolicyService
+	logger                *ExecutionLogger
 }
 
 func NewExecuteOrder(
@@ -42,6 +44,7 @@ func NewExecuteOrder(
 	variablesRepository statePor.VariablesRepository,
 	fingerprintRepository statePor.FingerprintRepository,
 	statePolicyService stateSer.FingerprintPolicyService,
+	logger *ExecutionLogger,
 ) *ExecuteOrder {
 	return &ExecuteOrder{
 		orderRepo:             orderRepo,
@@ -52,11 +55,11 @@ func NewExecuteOrder(
 		variablesRepository:   variablesRepository,
 		fingerprintRepository: fingerprintRepository,
 		statePolicyService:    statePolicyService,
+		logger:                logger,
 	}
 }
 
 func (s *ExecuteOrder) Run(req appDto.OrderRequest) (*orchAgg.Order, error) {
-
 	allVars, err := s.getVariablesInit(req)
 	if err != nil {
 		return nil, err
@@ -80,12 +83,24 @@ func (s *ExecuteOrder) Run(req appDto.OrderRequest) (*orchAgg.Order, error) {
 		return nil, err
 	}
 
-	fmt.Printf("Iniciando despliegue hasta el paso '%s' en el ambiente '%s'...\n", req.FinalStep, req.Environment.Name())
+	logContext := map[string]string{
+		"template":    req.Template.Source().Url(),
+		"environment": req.Environment.Name(),
+		"target":      req.FinalStep,
+	}
+	execLog, err := s.logger.StartExecution(logContext, req.ProjectDom.Project().Revision())
+	if err != nil {
+		return order, err
+	}
+
 	for _, stepExec := range order.StepsRecord() {
+		stepLog, err := s.logger.AddStep(execLog, stepExec.Name())
+		if err != nil {
+			return order, err
+		}
+
 		if stepExec.Status() == orchVos.StepStatusSkipped {
-			fmt.Println("\n-----------------------------------------------")
-			fmt.Printf("------------- OMITIENDO STEP: %s -------------\n", stepExec.Name())
-			fmt.Println("-----------------------------------------------")
+			s.logger.MarkStepAsSkipped(execLog, stepLog)
 			continue
 		}
 
@@ -93,6 +108,8 @@ func (s *ExecuteOrder) Run(req appDto.OrderRequest) (*orchAgg.Order, error) {
 
 		err = s.processStepVariables(stepExec.Name(), stepDef, order)
 		if err != nil {
+			s.logger.MarkStepAsFailed(execLog, stepLog, err)
+			s.logger.FinishExecution(execLog)
 			return order, err
 		}
 
@@ -110,27 +127,24 @@ func (s *ExecuteOrder) Run(req appDto.OrderRequest) (*orchAgg.Order, error) {
 		decision := s.statePolicyService.Decide(fingerprintsStateStepLatest, stepDef.TriggersInt(), fingerprintsStateStepCurrent)
 
 		if decision.ShouldExecute() {
-			fmt.Printf("--------------- EJECUTANDO STEP: %s ---------------\n", stepExec.Name())
-			fmt.Printf("------------- %s -------------\n", decision.Reason())
-
-			err = s.processStep(req, order, stepExec, fingerprintsStateStepCurrent)
+			err = s.processStep(req, order, stepExec, fingerprintsStateStepCurrent, execLog)
 			if err != nil {
+				s.logger.FinishExecution(execLog)
 				return order, err
 			}
 		} else {
 			order.MarkStepAsCached(stepExec.Name())
-			fmt.Printf("---------------- OMITIENDO STEP: %s -----------------\n", stepExec.Name())
-			fmt.Printf("------------- %s -------------\n", decision.Reason())
+			s.logger.MarkStepAsCached(execLog, stepLog, decision.Reason())
 			continue
 		}
 	}
 
-	fmt.Println("status de la orden", order.Status())
+	s.logger.FinishExecution(execLog)
 	if order.Status() == orchVos.OrderStatusFailed {
-		fmt.Println("❌ La ejecución de la orden ha fallado")
+		return order, errors.New("❌ la ejecución de la orden ha fallado")
 	}
+
 	if order.Status() == orchVos.OrderStatusSuccessful {
-		fmt.Println("ejecución de la orden completada con éxito")
 		fingerprintsStateCodeCurrent := stateAgg.NewFingerprintState(statevos.ScopeCode.String())
 		fingerprintsStateCodeCurrent.SetFingerprint(statevos.ScopeCode, fingerprintCurrentCode)
 
@@ -138,9 +152,8 @@ func (s *ExecuteOrder) Run(req appDto.OrderRequest) (*orchAgg.Order, error) {
 		if err != nil {
 			return order, err
 		}
-
-		fmt.Println("🎉 Ejecución de la orden completada con éxito.")
 	}
+
 	return order, nil
 }
 
@@ -206,34 +219,34 @@ func (s *ExecuteOrder) processStep(
 	req appDto.OrderRequest,
 	order *orchAgg.Order,
 	stepExec *orchEnt.StepRecord,
-	stateCurrent *stateAgg.FingerprintState) error {
+	stateCurrent *stateAgg.FingerprintState,
+	execLog *aggregates.Logger) error {
 
-	err := s.executeStep(req, order, stepExec)
+	stepLog, _ := execLog.GetStep(stepExec.Name())
+
+	err := s.executeStep(req, order, stepExec, execLog)
 	if err != nil {
 		return err
-	}
-
-	if stepExec.Status() == orchVos.StepStatusFailed {
-		msm := fmt.Sprintf("❌ La ejecución del paso '%s' ha fallado", stepExec.Name())
-		return errors.New(msm)
 	}
 
 	if stepExec.Status() == orchVos.StepStatusSuccessful {
 		err = s.variablesRepository.Save(stepExec.Name(), order.GetOutputsMapForSave())
 		if err != nil {
+			s.logger.MarkStepAsFailed(execLog, stepLog, err)
 			return err
 		}
 
 		err = s.fingerprintRepository.SaveStep(stateCurrent)
 		if err != nil {
+			s.logger.MarkStepAsFailed(execLog, stepLog, err)
 			return err
 		}
 
 		if err := s.orderRepo.Save(order); err != nil {
+			s.logger.MarkStepAsFailed(execLog, stepLog, err)
 			return err
 		}
-
-		fmt.Printf("🎉 Ejecución del paso '%s' completada con éxito.\n", stepExec.Name())
+		s.logger.MarkStepAsSuccessful(execLog, stepLog)
 	}
 	return nil
 }
@@ -241,7 +254,8 @@ func (s *ExecuteOrder) processStep(
 func (s *ExecuteOrder) executeStep(
 	req appDto.OrderRequest,
 	order *orchAgg.Order,
-	stepExec *orchEnt.StepRecord) error {
+	stepExec *orchEnt.StepRecord,
+	execLog *aggregates.Logger) error {
 
 	workdirStep, err := s.workspaceMgr.Prepare(stepExec.Name())
 
@@ -251,8 +265,14 @@ func (s *ExecuteOrder) executeStep(
 
 	order.AddOutput(orchAgg.OutputStepWorkdirKey, workdirStep)
 
+	stepLog, _ := execLog.GetStep(stepExec.Name())
+	s.logger.MarkStepAsRunning(execLog, stepLog)
+
 	for _, cmdExec := range stepExec.Commands() {
-		fmt.Printf("-> Ejecutando comando: %s\n", cmdExec.Name())
+		taskLog, err := s.logger.AddTaskToStep(execLog, stepExec.Name(), cmdExec.Name())
+		if err != nil {
+			return err
+		}
 
 		workdirCmd := cmdExec.Workdir()
 		if workdirCmd != "" && workdirStep != "" {
@@ -262,30 +282,41 @@ func (s *ExecuteOrder) executeStep(
 
 		interpolatedCmd, err := s.varResolver.ResolveTemplate(cmdExec.Command(), order.Outputs())
 		if err != nil {
+			s.logger.MarkTaskAsFailed(execLog, taskLog, err, stepLog)
 			return err
 		}
+		s.logger.SetTaskCommand(execLog, taskLog, interpolatedCmd)
 
 		for _, templatePath := range cmdExec.TemplateFiles() {
 			pathTemplateFile := s.cmdExecutor.CreateWorkDir(workdirCmd, templatePath)
 
 			err = s.varResolver.ResolvePath(pathTemplateFile, order.Outputs())
 			if err != nil {
+				s.logger.MarkTaskAsFailed(execLog, taskLog, err, stepLog)
 				return err
 			}
 		}
 
-		log, exitCode, err := s.cmdExecutor.Execute(req.Ctx, workdirCmd, interpolatedCmd)
+		s.logger.MarkTaskAsRunning(execLog, taskLog, stepLog)
+		cmdOutput, exitCode, err := s.cmdExecutor.Execute(req.Ctx, workdirCmd, interpolatedCmd)
 		if err != nil {
+			s.logger.MarkTaskAsFailed(execLog, taskLog, err, stepLog)
 			return err
 		}
 
-		err = order.FinalizeCommand(stepExec.Name(), cmdExec.Name(), interpolatedCmd, log, exitCode, s.varResolver)
-		if err != nil || exitCode != 0 {
+		s.logger.AddOutputToTask(execLog, taskLog, cmdOutput)
+		err = order.FinalizeCommand(stepExec.Name(), cmdExec.Name(), interpolatedCmd, cmdOutput, exitCode, s.varResolver)
+		if err != nil {
+			s.logger.MarkTaskAsFailed(execLog, taskLog, err, stepLog)
 			return err
 		}
+		if exitCode != 0 {
+			err = fmt.Errorf("el comando finalizó con código de salida %d", exitCode)
+			s.logger.MarkTaskAsFailed(execLog, taskLog, err, stepLog)
+			return err
+		}
+		s.logger.MarkTaskAsSuccessful(execLog, taskLog, stepLog)
 	}
-
-	order.RemoveOutput(orchAgg.OutputStepWorkdirKey)
 	return nil
 }
 

@@ -31,6 +31,8 @@ import (
 	orcVos "github.com/jairoprogramador/fastdeploy-core/internal/domain/orchestration/vos"
 	iOrche "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/orchestration"
 
+	iLogge "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/logger"
+
 	shaVos "github.com/jairoprogramador/fastdeploy-core/internal/domain/shared/vos"
 )
 
@@ -192,7 +194,6 @@ func runOrder(_ *cobra.Command, args []string) {
 
 	orderResponse, err := orchestrationService.Run(orderRequest)
 	if err != nil {
-		fmt.Printf("%v\n", err)
 		os.Exit(1)
 	}
 	if orderResponse != nil && orderResponse.Status() != orcVos.OrderStatusSuccessful {
@@ -280,6 +281,15 @@ func createOrchestrationService(
 		orderRequest.ProjectDom.Project().Name(),
 		orderRequest.RepositoryName)
 
+	consolePresenter := iLogge.NewConsolePresenter()
+	loggerRepository, err := iLogge.NewFileLoggerRepository(statePath)
+	if err != nil {
+		fmt.Printf("%v\n", err)
+		os.Exit(1)
+	}
+
+	logger := applic.NewExecutionLogger(loggerRepository, consolePresenter)
+
 	return applic.NewExecuteOrder(
 		orderRepo,
 		varResolver,
@@ -289,6 +299,7 @@ func createOrchestrationService(
 		varsRepository,
 		stateRepository,
 		statePolicyService,
+		logger,
 	)
 }
 
