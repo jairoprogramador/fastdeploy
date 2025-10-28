@@ -29,16 +29,15 @@ func (s *RevisionProjectService) LoadProjectRevision(ctx context.Context, revisi
 			return "", err
 		}
 		if existChanges {
-			if stepFinalName == "test" {
+			if stepFinalName == "test" || stepFinalName == "t" {
 				return revisionDefault, nil
 			}
-
 			return "", errors.New("hay cambios en el proyecto, ejecute 'git commit' primero")
 		}
 		return s.gitManager.GetCommitHash(ctx)
 	}
 
-	if stepFinalName != "test"{
+	if stepFinalName != "test" && stepFinalName != "t" {
 		return "", errors.New("el projecto no esta configurado como repositorio git, ejecute 'git init' primero")
 	}
 

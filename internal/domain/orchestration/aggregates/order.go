@@ -15,7 +15,7 @@ import (
 const (
 	OutputOrderIdKey = "order_id"
 	OutputStepWorkdirKey = "step_workdir"
-	OutputCommWorkdirKey = "comm_workdir"
+	OutputCommWorkdirKey = "commans_workdir"
 	OutputProjectRevisionKey = "project_revision"
 )
 

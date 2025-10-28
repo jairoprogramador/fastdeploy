@@ -125,10 +125,12 @@ func (s *ExecuteOrder) Run(req appDto.OrderRequest) (*orchAgg.Order, error) {
 		}
 	}
 
+	fmt.Println("status de la orden", order.Status())
 	if order.Status() == orchVos.OrderStatusFailed {
 		fmt.Println("❌ La ejecución de la orden ha fallado")
 	}
 	if order.Status() == orchVos.OrderStatusSuccessful {
+		fmt.Println("ejecución de la orden completada con éxito")
 		fingerprintsStateCodeCurrent := stateAgg.NewFingerprintState(statevos.ScopeCode.String())
 		fingerprintsStateCodeCurrent.SetFingerprint(statevos.ScopeCode, fingerprintCurrentCode)
 
@@ -273,15 +275,14 @@ func (s *ExecuteOrder) executeStep(
 		}
 
 		log, exitCode, err := s.cmdExecutor.Execute(req.Ctx, workdirCmd, interpolatedCmd)
-		if err != nil || exitCode != 0 {
+		if err != nil {
 			return err
 		}
 
 		err = order.FinalizeCommand(stepExec.Name(), cmdExec.Name(), interpolatedCmd, log, exitCode, s.varResolver)
-		if err != nil {
+		if err != nil || exitCode != 0 {
 			return err
 		}
-		order.RemoveOutput(orchAgg.OutputCommWorkdirKey)
 	}
 
 	order.RemoveOutput(orchAgg.OutputStepWorkdirKey)

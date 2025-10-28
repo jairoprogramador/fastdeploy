@@ -40,9 +40,30 @@ func (g *GitManager) GetCommitHash(ctx context.Context) (string, error) {
 }
 
 func (g *GitManager) ExistChanges(ctx context.Context) (bool, error) {
+
 	_, codeExit, err := g.executor.Execute(ctx, g.pathAppProject, "git diff --quiet")
 	if err != nil {
 		return false, err
 	}
-	return codeExit == 1, nil
+	if codeExit != 0 {
+		return true, nil
+	}
+
+	_, codeExit, err = g.executor.Execute(ctx, g.pathAppProject, "git diff --cached --quiet")
+	if err != nil {
+		return false, err
+	}
+	if codeExit != 0 {
+		return true, nil
+	}
+
+	log, codeExit, err := g.executor.Execute(ctx, g.pathAppProject, "git ls-files --others --exclude-standard")
+	if err != nil {
+		return false, err
+	}
+	if len(log) > 0 {
+		return true, nil
+	}
+
+	return false, nil
 }

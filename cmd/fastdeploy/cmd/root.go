@@ -160,8 +160,7 @@ func runOrder(_ *cobra.Command, args []string) {
 		fmt.Printf("%v\n", err)
 		os.Exit(1)
 	}
-	domModel.Project().SetRevision(revisionProject)
-
+	domModel.SetProjectRevision(revisionProject)
 	stateRepository, _ := iStaRep.NewFileFingerprintRepository(
 		statePath,
 		domModel.Project().Name(),
