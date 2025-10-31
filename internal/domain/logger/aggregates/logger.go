@@ -9,23 +9,43 @@ import (
 )
 
 type Logger struct {
-	id        vos.LoggerID           `yaml:"id"`
-	status    vos.Status             `yaml:"status"`
-	startTime time.Time              `yaml:"start_time"`
-	endTime   time.Time              `yaml:"end_time,omitempty"`
-	steps     []*entities.StepRecord `yaml:"steps"`
-	context   map[string]string      `yaml:"context"`
+	status    vos.Status
+	startTime time.Time
+	endTime   time.Time
+	steps     []*entities.StepRecord
+	context   map[string]string
+	revision  string
 	stepIndex map[string]int
 }
 
-func NewLogger(id vos.LoggerID, context map[string]string) *Logger {
+func NewLogger(context map[string]string, revision string) *Logger {
 	return &Logger{
-		id:        id,
 		status:    vos.Pending,
 		steps:     []*entities.StepRecord{},
 		stepIndex: make(map[string]int),
 		context:   context,
+		revision:  revision,
 	}
+}
+
+func HydrateLogger(
+	status vos.Status,
+	startTime time.Time,
+	endTime time.Time,
+	steps []*entities.StepRecord,
+	context map[string]string,
+	revision string) (*Logger, error) {
+
+	logger := &Logger{
+		status: status,
+		startTime: startTime,
+		endTime: endTime,
+		steps: steps,
+		context: context,
+		revision: revision,
+	}
+	logger.RebuildIndex()
+	return logger, nil
 }
 
 func (e *Logger) RebuildIndex() {
@@ -61,8 +81,12 @@ func (e *Logger) GetStep(name string) (*entities.StepRecord, error) {
 	return e.steps[index], nil
 }
 
-func (e *Logger) ID() vos.LoggerID {
-	return e.id
+func (e *Logger) StartTime() time.Time {
+	return e.startTime
+}
+
+func (e *Logger) EndTime() time.Time {
+	return e.endTime
 }
 
 func (e *Logger) Context() map[string]string {
@@ -71,6 +95,10 @@ func (e *Logger) Context() map[string]string {
 
 func (e *Logger) Steps() []*entities.StepRecord {
 	return e.steps
+}
+
+func (e *Logger) Revision() string {
+	return e.revision
 }
 
 func (e *Logger) Status() vos.Status {

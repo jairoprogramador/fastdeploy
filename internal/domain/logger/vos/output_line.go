@@ -3,13 +3,20 @@ package vos
 import "time"
 
 type OutputLine struct {
-	timestamp time.Time `yaml:"timestamp"`
-	line      string    `yaml:"line"`
+	timestamp time.Time
+	line      string
 }
 
 func NewOutputLine(line string) OutputLine {
 	return OutputLine{
 		timestamp: time.Now(),
+		line:      line,
+	}
+}
+
+func HydrateOutputLine(timestamp time.Time, line string) OutputLine {
+	return OutputLine{
+		timestamp: timestamp,
 		line:      line,
 	}
 }

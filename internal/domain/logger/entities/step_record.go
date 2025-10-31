@@ -9,13 +9,13 @@ import (
 )
 
 type StepRecord struct {
-	id        uuid.UUID     `yaml:"id"`
-	name      string        `yaml:"name"`
-	status    vos.Status    `yaml:"status"`
-	startTime time.Time     `yaml:"start_time"`
-	endTime   time.Time     `yaml:"end_time,omitempty"`
-	reason    string        `yaml:"reason,omitempty"`
-	tasks     []*TaskRecord `yaml:"tasks"`
+	id        uuid.UUID
+	name      string
+	status    vos.Status
+	startTime time.Time
+	endTime   time.Time
+	reason    string
+	tasks     []*TaskRecord
 	err       error
 }
 
@@ -35,6 +35,31 @@ func NewStepRecord(name string) (*StepRecord, error) {
 	}, nil
 }
 
+func HydrateStepRecord(
+	name string,
+	status vos.Status,
+	startTime time.Time,
+	endTime time.Time,
+	reason string,
+	tasks []*TaskRecord,
+	err error) (*StepRecord, error) {
+
+	id, err := uuid.NewRandom()
+	if err != nil {
+		return nil, fmt.Errorf("could not generate uuid for step record: %w", err)
+	}
+	return &StepRecord{
+		id:     id,
+		name:   name,
+		status: status,
+		startTime: startTime,
+		endTime: endTime,
+		reason: reason,
+		tasks: tasks,
+		err: err,
+	}, nil
+}
+
 func (s *StepRecord) ID() uuid.UUID {
 	return s.id
 }
@@ -45,6 +70,14 @@ func (s *StepRecord) Name() string {
 
 func (s *StepRecord) Reason() string {
 	return s.reason
+}
+
+func (s *StepRecord) StartTime() time.Time {
+	return s.startTime
+}
+
+func (s *StepRecord) EndTime() time.Time {
+	return s.endTime
 }
 
 func (s *StepRecord) MarkAsRunning() {

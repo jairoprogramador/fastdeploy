@@ -3,8 +3,8 @@ package application
 import (
 	"errors"
 
-	domAgg "github.com/jairoprogramador/fastdeploy-core/internal/domain/dom/aggregates"
-	domPor "github.com/jairoprogramador/fastdeploy-core/internal/domain/dom/ports"
+	domAgg "github.com/jairoprogramador/fastdeploy-core/internal/domain/project/aggregates"
+	domPor "github.com/jairoprogramador/fastdeploy-core/internal/domain/project/ports"
 )
 
 type LoadConfigService struct {

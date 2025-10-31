@@ -4,7 +4,7 @@ import (
 	"context"
 
 	appDto "github.com/jairoprogramador/fastdeploy-core/internal/application/dto"
-	depPor "github.com/jairoprogramador/fastdeploy-core/internal/domain/deployment/ports"
+	depPor "github.com/jairoprogramador/fastdeploy-core/internal/domain/template/ports"
 	shaVos "github.com/jairoprogramador/fastdeploy-core/internal/domain/shared/vos"
 )
 

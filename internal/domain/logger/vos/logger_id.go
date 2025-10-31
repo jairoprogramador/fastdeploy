@@ -1,13 +1,13 @@
 package vos
 
-import (
+/* import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
 )
 
 type LoggerID struct {
-	Value string `yaml:"value"`
+	Value string
 }
 
 func NewLoggerID() (LoggerID, error) {
@@ -28,3 +28,4 @@ func NewLoggerIDFromString(id string) (LoggerID, error) {
 func (e LoggerID) String() string {
 	return e.Value
 }
+ */

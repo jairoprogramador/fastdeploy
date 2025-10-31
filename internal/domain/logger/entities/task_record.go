@@ -9,13 +9,13 @@ import (
 )
 
 type TaskRecord struct {
-	id          uuid.UUID        `yaml:"id"`
-	name        string           `yaml:"name"`
-	status      vos.Status       `yaml:"status"`
-	command     string           `yaml:"command"`
-	startTime   time.Time        `yaml:"start_time"`
-	endTime     time.Time        `yaml:"end_time,omitempty"`
-	output      []vos.OutputLine `yaml:"output,omitempty"`
+	id          uuid.UUID
+	name        string
+	status      vos.Status
+	command     string
+	startTime   time.Time
+	endTime     time.Time
+	output      []vos.OutputLine
 	err         error
 }
 
@@ -32,6 +32,31 @@ func NewTaskRecord(name string) (*TaskRecord, error) {
 		name:   name,
 		status: vos.Pending,
 		output: make([]vos.OutputLine, 0),
+	}, nil
+}
+
+func HydrateTaskRecord(
+	name string,
+	status vos.Status,
+	command string,
+	startTime time.Time,
+	endTime time.Time,
+	output []vos.OutputLine,
+	err error) (*TaskRecord, error) {
+
+	id, err := uuid.NewRandom()
+	if err != nil {
+		return nil, fmt.Errorf("could not generate uuid for task record: %w", err)
+	}
+	return &TaskRecord{
+		id:     id,
+		name:   name,
+		status: status,
+		command: command,
+		startTime: startTime,
+		endTime: endTime,
+		output: output,
+		err: err,
 	}, nil
 }
 

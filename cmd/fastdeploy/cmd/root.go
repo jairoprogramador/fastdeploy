@@ -15,9 +15,9 @@ import (
 	appPor "github.com/jairoprogramador/fastdeploy-core/internal/application/ports"
 	iAppli "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/application"
 
-	domAgg "github.com/jairoprogramador/fastdeploy-core/internal/domain/dom/aggregates"
-	domPor "github.com/jairoprogramador/fastdeploy-core/internal/domain/dom/ports"
-	iDom "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/dom"
+	domAgg "github.com/jairoprogramador/fastdeploy-core/internal/domain/project/aggregates"
+	domPor "github.com/jairoprogramador/fastdeploy-core/internal/domain/project/ports"
+	iDom "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/project"
 
 	staPor "github.com/jairoprogramador/fastdeploy-core/internal/domain/state/ports"
 	staSer "github.com/jairoprogramador/fastdeploy-core/internal/domain/state/services"
@@ -25,11 +25,11 @@ import (
 	iStaRep "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/state/repository"
 	iStaSer "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/state/services"
 
-	depAgg "github.com/jairoprogramador/fastdeploy-core/internal/domain/deployment/aggregates"
-	iDeplo "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/deployment"
+	depAgg "github.com/jairoprogramador/fastdeploy-core/internal/domain/template/aggregates"
+	iDeplo "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/template"
 
-	orcVos "github.com/jairoprogramador/fastdeploy-core/internal/domain/orchestration/vos"
-	iOrche "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/orchestration"
+	exeVos "github.com/jairoprogramador/fastdeploy-core/internal/domain/executor/vos"
+	iExecu "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/executor"
 
 	iLogge "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/logger"
 
@@ -81,6 +81,7 @@ func init() {
 
 	cobra.OnInitialize(initConfig)
 
+	rootCmd.AddCommand(logCmd)
 	rootCmd.Flags().BoolVarP(&skipTest, "skip-test", "t", false, "Omitir el paso 'test'")
 	rootCmd.Flags().BoolVarP(&skipSupply, "skip-supply", "s", false, "Omitir el paso 'supply'")
 }
@@ -196,7 +197,7 @@ func runOrder(_ *cobra.Command, args []string) {
 	if err != nil {
 		os.Exit(1)
 	}
-	if orderResponse != nil && orderResponse.Status() != orcVos.OrderStatusSuccessful {
+	if orderResponse != nil && orderResponse.Status() != exeVos.OrderStatusSuccessful {
 		os.Exit(1)
 	}
 }
@@ -257,9 +258,9 @@ func createOrchestrationService(
 	executor appPor.CommandExecutor,
 	varsRepository staPor.VariablesRepository,
 	orderRequest appDto.OrderRequest,
-	environment string) *applic.ExecuteOrder {
+	environment string) *applic.AppExecutor {
 
-	varResolver := iOrche.NewGoTemplateResolver()
+	varResolver := iExecu.NewGoTemplateResolver()
 
 	fpService, err := iStaSer.NewFingerprintService(environment)
 	if err != nil {
@@ -276,22 +277,19 @@ func createOrchestrationService(
 		orderRequest.RepositoryName,
 		environment)
 
-	orderRepo := iOrche.NewFileOrderRepository(
-		projectsPath,
+	consolePresenter := iLogge.NewConsolePresenter()
+	loggerRepository, err := iLogge.NewFileLoggerRepository(
+		statePath,
 		orderRequest.ProjectDom.Project().Name(),
 		orderRequest.RepositoryName)
-
-	consolePresenter := iLogge.NewConsolePresenter()
-	loggerRepository, err := iLogge.NewFileLoggerRepository(statePath)
 	if err != nil {
 		fmt.Printf("%v\n", err)
 		os.Exit(1)
 	}
 
-	logger := applic.NewExecutionLogger(loggerRepository, consolePresenter)
+	logger := applic.NewAppLogger(loggerRepository, consolePresenter)
 
-	return applic.NewExecuteOrder(
-		orderRepo,
+	return applic.NewAppExecutor(
 		varResolver,
 		fpService,
 		workspaceMgr,

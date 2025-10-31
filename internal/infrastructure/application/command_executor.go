@@ -2,8 +2,8 @@ package application
 
 import (
 	"bytes"
-	"io"
-	"os"
+	//"io"
+	//"os"
 	"context"
 	"os/exec"
 	"regexp"
@@ -14,7 +14,7 @@ import (
 
 var ansiRegex = regexp.MustCompile(`\x1b\[[0-9;]*[a-zA-Z]`)
 
-type Executor struct{}
+type Executor struct {}
 
 func NewExecutor() ports.CommandExecutor {
 	return &Executor{}
@@ -31,10 +31,13 @@ func (e *Executor) Execute(ctx context.Context, workdir, command string) (log st
 	}
 
 	var out bytes.Buffer
-	multiOutput := io.MultiWriter(os.Stdout, &out)
+	//multiOutput := io.MultiWriter(os.Stdout, &out)
 
-	cmd.Stdout = multiOutput
-	cmd.Stderr = multiOutput
+	//cmd.Stdout = multiOutput
+	//cmd.Stderr = multiOutput
+
+	cmd.Stdout = &out
+	cmd.Stderr = &out
 
 	runErr := cmd.Run()
 	log = out.String()

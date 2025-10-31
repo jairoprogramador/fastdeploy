@@ -1,6 +1,6 @@
 package dto
 
-import "github.com/jairoprogramador/fastdeploy-core/internal/domain/deployment/vos"
+import "github.com/jairoprogramador/fastdeploy-core/internal/domain/template/vos"
 
 type ValidateOrderResponse struct {
 	FinalStep        string

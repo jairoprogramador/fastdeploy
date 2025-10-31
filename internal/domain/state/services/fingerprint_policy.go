@@ -2,6 +2,7 @@ package services
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/jairoprogramador/fastdeploy-core/internal/domain/state/aggregates"
 	"github.com/jairoprogramador/fastdeploy-core/internal/domain/state/vos"
@@ -41,5 +42,14 @@ func (s FingerprintPolicyService) Decide(
 			return vos.Execute(fmt.Sprintf("Cambio detectado en el trigger '%s'", triggerVO.String()))
 		}
 	}
-	return vos.Skip("No se han detectado cambios en los triggers")
+
+	triggerNames := make([]string, len(triggers))
+	for i, trigger := range triggers {
+		triggerVO := vos.NewTrigger(trigger)
+		triggerNames[i] = triggerVO.String()
+	}
+
+	triggersJoined := strings.Join(triggerNames, ", ")
+
+	return vos.Skip("No se han detectado cambios en los triggers: " + triggersJoined)
 }

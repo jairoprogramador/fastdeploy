@@ -3,9 +3,9 @@ package dto
 import (
 	"context"
 
-	depAgg "github.com/jairoprogramador/fastdeploy-core/internal/domain/deployment/aggregates"
-	depVos "github.com/jairoprogramador/fastdeploy-core/internal/domain/deployment/vos"
-	domAgg "github.com/jairoprogramador/fastdeploy-core/internal/domain/dom/aggregates"
+	depAgg "github.com/jairoprogramador/fastdeploy-core/internal/domain/template/aggregates"
+	depVos "github.com/jairoprogramador/fastdeploy-core/internal/domain/template/vos"
+	domAgg "github.com/jairoprogramador/fastdeploy-core/internal/domain/project/aggregates"
 )
 
 type OrderRequest struct {
