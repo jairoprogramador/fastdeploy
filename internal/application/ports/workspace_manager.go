@@ -1,5 +1,7 @@
 package ports
 
-type WorkspaceManager interface {
-	Prepare(stepName string) (workspacePath string, err error)
+import "github.com/jairoprogramador/fastdeploy-core/internal/application/dto"
+
+type StepWorkspace interface {
+	Prepare(namesRequest dto.NamesParams, runRequest dto.RunParams) (workspacePath string, err error)
 }

@@ -7,41 +7,22 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/jairoprogramador/fastdeploy-core/internal/application/dto"
 	"github.com/jairoprogramador/fastdeploy-core/internal/domain/state/ports"
 )
 
 type VarsRepository struct {
-	pathStateEnvironment string
+	pathStateRoot string
 }
 
-func NewVarsRepository(
-	pathStateRootFastDeploy string,
-	projectName string,
-	repositoryName string,
-	environment string) (ports.VariablesRepository, error) {
-
-	if pathStateRootFastDeploy == "" {
-		return nil, fmt.Errorf("path state root is required")
-	}
-	if projectName == "" {
-		return nil, fmt.Errorf("project name is required")
-	}
-	if repositoryName == "" {
-		return nil, fmt.Errorf("repository name is required")
-	}
-	if environment == "" {
-		return nil, fmt.Errorf("environment is required")
-	}
-
-	pathStateEnvironment := filepath.Join(pathStateRootFastDeploy, projectName, repositoryName, environment)
-
+func NewVarsRepository(pathStateRoot string) ports.VariablesRepository {
 	return &VarsRepository{
-		pathStateEnvironment: pathStateEnvironment,
-	}, nil
+		pathStateRoot: pathStateRoot,
+	}
 }
 
-func (r *VarsRepository) FindByStepName(stepName string) (map[string]string, error) {
-	varsFilePath := r.getPathFileVars(stepName)
+func (r *VarsRepository) FindByStepName(namesRequest dto.NamesParams, runParams dto.RunParams) (map[string]string, error) {
+	varsFilePath := r.getPathFileVars(namesRequest, runParams)
 
 	data, err := os.ReadFile(varsFilePath)
 	if err != nil {
@@ -61,14 +42,14 @@ func (r *VarsRepository) FindByStepName(stepName string) (map[string]string, err
 	return varsMap, nil
 }
 
-func (r *VarsRepository) Save(stepName string, vars map[string]string) error {
+func (r *VarsRepository) Save(namesRequest dto.NamesParams, runParams dto.RunParams, vars map[string]string) error {
 	var buffer bytes.Buffer
 	encoder := gob.NewEncoder(&buffer)
 	if err := encoder.Encode(vars); err != nil {
 		return fmt.Errorf("error al serializar las variables a formato gob: %w", err)
 	}
 
-	varsFilePath := r.getPathFileVars(stepName)
+	varsFilePath := r.getPathFileVars(namesRequest, runParams)
 
 	if err := os.MkdirAll(filepath.Dir(varsFilePath), 0755); err != nil {
 		return fmt.Errorf("no se pudo crear el directorio base para las variables: %w", err)
@@ -77,6 +58,7 @@ func (r *VarsRepository) Save(stepName string, vars map[string]string) error {
 	return os.WriteFile(varsFilePath, buffer.Bytes(), 0644)
 }
 
-func (r *VarsRepository) getPathFileVars(stepName string) string {
-	return filepath.Join(r.pathStateEnvironment, fmt.Sprintf("vars%s.gob", stepName))
+func (r *VarsRepository) getPathFileVars(namesRequest dto.NamesParams, runParams dto.RunParams) string {
+	pathStateEnvironment := filepath.Join(r.pathStateRoot, namesRequest.ProjectName(), namesRequest.RepositoryName(), runParams.Environment())
+	return filepath.Join(pathStateEnvironment, fmt.Sprintf("vars%s.gob", runParams.StepName()))
 }

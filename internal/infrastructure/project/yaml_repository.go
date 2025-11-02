@@ -4,39 +4,45 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
 	"gopkg.in/yaml.v3"
 
-	domAgg "github.com/jairoprogramador/fastdeploy-core/internal/domain/project/aggregates"
-	domPor "github.com/jairoprogramador/fastdeploy-core/internal/domain/project/ports"
+	proAgg "github.com/jairoprogramador/fastdeploy-core/internal/domain/project/aggregates"
+	proPor "github.com/jairoprogramador/fastdeploy-core/internal/domain/project/ports"
 
-	iDomDto "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/project/dto"
-	iDomMap "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/project/mapper"
+	iProDto "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/project/dto"
+	iProMap "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/project/mapper"
 )
 
-type DomYAMLRepository struct {
-	filePath string
+type YamlConfigRepository struct {
 }
 
-func NewDomYAMLRepository(workingDir string) domPor.ConfigRepository {
-	return &DomYAMLRepository{
-		filePath: filepath.Join(workingDir, "fdconfig.yaml"),
-	}
+func NewYamlConfigRepository() proPor.ConfigRepository {
+	return &YamlConfigRepository{}
 }
 
-func (r *DomYAMLRepository) Save(config *domAgg.Config) error {
-	dto := iDomMap.ToDTO(config)
+func (r *YamlConfigRepository) PathFileConfig(pathProject string) string {
+	return filepath.Join(pathProject, "fdconfig.yaml")
+}
+
+func (r *YamlConfigRepository) Save(config *proAgg.Config, pathProject string) error {
+	pathFileConfig := r.PathFileConfig(pathProject)
+
+	dto := iProMap.ToDTO(config)
 	data, err := yaml.Marshal(dto)
 	if err != nil {
 		return fmt.Errorf("error al serializar fdconfig.yaml: %w", err)
 	}
-	if err := os.MkdirAll(filepath.Dir(r.filePath), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(pathFileConfig), 0755); err != nil {
 		return fmt.Errorf("error al crear el directorio para fdconfig.yaml: %w", err)
 	}
-	return os.WriteFile(r.filePath, data, 0644)
+	return os.WriteFile(pathFileConfig, data, 0644)
 }
 
-func (r *DomYAMLRepository) Load() (*domAgg.Config, error) {
-	data, err := os.ReadFile(r.filePath)
+func (r *YamlConfigRepository) Load(pathProject string) (*proAgg.Config, error) {
+	pathFileConfig := r.PathFileConfig(pathProject)
+
+	data, err := os.ReadFile(pathFileConfig)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, nil
@@ -45,10 +51,10 @@ func (r *DomYAMLRepository) Load() (*domAgg.Config, error) {
 		}
 	}
 
-	var dto iDomDto.FileConfig
+	var dto iProDto.FileConfig
 	if err := yaml.Unmarshal(data, &dto); err != nil {
 		return nil, fmt.Errorf("error al deserializar fdconfig.yaml: %w", err)
 	}
 
-	return iDomMap.ToDomain(dto)
+	return iProMap.ToDomain(dto)
 }

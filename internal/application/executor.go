@@ -1,6 +1,7 @@
 package application
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -17,30 +18,43 @@ import (
 	execSer "github.com/jairoprogramador/fastdeploy-core/internal/domain/executor/services"
 	execVos "github.com/jairoprogramador/fastdeploy-core/internal/domain/executor/vos"
 
-	"github.com/jairoprogramador/fastdeploy-core/internal/domain/logger/aggregates"
-	domAgg "github.com/jairoprogramador/fastdeploy-core/internal/domain/project/aggregates"
-	depEnt "github.com/jairoprogramador/fastdeploy-core/internal/domain/template/entities"
+	logAgg "github.com/jairoprogramador/fastdeploy-core/internal/domain/logger/aggregates"
+
+	proAgg "github.com/jairoprogramador/fastdeploy-core/internal/domain/project/aggregates"
+	proPor "github.com/jairoprogramador/fastdeploy-core/internal/domain/project/ports"
+
+	temEnt "github.com/jairoprogramador/fastdeploy-core/internal/domain/template/entities"
+	temPor "github.com/jairoprogramador/fastdeploy-core/internal/domain/template/ports"
+	temVos "github.com/jairoprogramador/fastdeploy-core/internal/domain/template/vos"
+
+	shared "github.com/jairoprogramador/fastdeploy-core/internal/domain/shared"
 )
 
 type AppExecutor struct {
 	varResolver           execSer.TemplateResolver
 	fingerprintService    stateSer.FingerprintService
-	workspaceMgr          appPor.WorkspaceManager
+	workspaceMgr          appPor.StepWorkspace
 	cmdExecutor           appPor.CommandExecutor
 	variablesRepository   statePor.VariablesRepository
 	fingerprintRepository statePor.FingerprintRepository
 	statePolicyService    stateSer.FingerprintPolicyService
+	configRepository      proPor.ConfigRepository
+	templateRepository    temPor.TemplateRepository
+	gitManager            appPor.GitManager
 	logger                appPor.Logger
 }
 
 func NewAppExecutor(
 	varResolver execSer.TemplateResolver,
 	fingerprintService stateSer.FingerprintService,
-	workspaceMgr appPor.WorkspaceManager,
+	workspaceMgr appPor.StepWorkspace,
 	cmdExecutor appPor.CommandExecutor,
 	variablesRepository statePor.VariablesRepository,
 	fingerprintRepository statePor.FingerprintRepository,
 	statePolicyService stateSer.FingerprintPolicyService,
+	configRepository proPor.ConfigRepository,
+	templateRepository temPor.TemplateRepository,
+	gitManager appPor.GitManager,
 	logger appPor.Logger,
 ) *AppExecutor {
 	return &AppExecutor{
@@ -51,110 +65,177 @@ func NewAppExecutor(
 		variablesRepository:   variablesRepository,
 		fingerprintRepository: fingerprintRepository,
 		statePolicyService:    statePolicyService,
+		configRepository:      configRepository,
+		templateRepository:    templateRepository,
+		gitManager:            gitManager,
 		logger:                logger,
 	}
 }
 
-func (s *AppExecutor) Run(req appDto.OrderRequest) (*execAgg.Order, error) {
-	allVars, err := s.getVariablesInit(req)
+func (s *AppExecutor) existsEnvironment(environments []temVos.Environment, environmentValue string) bool {
+	for _, env := range environments {
+		if env.Value() == environmentValue {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *AppExecutor) Run(request appDto.ExecutorRequest) error {
+
+	ctx := context.Background()
+
+	configProject, err := s.configRepository.Load(request.PathProject())
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	fingerprintCurrentCode, err := s.fingerprintService.GenerateFromSource(req.ProjectPath)
+	environments, err := s.templateRepository.LoadEnvironments(ctx, configProject.Template())
 	if err != nil {
-		return nil, err
+		return err
+	}
+
+	environment := request.Environment()
+	if !s.existsEnvironment(environments, request.Environment()) {
+		if len(environments) >= 0 {
+			environment = environments[0].Value()
+		} else {
+			return fmt.Errorf("el ambiente '%s' no se encontró en la plantilla", request.Environment())
+		}
+	}
+
+	deployment, err := s.templateRepository.LoadDeployment(ctx, configProject.Template(), environment)
+	if err != nil {
+		return err
+	}
+
+	if !deployment.ExistsStep(request.FinalStepName()) {
+		return fmt.Errorf("el paso '%s' no se encontró en la plantilla", request.FinalStepName())
+	}
+
+	stepFinalName := deployment.StepName(request.FinalStepName())
+
+	if stepFinalName != shared.StepTest {
+		revisionProject, err := s.GetCommitHash(ctx, request.PathProject())
+		if err != nil {
+			return err
+		}
+		configProject.SetProjectRevision(revisionProject)
+	}
+
+	allVars, err := s.getVariablesInit(configProject, request.PathProject(), environment)
+	if err != nil {
+		return err
+	}
+
+	fingerprintCurrentCode, err := s.fingerprintService.GenerateFromPath(request.PathProject())
+	if err != nil {
+		return err
 	}
 
 	order, err := execAgg.NewOrder(
 		execVos.NewOrderID(),
-		req.Template,
-		req.Environment,
-		req.FinalStep,
-		req.SkippedStepNames,
+		deployment,
+		environment,
+		stepFinalName,
+		request.SkippedStepNames(),
 		allVars,
 	)
 
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	logContext := map[string]string{
-		"template":    req.Template.Source().Url(),
-		"environment": req.Environment.Name(),
-		"target":      req.FinalStep,
+	contextDataLogger := map[string]string{
+		"template":    configProject.Template().URL(),
+		"environment": environment,
+		"target":      stepFinalName,
 	}
-	execLog, err := s.logger.StartExecution(logContext, req.ProjectDom.Project().Revision())
+
+	namesParams := appDto.NewNamesParams(configProject.Project().Name(), configProject.Template().NameTemplate())
+
+	execLogger, err := s.logger.Start(namesParams, contextDataLogger, configProject.Project().Revision()) // tal vez solo hay que pasar configProject
 	if err != nil {
-		return order, err
+		return err
 	}
 
-	for _, stepExec := range order.StepsRecord() {
-		stepLog, err := s.logger.AddStep(execLog, stepExec.Name())
+	pathTemplateLocal := s.templateRepository.PathLocal(configProject.Template())
+
+	for _, stepRecord := range order.StepsRecord() {
+		stepLog, err := s.logger.AddStep(namesParams, execLogger, stepRecord.Name())
 		if err != nil {
-			return order, err
+			return err
 		}
 
-		if stepExec.Status() == execVos.StepStatusSkipped {
-			s.logger.MarkStepAsSkipped(execLog, stepLog)
+		if stepRecord.Status() == execVos.StepStatusSkipped {
+			s.logger.MarkStepAsSkipped(namesParams, execLogger, stepLog)
 			continue
 		}
 
-		stepDef := s.findStepDefinition(req.Template.Steps(), stepExec.Name())
+		stepDef := s.findStepDefinition(deployment.Steps(), stepRecord.Name())
+		runParams := appDto.NewRunParams(environment, stepRecord.Name())
 
-		err = s.processStepVariables(stepExec.Name(), stepDef, order)
+		err = s.processStepVariables(namesParams, runParams, stepDef, order)
 		if err != nil {
-			s.logger.MarkStepAsFailed(execLog, stepLog, err)
-			s.logger.FinishExecution(execLog)
-			return order, err
+			s.logger.MarkStepAsFailed(namesParams, execLogger, stepLog, err)
+			s.logger.FinishExecution(namesParams, execLogger)
+			return err
 		}
 
-		fingerprintsStateStepCurrent, err := s.getFingerprintsStateStepCurrent(stepExec.Name(),
-			req.TemplatePath, fingerprintCurrentCode, order.GetOutputsMapForFingerprint())
+		fingerprintsStateStepCurrent, err := s.getFingerprintsStateStepCurrent(stepRecord.Name(),
+			pathTemplateLocal, environment, fingerprintCurrentCode, order.GetOutputsMapForFingerprint())
 		if err != nil {
-			return nil, err
+			return err
 		}
 
-		fingerprintsStateStepLatest, err := s.getFingerprintsStateStepLatest(stepExec.Name())
+		fingerprintsStateStepLatest, err := s.getFingerprintsStateStepLatest(namesParams, runParams)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		decision := s.statePolicyService.Decide(fingerprintsStateStepLatest, stepDef.TriggersInt(), fingerprintsStateStepCurrent)
 
 		if decision.ShouldExecute() {
-			err = s.processStep(req, order, stepExec, fingerprintsStateStepCurrent, execLog)
+			err = s.processStep(
+				namesParams,
+				runParams,
+				order,
+				ctx,
+				fingerprintsStateStepCurrent,
+				stepRecord,
+				execLogger)
+
 			if err != nil {
-				s.logger.FinishExecution(execLog)
-				return order, err
+				s.logger.FinishExecution(namesParams, execLogger)
+				return err
 			}
 		} else {
-			order.MarkStepAsCached(stepExec.Name())
-			s.logger.MarkStepAsCached(execLog, stepLog, decision.Reason())
+			order.MarkStepAsCached(stepRecord.Name())
+			s.logger.MarkStepAsCached(namesParams, execLogger, stepLog, decision.Reason())
 			continue
 		}
 	}
 
-	s.logger.FinishExecution(execLog)
+	s.logger.FinishExecution(namesParams, execLogger)
 	if order.Status() == execVos.OrderStatusFailed {
-		return order, errors.New("❌ la ejecución de la orden ha fallado")
+		return errors.New("❌ la ejecución de la orden ha fallado")
 	}
 
 	if order.Status() == execVos.OrderStatusSuccessful {
 		fingerprintsStateCodeCurrent := stateAgg.NewFingerprintState(statevos.ScopeCode.String())
 		fingerprintsStateCodeCurrent.SetFingerprint(statevos.ScopeCode, fingerprintCurrentCode)
 
-		err = s.fingerprintRepository.SaveCode(fingerprintsStateCodeCurrent)
+		err = s.fingerprintRepository.SaveCode(namesParams, fingerprintsStateCodeCurrent)
 		if err != nil {
-			return order, err
+			return err
 		}
 	}
 
-	return order, nil
+	return nil
 }
 
 func (s *AppExecutor) getFingerprintsStateStepCurrent(
-	stepName, templatePath string,
+	stepName, templatePath, environment string,
 	fingerprintCurrentCode statevos.Fingerprint,
 	varsMap map[string]string) (*stateAgg.FingerprintState, error) {
 
@@ -163,7 +244,7 @@ func (s *AppExecutor) getFingerprintsStateStepCurrent(
 		return &stateAgg.FingerprintState{}, err
 	}
 
-	fingerprintCurrentRecipe, err := s.fingerprintService.GenerateFromStepDefinition(templatePath, stepName)
+	fingerprintCurrentRecipe, err := s.fingerprintService.GenerateFromStepDefinition(templatePath, appDto.NewRunParams(environment, stepName))
 	if err != nil {
 		return &stateAgg.FingerprintState{}, err
 	}
@@ -176,13 +257,13 @@ func (s *AppExecutor) getFingerprintsStateStepCurrent(
 	return fingerprintsStateStepCurrent, nil
 }
 
-func (s *AppExecutor) getFingerprintsStateStepLatest(stepName string) (*stateAgg.FingerprintState, error) {
+func (s *AppExecutor) getFingerprintsStateStepLatest(namesParams appDto.NamesParams, runParams appDto.RunParams) (*stateAgg.FingerprintState, error) {
 
-	fingerprintsStateStepLatest, err := s.fingerprintRepository.FindStep(stepName)
+	fingerprintsStateStepLatest, err := s.fingerprintRepository.FindStep(namesParams, runParams)
 	if err != nil {
 		return nil, err
 	}
-	fingerprintsStateCodeLatest, err := s.fingerprintRepository.FindCode()
+	fingerprintsStateCodeLatest, err := s.fingerprintRepository.FindCode(namesParams)
 	if err != nil {
 		return nil, err
 	}
@@ -194,8 +275,8 @@ func (s *AppExecutor) getFingerprintsStateStepLatest(stepName string) (*stateAgg
 	return fingerprintsStateStepLatest, nil
 }
 
-func (s *AppExecutor) processStepVariables(stepName string, stepDefinition depEnt.StepDefinition, order *execAgg.Order) error {
-	storeVars, err := s.variablesRepository.FindByStepName(stepName)
+func (s *AppExecutor) processStepVariables(namesParams appDto.NamesParams, runParams appDto.RunParams, stepDefinition temEnt.StepDefinition, order *execAgg.Order) error {
+	storeVars, err := s.variablesRepository.FindByStepName(namesParams, runParams)
 	if err != nil {
 		return err
 	}
@@ -212,44 +293,48 @@ func (s *AppExecutor) processStepVariables(stepName string, stepDefinition depEn
 }
 
 func (s *AppExecutor) processStep(
-	req appDto.OrderRequest,
+	namesParams appDto.NamesParams,
+	runParams appDto.RunParams,
 	order *execAgg.Order,
-	stepExec *execEnt.StepRecord,
+	ctx context.Context,
 	stateCurrent *stateAgg.FingerprintState,
-	execLog *aggregates.Logger) error {
+	stepRecord *execEnt.StepRecord,
+	logger *logAgg.Logger) error {
 
-	stepLog, _ := execLog.GetStep(stepExec.Name())
+	stepLog, _ := logger.GetStep(stepRecord.Name())
 
-	err := s.executeStep(req, order, stepExec, execLog)
+	err := s.executeStep(namesParams, runParams, order, ctx, stepRecord, logger)
 	if err != nil {
 		return err
 	}
 
-	if stepExec.Status() == execVos.StepStatusSuccessful {
-		err = s.variablesRepository.Save(stepExec.Name(), order.GetOutputsMapForSave())
+	if stepRecord.Status() == execVos.StepStatusSuccessful {
+		err = s.variablesRepository.Save(namesParams, runParams, order.GetOutputsMapForSave())
 		if err != nil {
-			s.logger.MarkStepAsFailed(execLog, stepLog, err)
+			s.logger.MarkStepAsFailed(namesParams, logger, stepLog, err)
 			return err
 		}
 
-		err = s.fingerprintRepository.SaveStep(stateCurrent)
+		err = s.fingerprintRepository.SaveStep(namesParams, runParams, stateCurrent)
 		if err != nil {
-			s.logger.MarkStepAsFailed(execLog, stepLog, err)
+			s.logger.MarkStepAsFailed(namesParams, logger, stepLog, err)
 			return err
 		}
 
-		s.logger.MarkStepAsSuccessful(execLog, stepLog)
+		s.logger.MarkStepAsSuccessful(namesParams, logger, stepLog)
 	}
 	return nil
 }
 
 func (s *AppExecutor) executeStep(
-	req appDto.OrderRequest,
+	namesParams appDto.NamesParams,
+	runParams appDto.RunParams,
 	order *execAgg.Order,
-	stepExec *execEnt.StepRecord,
-	execLog *aggregates.Logger) error {
+	ctx context.Context,
+	stepRecord *execEnt.StepRecord,
+	logger *logAgg.Logger) error {
 
-	workdirStep, err := s.workspaceMgr.Prepare(stepExec.Name())
+	workdirStep, err := s.workspaceMgr.Prepare(namesParams, runParams)
 
 	if err != nil {
 		return err
@@ -257,11 +342,11 @@ func (s *AppExecutor) executeStep(
 
 	order.AddOutput(execAgg.OutputStepWorkdirKey, workdirStep)
 
-	stepLog, _ := execLog.GetStep(stepExec.Name())
-	s.logger.MarkStepAsRunning(execLog, stepLog)
+	stepLog, _ := logger.GetStep(stepRecord.Name())
+	s.logger.MarkStepAsRunning(namesParams, logger, stepLog)
 
-	for _, cmdExec := range stepExec.Commands() {
-		taskLog, err := s.logger.AddTaskToStep(execLog, stepExec.Name(), cmdExec.Name())
+	for _, cmdExec := range stepRecord.Commands() {
+		taskLog, err := s.logger.AddTaskToStep(namesParams, logger, stepRecord.Name(), cmdExec.Name())
 		if err != nil {
 			return err
 		}
@@ -274,59 +359,58 @@ func (s *AppExecutor) executeStep(
 
 		interpolatedCmd, err := s.varResolver.ResolveTemplate(cmdExec.Command(), order.Outputs())
 		if err != nil {
-			s.logger.MarkTaskAsFailed(execLog, taskLog, err, stepLog)
+			s.logger.MarkTaskAsFailed(namesParams, logger, taskLog, err, stepLog)
 			return err
 		}
-		s.logger.SetTaskCommand(execLog, taskLog, interpolatedCmd)
+		s.logger.SetTaskCommand(namesParams, logger, taskLog, interpolatedCmd)
 
 		for _, templatePath := range cmdExec.TemplateFiles() {
 			pathTemplateFile := s.cmdExecutor.CreateWorkDir(workdirCmd, templatePath)
 
 			err = s.varResolver.ResolvePath(pathTemplateFile, order.Outputs())
 			if err != nil {
-				s.logger.MarkTaskAsFailed(execLog, taskLog, err, stepLog)
+				s.logger.MarkTaskAsFailed(namesParams, logger, taskLog, err, stepLog)
 				return err
 			}
 		}
 
-		s.logger.MarkTaskAsRunning(execLog, taskLog, stepLog)
-		cmdOutput, exitCode, err := s.cmdExecutor.Execute(req.Ctx, workdirCmd, interpolatedCmd)
+		s.logger.MarkTaskAsRunning(namesParams, logger, taskLog, stepLog)
+		cmdOutput, exitCode, err := s.cmdExecutor.Execute(ctx, workdirCmd, interpolatedCmd)
 		if err != nil {
-			s.logger.MarkTaskAsFailed(execLog, taskLog, err, stepLog)
+			s.logger.MarkTaskAsFailed(namesParams, logger, taskLog, err, stepLog)
 			return err
 		}
 
-		s.logger.AddOutputToTask(execLog, taskLog, cmdOutput)
-		err = order.FinalizeCommand(stepExec.Name(), cmdExec.Name(), interpolatedCmd, cmdOutput, exitCode, s.varResolver)
+		s.logger.AddOutputToTask(namesParams, logger, taskLog, cmdOutput)
+		err = order.FinalizeCommand(stepRecord.Name(), cmdExec.Name(), interpolatedCmd, cmdOutput, exitCode, s.varResolver)
 		if err != nil {
-			s.logger.MarkTaskAsFailed(execLog, taskLog, err, stepLog)
+			s.logger.MarkTaskAsFailed(namesParams, logger, taskLog, err, stepLog)
 			return err
 		}
 		if exitCode != 0 {
 			err = fmt.Errorf("el comando finalizó con código de salida %d", exitCode)
-			s.logger.MarkTaskAsFailed(execLog, taskLog, err, stepLog)
+			s.logger.MarkTaskAsFailed(namesParams, logger, taskLog, err, stepLog)
 			return err
 		}
-		s.logger.MarkTaskAsSuccessful(execLog, taskLog, stepLog)
+		s.logger.MarkTaskAsSuccessful(namesParams, logger, taskLog, stepLog)
 	}
 	return nil
 }
 
-func (s *AppExecutor) findStepDefinition(steps []depEnt.StepDefinition, stepName string) depEnt.StepDefinition {
+func (s *AppExecutor) findStepDefinition(steps []temEnt.StepDefinition, stepName string) temEnt.StepDefinition {
 	for _, step := range steps {
 		if step.Name() == stepName {
 			return step
 		}
 	}
-	return depEnt.StepDefinition{}
+	return temEnt.StepDefinition{}
 }
 
-func (s *AppExecutor) getVariablesInit(req appDto.OrderRequest) ([]execVos.Output, error) {
-	environment := req.Environment.Value()
+func (s *AppExecutor) getVariablesInit(configProject *proAgg.Config, pathProject string, environment string) ([]execVos.Output, error) {
 
 	allVarsInit := []execVos.Output{}
 
-	varsProject, err := s.getVariablesConfig(req.ProjectDom)
+	varsProject, err := s.getVariablesConfig(configProject)
 	if err != nil {
 		return nil, err
 	}
@@ -338,7 +422,7 @@ func (s *AppExecutor) getVariablesInit(req appDto.OrderRequest) ([]execVos.Outpu
 	}
 	allVarsInit = append(allVarsInit, env)
 
-	projectPath, err := execVos.NewOutputFromNameAndValue("project_workdir", req.ProjectPath)
+	projectPath, err := execVos.NewOutputFromNameAndValue("project_workdir", pathProject)
 	if err != nil {
 		return nil, err
 	}
@@ -353,7 +437,7 @@ func (s *AppExecutor) getVariablesInit(req appDto.OrderRequest) ([]execVos.Outpu
 	return allVarsInit, nil
 }
 
-func (s *AppExecutor) getVariablesConfig(config *domAgg.Config) ([]execVos.Output, error) {
+func (s *AppExecutor) getVariablesConfig(config *proAgg.Config) ([]execVos.Output, error) {
 	varsDeployment := []execVos.Output{}
 
 	projectId, err := execVos.NewOutputFromNameAndValue("project_id", config.Project().IdString()[:8])
@@ -393,4 +477,26 @@ func (s *AppExecutor) getVariablesConfig(config *domAgg.Config) ([]execVos.Outpu
 	varsDeployment = append(varsDeployment, projectOrganization)
 
 	return varsDeployment, nil
+}
+
+func (s *AppExecutor) GetCommitHash(ctx context.Context, pathProject string) (string, error) {
+	isGit, err := s.gitManager.IsGit(pathProject)
+	if err != nil {
+		return "", err
+	}
+
+	if !isGit {
+		return "", errors.New("el projecto no esta configurado como repositorio git, ejecute 'git init' primero")
+	}
+
+	existsChanges, err := s.gitManager.ExistChanges(ctx, pathProject)
+	if err != nil {
+		return "", err
+	}
+
+	if existsChanges {
+		return "", errors.New("hay cambios en el proyecto, ejecute 'git commit' primero")
+	}
+
+	return s.gitManager.GetCommitHash(ctx, pathProject)
 }

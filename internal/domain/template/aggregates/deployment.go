@@ -4,22 +4,18 @@ import (
 	"errors"
 	"fmt"
 
-	shaVos "github.com/jairoprogramador/fastdeploy-core/internal/domain/shared/vos"
-
 	depEnt "github.com/jairoprogramador/fastdeploy-core/internal/domain/template/entities"
 	depVos "github.com/jairoprogramador/fastdeploy-core/internal/domain/template/vos"
 )
 
-type DeploymentTemplate struct {
-	source       shaVos.TemplateSource
+type Deployment struct {
 	environments []depVos.Environment
 	steps        []depEnt.StepDefinition
 }
 
-func NewDeploymentTemplate(
-	source shaVos.TemplateSource,
+func NewDeployment(
 	environments []depVos.Environment,
-	steps []depEnt.StepDefinition) (*DeploymentTemplate, error) {
+	steps []depEnt.StepDefinition) (*Deployment, error) {
 
 	if len(environments) == 0 {
 		return nil, errors.New("la plantilla de despliegue debe tener al menos un ambiente")
@@ -52,34 +48,39 @@ func NewDeploymentTemplate(
 		stepNames[step.Name()] = struct{}{}
 	}
 
-	return &DeploymentTemplate{
-		source:       source,
+	return &Deployment{
+		//source:       source,
 		environments: environments,
 		steps:        steps,
 	}, nil
 }
 
-/* func (dt *DeploymentTemplate) SearchStep(stepName string) (*entities.StepDefinition, error) {
-	for _, step := range dt.steps {
-		if step.Name() == stepName {
-			return &step, nil
-		}
-	}
-	return nil, fmt.Errorf("no se encontró el paso '%s' en la plantilla", stepName)
-} */
-
-func (dt *DeploymentTemplate) Source() shaVos.TemplateSource {
-	return dt.source
-}
-
-func (dt *DeploymentTemplate) Environments() []depVos.Environment {
+func (dt *Deployment) Environments() []depVos.Environment {
 	envsCopy := make([]depVos.Environment, len(dt.environments))
 	copy(envsCopy, dt.environments)
 	return envsCopy
 }
 
-func (dt *DeploymentTemplate) Steps() []depEnt.StepDefinition {
+func (dt *Deployment) Steps() []depEnt.StepDefinition {
 	stepsCopy := make([]depEnt.StepDefinition, len(dt.steps))
 	copy(stepsCopy, dt.steps)
 	return stepsCopy
+}
+
+func (dt *Deployment) ExistsStep(stepName string) bool {
+	for _, step := range dt.steps {
+		if step.Name() == stepName || step.Name()[:1] == stepName {
+			return true
+		}
+	}
+	return false
+}
+
+func (dt *Deployment) StepName(stepName string) string {
+	for _, step := range dt.steps {
+		if step.Name() == stepName || step.Name()[:1] == stepName {
+			return step.Name()
+		}
+	}
+	return stepName
 }

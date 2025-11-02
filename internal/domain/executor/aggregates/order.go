@@ -3,9 +3,8 @@ package aggregates
 import (
 	"fmt"
 
-	depAgg "github.com/jairoprogramador/fastdeploy-core/internal/domain/template/aggregates"
-	depEnt "github.com/jairoprogramador/fastdeploy-core/internal/domain/template/entities"
-	depVos "github.com/jairoprogramador/fastdeploy-core/internal/domain/template/vos"
+	temAgg "github.com/jairoprogramador/fastdeploy-core/internal/domain/template/aggregates"
+	temEnt "github.com/jairoprogramador/fastdeploy-core/internal/domain/template/entities"
 
 	orchEnt "github.com/jairoprogramador/fastdeploy-core/internal/domain/executor/entities"
 	orchSer "github.com/jairoprogramador/fastdeploy-core/internal/domain/executor/services"
@@ -13,9 +12,9 @@ import (
 )
 
 const (
-	OutputOrderIdKey = "order_id"
-	OutputStepWorkdirKey = "step_workdir"
-	OutputCommWorkdirKey = "commans_workdir"
+	OutputOrderIdKey         = "order_id"
+	OutputStepWorkdirKey     = "step_workdir"
+	OutputCommWorkdirKey     = "commans_workdir"
 	OutputProjectRevisionKey = "project_revision"
 )
 
@@ -29,21 +28,21 @@ type Order struct {
 
 func NewOrder(
 	orderId orchVos.OrderID,
-	template *depAgg.DeploymentTemplate,
-	environment depVos.Environment,
+	deployment *temAgg.Deployment,
+	environment string,
 	finalStepName string,
 	skippedStepNames map[string]struct{},
 	initialOutputs []orchVos.Output,
 ) (*Order, error) {
 
-	stepsRecords := getStepRecordFromTemplate(template.Steps(), skippedStepNames, finalStepName)
+	stepsRecords := getStepRecordFromDeployment(deployment.Steps(), skippedStepNames, finalStepName)
 
 	outputsShared := getOutputsInitial(initialOutputs)
 
 	newOrder := &Order{
 		id:            orderId,
 		status:        orchVos.OrderStatusInProgress,
-		environment:   environment.Value(),
+		environment:   environment,
 		steps:         stepsRecords,
 		outputsShared: outputsShared,
 	}
@@ -60,8 +59,8 @@ func getOutputsInitial(initialOutputs []orchVos.Output) map[string]orchVos.Outpu
 	return outputsShared
 }
 
-func getStepRecordFromTemplate(
-	stepsDef []depEnt.StepDefinition,
+func getStepRecordFromDeployment(
+	stepsDef []temEnt.StepDefinition,
 	skippedStepNames map[string]struct{},
 	finalStepName string) []*orchEnt.StepRecord {
 
@@ -199,9 +198,9 @@ func (o *Order) GetOutputsMapForFingerprint() map[string]string {
 	varsMap := make(map[string]string)
 	for _, value := range o.outputsShared {
 		if value.Name() != OutputOrderIdKey &&
-		value.Name() != OutputStepWorkdirKey &&
-		value.Name() != OutputCommWorkdirKey &&
-		value.Name() != OutputProjectRevisionKey {
+			value.Name() != OutputStepWorkdirKey &&
+			value.Name() != OutputCommWorkdirKey &&
+			value.Name() != OutputProjectRevisionKey {
 			varsMap[value.Name()] = value.Value()
 		}
 	}

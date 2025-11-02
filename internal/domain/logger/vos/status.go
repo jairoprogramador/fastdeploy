@@ -2,8 +2,6 @@ package vos
 
 import (
 	"fmt"
-
-	"go.yaml.in/yaml/v3"
 )
 
 type Status int
@@ -16,23 +14,6 @@ const (
 	Skipped
 	Cached
 )
-
-func (s Status) MarshalYAML() (interface{}, error) {
-	return s.String(), nil
-}
-
-func (s *Status) UnmarshalYAML(value *yaml.Node) error {
-	var str string
-	if err := value.Decode(&str); err != nil {
-		return err
-	}
-	st, err := NewStatusFromString(str)
-	if err != nil {
-		return err
-	}
-	*s = st
-	return nil
-}
 
 func (s Status) String() string {
 	switch s {

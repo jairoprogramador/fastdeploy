@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/fatih/color"
-	appPor "github.com/jairoprogramador/fastdeploy-core/internal/application/ports"
+	"github.com/jairoprogramador/fastdeploy-core/internal/application/ports"
 	"github.com/jairoprogramador/fastdeploy-core/internal/domain/logger/aggregates"
 	"github.com/jairoprogramador/fastdeploy-core/internal/domain/logger/entities"
 	"github.com/jairoprogramador/fastdeploy-core/internal/domain/logger/vos"
@@ -25,7 +25,6 @@ type ConsolePresenter struct {
 	header     *color.Color
 	ctxKey     *color.Color
 	ctxValue   *color.Color
-	step       *color.Color
 	success    *color.Color
 	failure    *color.Color
 	running    *color.Color
@@ -34,13 +33,12 @@ type ConsolePresenter struct {
 	errorBody  *color.Color
 }
 
-func NewConsolePresenter() appPor.Presenter {
+func NewConsolePresenter() ports.Presenter {
 	return &ConsolePresenter{
 		writer:     os.Stdout,
 		header:     color.New(color.FgCyan, color.Bold),
 		ctxKey:     color.New(color.FgYellow),
 		ctxValue:   color.New(color.FgWhite),
-		step:       color.New(color.FgMagenta, color.Bold),
 		success:    color.New(color.FgGreen),
 		failure:    color.New(color.FgRed),
 		running:    color.New(color.FgBlue),

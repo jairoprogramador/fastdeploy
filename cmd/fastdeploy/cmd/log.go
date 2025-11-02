@@ -10,10 +10,13 @@ var logCmd = &cobra.Command{
 	Short: "Show the detailed log of the last execution",
 	Long:  `Reads and displays the most recent log file from the .fastdeploy/logs directory.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		factory := factory.NewFactory()
-		logService := factory.BuildLogService()
+		factoryApp, err := factory.NewFactory()
+		if err != nil {
+			return err
+		}
 
-		err := logService.ShowLog()
+		logService := factoryApp.BuildLogService()
+		err = logService.ShowLog(factoryApp.PathAppProject())
 		if err != nil {
 			return err
 		}

@@ -12,49 +12,40 @@ import (
 	staSer "github.com/jairoprogramador/fastdeploy-core/internal/domain/state/services"
 	staVos "github.com/jairoprogramador/fastdeploy-core/internal/domain/state/vos"
 
+	appDto "github.com/jairoprogramador/fastdeploy-core/internal/application/dto"
+
 	gitignore "github.com/sabhiram/go-gitignore"
 )
 
-type FingerprintService struct {
-	environment    string
+type FingerprintService struct {}
+
+func NewFingerprintService() staSer.FingerprintService {
+	return &FingerprintService{}
 }
 
-func NewFingerprintService(
-	environment string,
-) (staSer.FingerprintService, error) {
-
-	if environment == "" {
-		return nil, fmt.Errorf("environment is required")
-	}
-
-	return &FingerprintService{
-		environment:    environment,
-	}, nil
-}
-
-func (s *FingerprintService) GenerateFromSource(sourcePath string) (staVos.Fingerprint, error) {
-	pathGitIgnore := filepath.Join(sourcePath, ".gitignore")
+func (s *FingerprintService) GenerateFromPath(pathProject string) (staVos.Fingerprint, error) {
+	pathGitIgnore := filepath.Join(pathProject, ".gitignore")
 	lines := []string{".git", ".gitignore"}
-	return s.generateHash(sourcePath, pathGitIgnore, lines)
+	return s.generateHash(pathProject, pathGitIgnore, lines)
 }
 
-func (s *FingerprintService) GenerateFromStepDefinition(templatePath, stepName string) (staVos.Fingerprint, error) {
-	pathGitIgnore := filepath.Join(templatePath, ".gitignore")
+func (s *FingerprintService) GenerateFromStepDefinition(pathTemplate string, runParams appDto.RunParams) (staVos.Fingerprint, error) {
+	pathGitIgnore := filepath.Join(pathTemplate, ".gitignore")
 	lines := []string{".git", ".gitignore"}
 
-	stepsPathToIgnore, err := s.getStepsPathToIgnore(templatePath, stepName)
+	stepsPathToIgnore, err := s.getStepsPathToIgnore(pathTemplate, runParams.StepName())
 	if err != nil {
 		return staVos.Fingerprint{}, err
 	}
 	lines = append(lines, stepsPathToIgnore...)
 
-	varsPathToIgnore, err := s.getVarsPathToIgnore(templatePath, stepName)
+	varsPathToIgnore, err := s.getVarsPathToIgnore(pathTemplate, runParams.StepName(), runParams.Environment())
 	if err != nil {
 		return staVos.Fingerprint{}, err
 	}
 	lines = append(lines, varsPathToIgnore...)
 
-	return s.generateHash(templatePath, pathGitIgnore, lines)
+	return s.generateHash(pathTemplate, pathGitIgnore, lines)
 }
 
 func (s *FingerprintService) GenerateFromStepVariables(vars map[string]string) (staVos.Fingerprint, error) {
@@ -65,8 +56,8 @@ func (s *FingerprintService) GenerateFromStepVariables(vars map[string]string) (
 	return staVos.NewFingerprint(hashString)
 }
 
-func (s *FingerprintService) getStepsPathToIgnore(templatePath, stepName string) ([]string, error) {
-	stepsPath := filepath.Join(templatePath, "steps")
+func (s *FingerprintService) getStepsPathToIgnore(pathTemplate, stepName string) ([]string, error) {
+	stepsPath := filepath.Join(pathTemplate, "steps")
 
 	if _, err := os.Stat(stepsPath); os.IsNotExist(err) {
 		return []string{}, nil
@@ -100,8 +91,8 @@ func (s *FingerprintService) getStepsPathToIgnore(templatePath, stepName string)
 	return stepsToIgnore, nil
 }
 
-func (s *FingerprintService) getVarsPathToIgnore(templatePath,stepName string) ([]string, error) {
-	variablesPath := filepath.Join(templatePath, "variables")
+func (s *FingerprintService) getVarsPathToIgnore(pathTemplate, stepName, environment string) ([]string, error) {
+	variablesPath := filepath.Join(pathTemplate, "variables")
 
 	if _, err := os.Stat(variablesPath); os.IsNotExist(err) {
 		return []string{}, nil
@@ -117,8 +108,8 @@ func (s *FingerprintService) getVarsPathToIgnore(templatePath,stepName string) (
 	for _, entryVariable := range entriesVariables {
 		entryVariableName := entryVariable.Name()
 
-		if entryVariableName == s.environment {
-			variablesStepFileToIgnore, err := s.getVariablesStepFileToIgnore(templatePath, stepName)
+		if entryVariableName == environment {
+			variablesStepFileToIgnore, err := s.getVariablesStepFileToIgnore(pathTemplate, stepName, environment)
 			if err != nil {
 				return nil, fmt.Errorf("error al obtener directorios de variables del step: %w", err)
 			}
@@ -131,17 +122,17 @@ func (s *FingerprintService) getVarsPathToIgnore(templatePath,stepName string) (
 			continue
 		}
 
-		if entryVariableName != s.environment {
+		if entryVariableName != environment {
 			variablesToIgnore = append(variablesToIgnore, filepath.Join("variables", entryVariableName, "**.*"))
 		}
 	}
 	return variablesToIgnore, nil
 }
 
-func (s *FingerprintService) getVariablesStepFileToIgnore(templatePath, stepName string) ([]string, error) {
+func (s *FingerprintService) getVariablesStepFileToIgnore(pathTemplate, stepName, environment string) ([]string, error) {
 	var variablesStepFileToIgnore []string
 
-	pathStepVariables := filepath.Join(templatePath, "variables", s.environment)
+	pathStepVariables := filepath.Join(pathTemplate, "variables", environment)
 
 	entriesStepVariables, err := os.ReadDir(pathStepVariables)
 	if err != nil {
@@ -158,18 +149,18 @@ func (s *FingerprintService) getVariablesStepFileToIgnore(templatePath, stepName
 		if !entryStepVariables.IsDir() {
 			variablesStepFileToIgnore = append(
 				variablesStepFileToIgnore,
-				filepath.Join("variables", s.environment, entryStepVariables.Name()))
+				filepath.Join("variables", environment, entryStepVariables.Name()))
 		} else {
 			variablesStepFileToIgnore = append(
 				variablesStepFileToIgnore,
-				filepath.Join("variables", s.environment, entryStepVariables.Name(), "**.*"))
+				filepath.Join("variables", environment, entryStepVariables.Name(), "**.*"))
 		}
 	}
 	return variablesStepFileToIgnore, nil
 }
 
 func (s *FingerprintService) generateHash(
-	sourcePath string,
+	pathSource string,
 	pathGitIgnore string,
 	ignoreLines []string) (staVos.Fingerprint, error){
 
@@ -180,13 +171,13 @@ func (s *FingerprintService) generateHash(
 	if err != nil {
 		ignoreMatcher = &gitignore.GitIgnore{}
 	}
-	return s.generateHashFromSource(sourcePath, ignoreMatcher)
+	return s.generateHashFromSource(pathSource, ignoreMatcher)
 }
 
-func (s *FingerprintService) generateHashFromSource(sourcePath string, ignorer *gitignore.GitIgnore) (staVos.Fingerprint, error) {
+func (s *FingerprintService) generateHashFromSource(pathSource string, ignorer *gitignore.GitIgnore) (staVos.Fingerprint, error) {
 	fileHashes := make(map[string]string)
 
-	err := filepath.WalkDir(sourcePath, func(path string, d os.DirEntry, err error) error {
+	err := filepath.WalkDir(pathSource, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -194,7 +185,7 @@ func (s *FingerprintService) generateHashFromSource(sourcePath string, ignorer *
 			return nil
 		}
 
-		relPath, err := filepath.Rel(sourcePath, path)
+		relPath, err := filepath.Rel(pathSource, path)
 		if err != nil {
 			return err
 		}

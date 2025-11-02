@@ -11,7 +11,7 @@ import (
 
 	appPor "github.com/jairoprogramador/fastdeploy-core/internal/application/ports"
 
-	sharedvos "github.com/jairoprogramador/fastdeploy-core/internal/domain/shared/vos"
+	proVos "github.com/jairoprogramador/fastdeploy-core/internal/domain/project/vos"
 
 	depAgg "github.com/jairoprogramador/fastdeploy-core/internal/domain/template/aggregates"
 	depEnt "github.com/jairoprogramador/fastdeploy-core/internal/domain/template/entities"
@@ -23,81 +23,100 @@ import (
 )
 
 type TemplateRepository struct {
-	rootRepositoriesPath string
-	environment          string
-	executor             appPor.CommandExecutor
+	pathRepositoriesRoot string
+	executor appPor.CommandExecutor
 }
 
 func NewTemplateRepository(
 	rootRepositoriesPath string,
-	environment string,
 	executor appPor.CommandExecutor) depPor.TemplateRepository {
 
 	return &TemplateRepository{
-		rootRepositoriesPath: rootRepositoriesPath,
-		environment:          environment,
-		executor:             executor,
+		pathRepositoriesRoot: rootRepositoriesPath,
+		executor: executor,
 	}
 }
 
-func (r *TemplateRepository) Load(ctx context.Context, source sharedvos.TemplateSource) (*depAgg.DeploymentTemplate, string, error) {
-	repositoryPath, err := r.gitCloneRepository(ctx, source)
-	if err != nil {
-		return nil, "", err
-	}
-
-	template, err := r.loadFromSource(repositoryPath, source)
-	if err != nil {
-		return nil, "", err
-	}
-
-	return template, repositoryPath, nil
+func (r *TemplateRepository) PathLocal(source proVos.Template) string {
+	return filepath.Join(r.pathRepositoriesRoot, source.NameTemplate())
 }
 
-func (r *TemplateRepository) gitCloneRepository(ctx context.Context, source sharedvos.TemplateSource) (string, error) {
-	repositoryPath := filepath.Join(r.rootRepositoriesPath, source.NameTemplate())
 
-	if err := os.MkdirAll(repositoryPath, 0755); err != nil {
-		return "", err
+func (r *TemplateRepository) LoadEnvironments(ctx context.Context, source proVos.Template) ([]depVos.Environment, error) {
+	pathRepository := r.PathLocal(source)
+
+	err := r.cloneRepository(ctx, source, pathRepository)
+	if err != nil {
+		return nil, err
 	}
 
-	if _, err := os.Stat(filepath.Join(repositoryPath, ".git")); os.IsNotExist(err) {
-		cloneCmd := fmt.Sprintf("git clone %s %s", source.Url(), repositoryPath)
-		_, _, err := r.executor.Execute(ctx, r.rootRepositoriesPath, cloneCmd)
+	environments, err := r.loadEnvironments(pathRepository)
+	if err != nil {
+		return nil, err
+	}
+
+	return environments, nil
+}
+
+func (r *TemplateRepository) LoadDeployment(ctx context.Context, source proVos.Template, environment string) (*depAgg.Deployment, error) {
+	pathRepository := r.PathLocal(source)
+
+	err := r.cloneRepository(ctx, source, pathRepository)
+	if err != nil {
+		return nil, err
+	}
+
+	template, err := r.loadFromSource(environment, pathRepository)
+	if err != nil {
+		return nil, err
+	}
+
+	return template, nil
+}
+
+func (r *TemplateRepository) cloneRepository(ctx context.Context, source proVos.Template, pathRepository string) error {
+
+	if err := os.MkdirAll(pathRepository, 0755); err != nil {
+		return err
+	}
+
+	if _, err := os.Stat(filepath.Join(pathRepository, ".git")); os.IsNotExist(err) {
+		cloneCmd := fmt.Sprintf("git clone %s %s", source.URL(), pathRepository)
+		_, _, err := r.executor.Execute(ctx, r.pathRepositoriesRoot, cloneCmd)
 		if err != nil {
-			return "", fmt.Errorf("error al clonar el repositorio '%s': %w", source.Url(), err)
+			return fmt.Errorf("error al clonar el repositorio '%s': %w", source.URL(), err)
 		}
 	} else {
 		fetchCmd := "git fetch --all"
-		_, _, err := r.executor.Execute(ctx, repositoryPath, fetchCmd)
+		_, _, err := r.executor.Execute(ctx, pathRepository, fetchCmd)
 		if err != nil {
-			return "", fmt.Errorf("error al actualizar el repositorio '%s': %w", source.Url(), err)
+			return fmt.Errorf("error al actualizar el repositorio '%s': %w", source.URL(), err)
 		}
 	}
 
 	checkoutCmd := fmt.Sprintf("git checkout %s", source.Ref())
-	if _, _, err := r.executor.Execute(ctx, repositoryPath, checkoutCmd); err != nil {
-		return repositoryPath, fmt.Errorf("error al hacer checkout a la referencia '%s' en '%s': %w", source.Ref(), repositoryPath, err)
+	if _, _, err := r.executor.Execute(ctx, pathRepository, checkoutCmd); err != nil {
+		return fmt.Errorf("error al hacer checkout a la referencia '%s' en '%s': %w", source.Ref(), pathRepository, err)
 	}
 
-	return repositoryPath, nil
+	return nil
 }
 
-func (r *TemplateRepository) loadFromSource(repositoryPath string, source sharedvos.TemplateSource) (*depAgg.DeploymentTemplate, error) {
-	environments, err := r.loadEnvironmentsFromSource(repositoryPath)
+func (r *TemplateRepository) loadFromSource(environment, pathRepository string) (*depAgg.Deployment, error) {
+	environments, err := r.loadEnvironments(pathRepository)
 	if err != nil {
 		return nil, err
 	}
 
-	steps, err := r.loadStepsFromSource(repositoryPath)
+	steps, err := r.loadSteps(pathRepository, environment)
 	if err != nil {
 		return nil, err
 	}
 
-	return depAgg.NewDeploymentTemplate(source, environments, steps)
+	return depAgg.NewDeployment(environments, steps)
 }
 
-func (r *TemplateRepository) loadEnvironmentsFromSource(repositoryPath string) ([]depVos.Environment, error) {
+func (r *TemplateRepository) loadEnvironments(repositoryPath string) ([]depVos.Environment, error) {
 	environmentsPath := filepath.Join(repositoryPath, "environments.yaml")
 
 	data, err := os.ReadFile(environmentsPath)
@@ -116,7 +135,7 @@ func (r *TemplateRepository) loadEnvironmentsFromSource(repositoryPath string) (
 	return iDepMap.EnvironmentsToDomain(dtos)
 }
 
-func (r *TemplateRepository) loadStepsFromSource(repositoryPath string) ([]depEnt.StepDefinition, error) {
+func (r *TemplateRepository) loadSteps(repositoryPath string, environment string) ([]depEnt.StepDefinition, error) {
 	stepsPath := filepath.Join(repositoryPath, "steps")
 
 	directoriesSteps, err := os.ReadDir(stepsPath)
@@ -143,17 +162,17 @@ func (r *TemplateRepository) loadStepsFromSource(repositoryPath string) ([]depEn
 
 		directoryStepPath := filepath.Join(stepsPath, directoryStepName)
 
-		triggers, err := r.loadTriggersFromSource(directoryStepPath)
+		triggers, err := r.loadTriggers(directoryStepPath)
 		if err != nil {
 			return nil, err
 		}
 
-		commands, err := r.loadCommandsFromSource(directoryStepPath)
+		commands, err := r.loadCommands(directoryStepPath)
 		if err != nil {
 			return nil, err
 		}
 
-		variables, err := r.loadVariablesFromSource(repositoryPath, stepName)
+		variables, err := r.loadVariables(repositoryPath, stepName, environment)
 		if err != nil {
 			return nil, err
 		}
@@ -168,7 +187,7 @@ func (r *TemplateRepository) loadStepsFromSource(repositoryPath string) ([]depEn
 	return stepsDefinitions, nil
 }
 
-func (r *TemplateRepository) loadTriggersFromSource(directoryStepPath string) ([]depVos.Trigger, error) {
+func (r *TemplateRepository) loadTriggers(directoryStepPath string) ([]depVos.Trigger, error) {
 	triggersPath := filepath.Join(directoryStepPath, "triggers.yaml")
 
 	data, err := os.ReadFile(triggersPath)
@@ -187,7 +206,7 @@ func (r *TemplateRepository) loadTriggersFromSource(directoryStepPath string) ([
 	return iDepMap.TriggersToDomain(scopes), nil
 }
 
-func (r *TemplateRepository) loadCommandsFromSource(directoryStepPath string) ([]depVos.CommandDefinition, error) {
+func (r *TemplateRepository) loadCommands(directoryStepPath string) ([]depVos.CommandDefinition, error) {
 	commandsPath := filepath.Join(directoryStepPath, "commands.yaml")
 
 	data, err := os.ReadFile(commandsPath)
@@ -211,9 +230,9 @@ func (r *TemplateRepository) loadCommandsFromSource(directoryStepPath string) ([
 	return commands, nil
 }
 
-func (r *TemplateRepository) loadVariablesFromSource(repositoryPath string, stepName string) ([]depVos.Variable, error) {
+func (r *TemplateRepository) loadVariables(repositoryPath string, stepName, environment string) ([]depVos.Variable, error) {
 	variablesPath := filepath.Join(repositoryPath, "variables",
-		r.environment, fmt.Sprintf("%s.yaml", stepName))
+		environment, fmt.Sprintf("%s.yaml", stepName))
 
 	data, err := os.ReadFile(variablesPath)
 	if err != nil {

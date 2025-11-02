@@ -7,32 +7,41 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/logger/mapper"
-	"github.com/jairoprogramador/fastdeploy-core/internal/domain/logger/aggregates"
-	"github.com/jairoprogramador/fastdeploy-core/internal/domain/logger/ports"
-	"github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/logger/dto"
+	appDto "github.com/jairoprogramador/fastdeploy-core/internal/application/dto"
+
+	logAgg "github.com/jairoprogramador/fastdeploy-core/internal/domain/logger/aggregates"
+	logPor "github.com/jairoprogramador/fastdeploy-core/internal/domain/logger/ports"
+
+	ilogDto "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/logger/dto"
+	ilogMap "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/logger/mapper"
 )
 
 type FileLoggerRepository struct {
-	pathStateProject string
+	pathStateRoot string
 }
 
 func NewFileLoggerRepository(
-	pathStateRootFastDeploy string,
-	projectName string,
-	repositoryName string) (ports.LoggerRepository, error) {
-
-	pathStateProject := filepath.Join(pathStateRootFastDeploy, projectName, repositoryName, "logs")
-	if err := os.MkdirAll(pathStateProject, 0755); err != nil {
-		return nil, fmt.Errorf("could not create logs directory at %s: %w", pathStateProject, err)
-	}
-	return &FileLoggerRepository{pathStateProject: pathStateProject}, nil
+	pathStateRoot string,
+) logPor.LoggerRepository {
+	return &FileLoggerRepository{pathStateRoot: pathStateRoot}
 }
 
-func (r *FileLoggerRepository) Save(log *aggregates.Logger) error {
-	filePath := filepath.Join(r.pathStateProject, "logger.yaml")
+func (r *FileLoggerRepository) getPathFile(namesParams appDto.NamesParams) (string, error) {
+	pathLogger := filepath.Join(r.pathStateRoot, namesParams.ProjectName(), namesParams.RepositoryName(), "logs")
+	if err := os.MkdirAll(pathLogger, 0755); err != nil {
+		return "", err
+	}
+	pathLogger = filepath.Join(pathLogger, "logger.yaml")
+	return pathLogger, nil
+}
 
-	loggerDto := mapper.LoggerToDTO(log)
+func (r *FileLoggerRepository) Save(namesParams appDto.NamesParams, log *logAgg.Logger) error {
+	filePath, err := r.getPathFile(namesParams)
+	if err != nil {
+		return err
+	}
+
+	loggerDto := ilogMap.LoggerToDTO(log)
 	data, err := yaml.Marshal(loggerDto)
 	if err != nil {
 		return fmt.Errorf("failed to marshal execution log to yaml: %w", err)
@@ -41,21 +50,25 @@ func (r *FileLoggerRepository) Save(log *aggregates.Logger) error {
 	return os.WriteFile(filePath, data, 0644)
 }
 
-func (r *FileLoggerRepository) Find() (aggregates.Logger, error) {
-	filePath := filepath.Join(r.pathStateProject, "logger.yaml")
+func (r *FileLoggerRepository) Find(namesParams appDto.NamesParams) (logAgg.Logger, error) {
+	filePath, err := r.getPathFile(namesParams)
+	if err != nil {
+		return logAgg.Logger{}, err
+	}
+
 	data, err := os.ReadFile(filePath)
 	if err != nil {
-		return aggregates.Logger{}, fmt.Errorf("could not read log file: %w", err)
+		return logAgg.Logger{}, fmt.Errorf("could not read log file: %w", err)
 	}
 
-	var loggerDto dto.LoggerDTO
+	var loggerDto ilogDto.LoggerDTO
 	if err := yaml.Unmarshal(data, &loggerDto); err != nil {
-		return aggregates.Logger{}, fmt.Errorf("failed to unmarshal execution log from yaml: %w", err)
+		return logAgg.Logger{}, fmt.Errorf("failed to unmarshal execution log from yaml: %w", err)
 	}
 
-	logger, err := mapper.LoggerToDomain(loggerDto)
+	logger, err := ilogMap.LoggerToDomain(loggerDto)
 	if err != nil {
-		return aggregates.Logger{}, err
+		return logAgg.Logger{}, err
 	}
 
 	return *logger, nil

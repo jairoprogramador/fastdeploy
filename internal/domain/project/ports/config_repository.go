@@ -5,6 +5,6 @@ import (
 )
 
 type ConfigRepository interface {
-	Save(config *aggregates.Config) error
-	Load() (*aggregates.Config, error)
+	Save(config *aggregates.Config, pathProject string) error
+	Load(pathProject string) (*aggregates.Config, error)
 }
