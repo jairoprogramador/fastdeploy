@@ -1,11 +1,12 @@
 package services
 
 import (
+	appDto "github.com/jairoprogramador/fastdeploy-core/internal/application/dto"
 	"github.com/jairoprogramador/fastdeploy-core/internal/domain/state/vos"
 )
 
 type FingerprintService interface {
-	GenerateFromSource(sourcePath string) (vos.Fingerprint, error)
-	GenerateFromStepDefinition(templatePath, stepName string) (vos.Fingerprint, error)
-	GenerateFromStepVariables(vars map[string]string) (vos.Fingerprint, error)
+	GenerateFromPath(pathProject string) (vos.Fingerprint, error)
+	GenerateFromStepDefinition(pathTemplate string, runParams appDto.RunParams) (vos.Fingerprint, error)
+	GenerateFromVariables(vars map[string]string) (vos.Fingerprint, error)
 }

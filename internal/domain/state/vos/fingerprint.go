@@ -20,7 +20,3 @@ func (f Fingerprint) String() string {
 func (f Fingerprint) Equals(other Fingerprint) bool {
 	return f.value == other.value
 }
-
-func (f Fingerprint) IsZero() bool {
-	return f.value == ""
-}
