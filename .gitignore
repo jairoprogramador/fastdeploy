@@ -8,6 +8,8 @@
 *.so
 *.dylib
 .idea
+.cursor/
+.cursorrules
 fd
 dist/
 

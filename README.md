@@ -1,28 +1,28 @@
 <div align="center">
   <!-- <img src="doc/img/FastDeploy.jpg" alt="FastDeploy Logo" width="150"/> -->
-  <h1>fastdeploy (fd)</h1>
+  <h1>fastdeploy-core (fd)</h1>
   <p><strong>Despliega cualquier tecnología en cualquier plataforma con solo 3 comandos.</strong></p>
   <p><i>La infraestructura se convierte en una plantilla.</i></p>
 
   <p>
-    <a href="https://github.com/jairoprogramador/fastdeploy/releases">
-      <img src="https://img.shields.io/github/v/release/jairoprogramador/fastdeploy?style=for-the-badge" alt="Latest Release">
+    <a href="https://github.com/jairoprogramador/fastdeploy-core/releases">
+      <img src="https://img.shields.io/github/v/release/jairoprogramador/fastdeploy-core?style=for-the-badge" alt="Latest Release">
     </a>
-    <a href="https://github.com/jairoprogramador/fastdeploy/blob/main/LICENSE">
-      <img src="https://img.shields.io/github/license/jairoprogramador/fastdeploy?style=for-the-badge" alt="License">
+    <a href="https://github.com/jairoprogramador/fastdeploy-core/blob/main/LICENSE">
+      <img src="https://img.shields.io/github/license/jairoprogramador/fastdeploy-core?style=for-the-badge" alt="License">
     </a>
   </p>
 </div>
 
 ---
 
-**`fastdeploy` (o `fd`)** es una herramienta CLI diseñada para eliminar la complejidad y la repetición de los procesos de despliegue. Olvídate de los scripts frágiles, los largos `READMEs` y la pregunta "¿cómo se desplegaba esto?". Con `fastdeploy`, estandarizas tus despliegues usando plantillas reutilizables, permitiendo que cualquier desarrollador, en cualquier equipo, pueda desplegar cualquier aplicación de forma segura y predecible.
+**`fastdeploy-core` (o `fd`)** es una herramienta CLI diseñada para eliminar la complejidad y la repetición de los procesos de despliegue. Olvídate de los scripts frágiles, los largos `READMEs` y la pregunta "¿cómo se desplegaba esto?". Con `fastdeploy-core`, estandarizas tus despliegues usando plantillas reutilizables, permitiendo que cualquier desarrollador, en cualquier equipo, pueda desplegar cualquier aplicación de forma segura y predecible.
 
 **Define tu proceso de despliegue una vez, y ejecútalo miles de veces con tre simples comandos.**
 
 ## ✨ Características Principales
 
-*   **⚙️ Agnostico a la Tecnología:** ¿Java, Node.js, Python, Go? ¿Terraform, Docker, Kubernetes? `fastdeploy` orquesta cualquier herramienta que puedas ejecutar en un shell.
+*   **⚙️ Agnostico a la Tecnología:** ¿Java, Node.js, Python, Go? ¿Terraform, Docker, Kubernetes? `fastdeploy-core` orquesta cualquier herramienta que puedas ejecutar en un shell.
 *   **📄 Infraestructura como Plantilla:** Centraliza la lógica de tus despliegues (steps, variables, entornos) en un repositorio de plantillas. Estandariza las buenas prácticas y evoluciona tu infraestructura sin tocar tus microservicios.
 *   **🚀 Despliegues en 3 Pasos:** Clona tu microservicio y ejecuta `fd init`, `fd test`, y `fd deploy`. Eso es todo.
 *   **✅ Verificación Continua:** El estado de cada despliegue se guarda, permitiendo validaciones y evitando ejecuciones accidentales en entornos incorrectos.
@@ -30,35 +30,35 @@
 
 ## 🚀 Instalación
 
-Instala `fastdeploy` en segundos.
+Instala `fastdeploy-core` en segundos.
 
 ### macOS (Homebrew)
 
 ```sh
-brew install jairoprogramador/fastdeploy/fastdeploy
+brew install jairoprogramador/fastdeploy-core/fastdeploy-core
 ```
 
 ### Linux
 
-Puedes descargar el paquete `.deb` o `.rpm` desde la [página de Releases](https://github.com/jairoprogramador/fastdeploy/releases) y usar tu gestor de paquetes.
+Puedes descargar el paquete `.deb` o `.rpm` desde la [página de Releases](https://github.com/jairoprogramador/fastdeploy-core/releases) y usar tu gestor de paquetes.
 
 ```sh
 # Para sistemas basados en Debian/Ubuntu
-sudo dpkg -i fastdeploy_*.deb
+sudo dpkg -i fastdeploy-core_*.deb
 
 # Para sistemas basados en Red Hat/Fedora
-sudo rpm -i fastdeploy_*.rpm
+sudo rpm -i fastdeploy-core_*.rpm
 ```
 
 Alternativamente, puedes descargar el binario directamente:
 ```sh
-curl -sL https://github.com/jairoprogramador/fastdeploy/releases/latest/download/fastdeploy_Linux_x86_64.tar.gz | tar xz
+curl -sL https://github.com/jairoprogramador/fastdeploy-core/releases/latest/download/fastdeploy-core_Linux_x86_64.tar.gz | tar xz
 sudo mv fd /usr/local/bin/
 ```
 
 ### Windows
 
-1.  Descarga el archivo `.zip` desde la [página de Releases](https://github.com/jairoprogramador/fastdeploy/releases).
+1.  Descarga el archivo `.zip` desde la [página de Releases](https://github.com/jairoprogramador/fastdeploy-core/releases).
 2.  Descomprime el archivo.
 3.  Añade el ejecutable `fd.exe` a tu `PATH`.
 
@@ -80,22 +80,35 @@ Clona el microservicio que quieres desplegar. Una vez dentro del directorio, eje
 fd init
 ```
 
-`fastdeploy` detectará que no está inicializado y te hará un par de preguntas para crear el archivo de configuración local `.fastdeploy/dom.yaml`. Este archivo vincula tu proyecto con la plantilla de despliegue.
+`fastdeploy` detectará que no está inicializado y te hará un par de preguntas para crear el archivo de configuración local `fdconfig.yaml`. Este archivo vincula tu proyecto con la plantilla de despliegue.
 
 ```yaml
-# .fastdeploy/dom.yaml (Ejemplo generado)
-product:
-  name: "core-banking"
+# .fdconfig.yaml (Ejemplo generado)
 project:
-  name: "accounts-ms"
-  revision: "v1.0.0"
-technology:
-  type: "backend"
-  solution: microservicio
-  stack: springboot
+  name: "test"
+  version: "1.0.0"
+  team: "shikigami"
+  description: "Mi proyecto de ejemplo"
+  organization: "fastdeploy"
+
 template:
-  repository_url: "https://github.com/jairoprogramador/mydeploy.git"
+  repository_url: "https://github.com/jairoprogramador/mydeploytest.git"
   ref: "main"
+
+technology:
+  stack: "springboot"
+  infrastructure: "azure"
+
+runtime:
+  image:p
+    tag: "1.2.0"
+  volumes:
+    project_mount_path: "/home/fastdeploy/app"
+    state_mount_path: "/home/fastdeploy/.fastdeploy"
+
+state:
+  backend: "local"
+  url: ""
 ```
 
 ### Paso 2: Prueba el Despliegue en un Entorno
@@ -130,7 +143,7 @@ fd deploy sand
 
 | Comando | Descripción |
 | :--- | :--- |
-| `fd init` | Inicializa un proyecto creando el archivo `.fastdeploy/dom.yaml`. |
+| `fd init` | Inicializa un proyecto creando el archivo `fdconfig.yaml`. |
 | `fd [step] [env]` | Ejecuta un despliegue hasta el `step` indicado en el entorno `env`. |
 | `fd test [env]` | Ejecuta solo los pasos de verificación (`test`) en el entorno `env`. |
 | `fd supply [env]` | Ejecuta los pasos de aprovisionamiento de infraestructura (`supply`). |
@@ -143,8 +156,8 @@ fd deploy sand
 
 ## 🤝 Contribuciones
 
-¡Las contribuciones son bienvenidas! Si tienes ideas, sugerencias o encuentras un error, por favor abre un [issue](https://github.com/jairoprogramador/fastdeploy/issues) o envía un [pull request](https://github.com/jairoprogramador/fastdeploy/pulls).
+¡Las contribuciones son bienvenidas! Si tienes ideas, sugerencias o encuentras un error, por favor abre un [issue](https://github.com/jairoprogramador/fastdeploy-core/issues) o envía un [pull request](https://github.com/jairoprogramador/fastdeploy-core/pulls).
 
 ## 📄 Licencia
 
-`fastdeploy` está distribuido bajo la [Licencia MIT](https://github.com/jairoprogramador/fastdeploy/blob/main/LICENSE).
+`fastdeploy-core` está distribuido bajo la [Licencia MIT](https://github.com/jairoprogramador/fastdeploy-core/blob/main/LICENSE).
