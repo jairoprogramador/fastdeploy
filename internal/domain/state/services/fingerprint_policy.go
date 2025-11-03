@@ -8,18 +8,11 @@ import (
 	"github.com/jairoprogramador/fastdeploy-core/internal/domain/state/vos"
 )
 
-type FingerprintPolicyService struct {
-}
-
-func NewFingerprintPolicyService() FingerprintPolicyService {
-	return FingerprintPolicyService{}
-}
-
-func (s FingerprintPolicyService) Decide(
+func Decide(
 	lastFingerprints *aggregates.FingerprintState,
-	triggers []int,
 	currentFingerprints *aggregates.FingerprintState,
-) vos.FingerprintDecision {
+	triggers []int,
+) vos.Decision {
 
 	if lastFingerprints == nil {
 		return vos.Execute("Primera ejecución del paso")

@@ -19,6 +19,9 @@ type Logger struct {
 }
 
 func NewLogger(context map[string]string, revision string) *Logger {
+	if context == nil {
+		context = make(map[string]string)
+	}
 	return &Logger{
 		status:    vos.Pending,
 		steps:     []*entities.StepRecord{},

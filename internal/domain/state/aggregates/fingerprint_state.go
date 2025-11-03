@@ -16,18 +16,28 @@ func NewFingerprintState(stepName string) *FingerprintState {
 	}
 }
 
-func (s *FingerprintState) SetFingerprint(trigger vos.Trigger, fingerprint vos.Fingerprint) {
-	s.fingerprints[trigger] = fingerprint
+func HydrateFingerprintState(stepName string, fingerprints map[vos.Trigger]vos.Fingerprint) *FingerprintState {
+	return &FingerprintState{
+		stepName:     stepName,
+		fingerprints: fingerprints,
+	}
+}
+
+func (s *FingerprintState) AddFingerprintdCode(fingerprint vos.Fingerprint) {
+	s.fingerprints[vos.ScopeCode] = fingerprint
+}
+
+func (s *FingerprintState) AddFingerprintdRecipe(fingerprint vos.Fingerprint) {
+	s.fingerprints[vos.ScopeRecipe] = fingerprint
+}
+
+func (s *FingerprintState) AddFingerprintdVars(fingerprint vos.Fingerprint) {
+	s.fingerprints[vos.ScopeVars] = fingerprint
 }
 
 func (s *FingerprintState) GetFingerprint(trigger vos.Trigger) (vos.Fingerprint, bool) {
 	fingerprint, ok := s.fingerprints[trigger]
 	return fingerprint, ok
-}
-
-func (s *FingerprintState) ExistsFingerprint(trigger vos.Trigger) bool {
-	fingerprint, ok := s.GetFingerprint(trigger)
-	return ok && !fingerprint.IsZero()
 }
 
 func (s *FingerprintState) StepName() string {

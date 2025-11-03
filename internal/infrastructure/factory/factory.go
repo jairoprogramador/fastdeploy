@@ -8,26 +8,26 @@ import (
 	applic "github.com/jairoprogramador/fastdeploy-core/internal/application"
 	appPor "github.com/jairoprogramador/fastdeploy-core/internal/application/ports"
 
-	staSer "github.com/jairoprogramador/fastdeploy-core/internal/domain/state/services"
+	iLogRep "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/logger/repository"
+	iLogSer "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/logger/service"
 
-	iLogge "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/logger"
 	iProje "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/project"
 
-	iExecu "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/executor"
+	iExecu "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/execution"
 
 	iStaRep "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/state/repository"
 	iStaSer "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/state/services"
 
 	iAppli "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/application"
 
-	iTempl "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/template"
+	iDefin "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/definition"
 
 	"github.com/spf13/viper"
 )
 
 type ServiceFactory interface {
-	BuildLogService() appPor.Logger
-	BuildExecutorService() *applic.AppExecutor
+	BuildLogService() appPor.LoggerService
+	BuildExecutorService() *applic.AppExecutionService
 	PathAppProject() string
 }
 
@@ -62,38 +62,36 @@ func (f *Factory) PathAppProject() string {
 	return f.pathAppProject
 }
 
-func (f *Factory) BuildLogService() appPor.Logger {
-	consolePresenter := iLogge.NewConsolePresenter()
-	loggerRepository := iLogge.NewFileLoggerRepository(f.pathStateRoot)
+func (f *Factory) BuildLogService() appPor.LoggerService {
+	consolePresenter := iLogSer.NewConsolePresenterService()
+	loggerRepository := iLogRep.NewFileLoggerRepository(f.pathStateRoot)
 	configRepository := iProje.NewYamlConfigRepository()
 
-	return applic.NewAppLogger(loggerRepository, configRepository, consolePresenter)
+	return applic.NewAppLoggerService(loggerRepository, configRepository, consolePresenter)
 }
 
-func (f *Factory) BuildExecutorService() *applic.AppExecutor {
-	varResolver := iExecu.NewGoTemplateResolver()
-	fingerprintService := iStaSer.NewFingerprintService()
-	fileManager := iAppli.NewFileStepWorkspace(f.pathProjectsRoot, f.pathRepositoriesRoot)
-	cmdExecutor := iAppli.NewExecutor()
-	varsRepository := iStaRep.NewVarsRepository(f.pathStateRoot)
+func (f *Factory) BuildExecutorService() *applic.AppExecutionService {
+	varResolver := iExecu.NewResolverService()
+	fingerprintService := iStaSer.NewShaFingerprintService()
+	fileManager := iAppli.NewFileStepWorkspaceService(f.pathProjectsRoot, f.pathRepositoriesRoot)
+	cmdExecutor := iAppli.NewExecCommandService()
+	varsRepository := iStaRep.NewFileVarsRepository(f.pathStateRoot)
 	stateRepository := iStaRep.NewFileFingerprintRepository(f.pathStateRoot)
-	statePolicyService := staSer.NewFingerprintPolicyService()
 	configRepository := iProje.NewYamlConfigRepository()
-	templateRepository := iTempl.NewTemplateRepository(f.pathRepositoriesRoot, cmdExecutor)
-	gitManager := iAppli.NewGitManager(cmdExecutor)
+	templateRepository := iDefin.NewYamlTemplateRepository(f.pathRepositoriesRoot, cmdExecutor)
+	gitManager := iAppli.NewLocalGitService(cmdExecutor)
 
-	loggerRepository := iLogge.NewFileLoggerRepository(f.pathStateRoot)
-	consolePresenter := iLogge.NewConsolePresenter()
-	logger := applic.NewAppLogger(loggerRepository, configRepository, consolePresenter)
+	loggerRepository := iLogRep.NewFileLoggerRepository(f.pathStateRoot)
+	consolePresenter := iLogSer.NewConsolePresenterService()
+	logger := applic.NewAppLoggerService(loggerRepository, configRepository, consolePresenter)
 
-	return applic.NewAppExecutor(
+	return applic.NewAppExecutionService(
 		varResolver,
 		fingerprintService,
 		fileManager,
 		cmdExecutor,
 		varsRepository,
 		stateRepository,
-		statePolicyService,
 		configRepository,
 		templateRepository,
 		gitManager,

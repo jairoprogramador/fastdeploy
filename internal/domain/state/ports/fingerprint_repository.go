@@ -6,8 +6,8 @@ import (
 )
 
 type FingerprintRepository interface {
-	FindCode(namesRequest appDto.NamesParams) (*aggregates.FingerprintState, error)
-	FindStep(namesRequest appDto.NamesParams, orderRequest appDto.RunParams) (*aggregates.FingerprintState, error)
-	SaveCode(namesRequest appDto.NamesParams, state *aggregates.FingerprintState) error
-	SaveStep(namesRequest appDto.NamesParams, orderRequest appDto.RunParams, state *aggregates.FingerprintState) error
+	FindCode(namesRequest appDto.NamesParams, runRequest appDto.RunParams) (*aggregates.FingerprintState, error)
+	FindStep(namesRequest appDto.NamesParams, runRequest appDto.RunParams) (*aggregates.FingerprintState, error)
+	SaveCode(namesRequest appDto.NamesParams, runRequest appDto.RunParams, state *aggregates.FingerprintState) error
+	SaveStep(namesRequest appDto.NamesParams, runRequest appDto.RunParams, state *aggregates.FingerprintState) error
 }

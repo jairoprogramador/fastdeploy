@@ -3,7 +3,7 @@ package vos
 import "strings"
 
 const (
-	DefaultUrl = "https://github.com/jairoprogramador/mydeploytest.git"
+	DefaultUrl = "https://github.com/jairoprogramador/mydeploy.git"
 	DefaultRef = "main"
 )
 

@@ -112,6 +112,14 @@ func (t *TaskRecord) Output() []vos.OutputLine {
 	return t.output
 }
 
+func (t *TaskRecord) OutputString() string {
+	output := ""
+	for _, line := range t.output {
+		output += line.Line() + "\n"
+	}
+	return output
+}
+
 func (t *TaskRecord) Error() error {
 	return t.err
 }
