@@ -5,10 +5,12 @@ import (
 	//"io"
 	//"os"
 	"context"
+	"time"
 	"os/exec"
 	"path/filepath"
 	"regexp"
 
+	"github.com/briandowns/spinner"
 	"github.com/jairoprogramador/fastdeploy-core/internal/application/ports"
 )
 
@@ -31,13 +33,13 @@ func (e *ExecCommandService) Run(ctx context.Context, workdir, command string) (
 	}
 
 	var buffer bytes.Buffer
-	//multiOutput := io.MultiWriter(os.Stdout, &out)
-
-	//cmd.Stdout = multiOutput
-	//cmd.Stderr = multiOutput
 
 	cmd.Stdout = &buffer
 	cmd.Stderr = &buffer
+
+	sp := spinner.New(spinner.CharSets[26], 100*time.Millisecond)
+	sp.Start()
+	defer sp.Stop()
 
 	err := cmd.Run()
 	output := buffer.String()
