@@ -19,6 +19,7 @@ import (
 	execVos "github.com/jairoprogramador/fastdeploy-core/internal/domain/execution/vos"
 
 	logAgg "github.com/jairoprogramador/fastdeploy-core/internal/domain/logger/aggregates"
+	logEnt "github.com/jairoprogramador/fastdeploy-core/internal/domain/logger/entities"
 
 	proAgg "github.com/jairoprogramador/fastdeploy-core/internal/domain/project/aggregates"
 	proPor "github.com/jairoprogramador/fastdeploy-core/internal/domain/project/ports"
@@ -67,6 +68,12 @@ func NewAppExecutionService(
 		gitManager:            gitManager,
 		logger:                logger,
 	}
+}
+
+func (s *AppExecutionService) MarkStepAsFailed(namesParams appDto.NamesParams, logger *logAgg.Logger, step *logEnt.StepRecord, stepErr error) {
+	s.logger.MarkStepAsRunning(namesParams, logger, step)
+	s.logger.MarkStepAsFailed(namesParams, logger, step, stepErr)
+	s.logger.FinishExecution(namesParams, logger)
 }
 
 func (s *AppExecutionService) Run(request appDto.ExecutorRequest) error {
@@ -164,11 +171,9 @@ func (s *AppExecutionService) Run(request appDto.ExecutorRequest) error {
 	for _, stepRecord := range order.StepsRecord() {
 		stepLog, err := s.logger.AddStep(namesParams, execLogger, stepRecord.Name())
 		if err != nil {
-			s.logger.MarkStepAsFailed(namesParams, execLogger, stepLog, err)
-			s.logger.FinishExecution(namesParams, execLogger)
+			s.MarkStepAsFailed(namesParams, execLogger, stepLog, err)
 			return nil
 		}
-
 		if stepRecord.Status() == execVos.StepStatusSkipped {
 			s.logger.MarkStepAsSkipped(namesParams, execLogger, stepLog)
 			continue
@@ -179,23 +184,20 @@ func (s *AppExecutionService) Run(request appDto.ExecutorRequest) error {
 
 		err = s.processStepVariables(namesParams, runParams, stepDef, order)
 		if err != nil {
-			s.logger.MarkStepAsFailed(namesParams, execLogger, stepLog, err)
-			s.logger.FinishExecution(namesParams, execLogger)
+			s.MarkStepAsFailed(namesParams, execLogger, stepLog, err)
 			return nil
 		}
 
 		fingerprintsStateStepCurrent, err := s.getFingerprintsStateStepCurrent(stepRecord.Name(),
 			pathTemplateLocal, environment, fingerprintCurrentCode, order.GetOutputsMapForFingerprint())
 		if err != nil {
-			s.logger.MarkStepAsFailed(namesParams, execLogger, stepLog, err)
-			s.logger.FinishExecution(namesParams, execLogger)
+			s.MarkStepAsFailed(namesParams, execLogger, stepLog, err)
 			return nil
 		}
 
 		fingerprintsStateStepLatest, err := s.getFingerprintsStateStepLatest(namesParams, runParams)
 		if err != nil {
-			s.logger.MarkStepAsFailed(namesParams, execLogger, stepLog, err)
-			s.logger.FinishExecution(namesParams, execLogger)
+			s.MarkStepAsFailed(namesParams, execLogger, stepLog, err)
 			return nil
 		}
 

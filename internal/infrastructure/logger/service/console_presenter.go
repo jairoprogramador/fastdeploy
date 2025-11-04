@@ -91,6 +91,7 @@ func (p *ConsolePresenterService) Step(step *entities.StepRecord) {
 		return
 	}
 	if step.Status() == vos.Failure {
+		p.Line()
 		p.failure.Fprintf(p.writer, "<%s>: <FAILED>\n", strings.ToUpper(step.Name()))
 		return
 	}
@@ -141,7 +142,7 @@ func (p *ConsolePresenterService) FinalSummary(log *aggregates.Logger) {
 func (p *ConsolePresenterService) renderErrors(faileds []failedInfo) {
 	p.errorTitle.Fprintln(p.writer, "ERRORS:")
 	for _, failed := range faileds {
-		p.failure.Fprintf(p.writer, "● error in: %s\n", failed.failedName)
+		p.failure.Fprintf(p.writer, "\n● error in: %s\n", failed.failedName)
 		if failed.failedErr != nil {
 			p.errorBody.Fprintf(p.writer, "%s\n", failed.failedErr.Error())
 		}
