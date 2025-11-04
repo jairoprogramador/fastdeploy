@@ -143,7 +143,7 @@ func (p *ConsolePresenterService) renderErrors(faileds []failedInfo) {
 	for _, failed := range faileds {
 		p.failure.Fprintf(p.writer, "● error in: %s\n", failed.failedName)
 		if failed.failedErr != nil {
-			p.errorBody.Fprintf(p.writer, "%s\n\n", failed.failedErr.Error())
+			p.errorBody.Fprintf(p.writer, "%s\n", failed.failedErr.Error())
 		}
 		if failed.failedOutput != "" {
 			p.errorBody.Fprintf(p.writer, "%s\n", failed.failedOutput)

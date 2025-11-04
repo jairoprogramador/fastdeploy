@@ -81,21 +81,31 @@ func (r *YamlTemplateRepository) cloneRepository(ctx context.Context, source pro
 
 	if _, err := os.Stat(filepath.Join(pathRepository, ".git")); os.IsNotExist(err) {
 		cloneCmd := fmt.Sprintf("git clone %s %s", source.URL(), pathRepository)
-		_, _, err := r.executor.Run(ctx, r.pathRepositoriesRoot, cloneCmd)
+		_, exitCode, err := r.executor.Run(ctx, r.pathRepositoriesRoot, cloneCmd)
 		if err != nil {
 			return fmt.Errorf("error al clonar el repositorio '%s': %w", source.URL(), err)
 		}
+		if exitCode != 0 {
+			return fmt.Errorf("error al clonar el repositorio '%s': exit code %d", source.URL(), exitCode)
+		}
 	} else {
 		fetchCmd := "git fetch --all"
-		_, _, err := r.executor.Run(ctx, pathRepository, fetchCmd)
+		_, exitCode, err := r.executor.Run(ctx, pathRepository, fetchCmd)
 		if err != nil {
 			return fmt.Errorf("error al actualizar el repositorio '%s': %w", source.URL(), err)
+		}
+		if exitCode != 0 {
+			return fmt.Errorf("error al actualizar el repositorio '%s': exit code %d", source.URL(), exitCode)
 		}
 	}
 
 	checkoutCmd := fmt.Sprintf("git checkout %s", source.Ref())
-	if _, _, err := r.executor.Run(ctx, pathRepository, checkoutCmd); err != nil {
+	_, exitCode, err := r.executor.Run(ctx, pathRepository, checkoutCmd)
+	if  err != nil {
 		return fmt.Errorf("error al hacer checkout a la referencia '%s' en '%s': %w", source.Ref(), pathRepository, err)
+	}
+	if exitCode != 0 {
+		return fmt.Errorf("error al hacer checkout a la referencia '%s' en '%s': exit code %d", source.Ref(), pathRepository, exitCode)
 	}
 
 	return nil

@@ -74,36 +74,36 @@ func (s *AppExecutionService) Run(request appDto.ExecutorRequest) error {
 
 	configProject, err := s.configRepository.Load(request.PathProject())
 	if err != nil {
-		s.logger.ShowError(request.FinalStepName(), err)
+		s.logger.ShowError("load project", err)
 		return nil
 	}
 
 	environments, err := s.templateRepository.LoadEnvironments(ctx, configProject.Template())
 	if err != nil {
-		s.logger.ShowError(request.FinalStepName(), err)
+		s.logger.ShowError("load environments", err)
 		return nil
 	}
 
 	environment := request.Environment()
 	if !s.existsEnvironment(environments, request.Environment()) {
-		if len(environments) >= 0 {
+		if len(environments) > 0 {
 			environment = environments[0].Value()
 		} else {
 			err := fmt.Errorf("el ambiente '%s' no se encontró en la plantilla", request.Environment())
-			s.logger.ShowError(request.FinalStepName(), err)
+			s.logger.ShowError("validate environment", err)
 			return nil
 		}
 	}
 
 	deployment, err := s.templateRepository.LoadDeployment(ctx, configProject.Template(), environment)
 	if err != nil {
-		s.logger.ShowError(request.FinalStepName(), err)
+		s.logger.ShowError("load deployment", err)
 		return nil
 	}
 
 	if !deployment.ExistsStep(request.FinalStepName()) {
 		err := fmt.Errorf("el paso '%s' no se encontró en la plantilla", request.FinalStepName())
-		s.logger.ShowError(request.FinalStepName(), err)
+		s.logger.ShowError("validate step", err)
 		return nil
 	}
 
