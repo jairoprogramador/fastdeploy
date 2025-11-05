@@ -1,0 +1,52 @@
+name: Auto Semantic Version
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  semver:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Bump version and push tag
+        id: versioner
+        uses: mathieudutour/github-tag-action@v6.2
+        with:
+          github_token: ${{ secrets.WORKFLOW_TRIGGER_TOKEN }}
+          release_branches: main
+          default_bump: patch
+          custom_release_rules: |
+            feat:minor
+            fix:patch
+            perf:patch
+            chore:patch
+            docs:patch
+            refactor:patch
+            style:patch
+            test:patch
+            build:patch
+            ci:patch
+            BREAKING CHANGE:major
+          tag_prefix: v
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: steps.versioner.outputs.new_tag != ''
+        with:
+          tag_name: ${{ steps.versioner.outputs.new_tag }}
+          name: Release ${{ steps.versioner.outputs.new_tag }}
+          body: ${{ steps.versioner.outputs.changelog }}

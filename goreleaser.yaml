@@ -23,6 +23,7 @@ builds:
 archives:
   - id: archive
     ids: [fastdeploy]
+    name_template: '{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}{{ with .Arm }}v{{ . }}{{ end }}{{ with .Mips }}_{{ . }}{{ end }}{{ if not (eq .Amd64 "v1") }}{{ .Amd64 }}{{ end }}'
     format_overrides:
       - goos: windows
         formats: ['zip']
@@ -33,6 +34,7 @@ archives:
 nfpms:
   - id: fastdeploy
     package_name: fastdeploy-core
+    file_name_template: '{{ .PackageName }}_{{ .Os }}_{{ .Arch }}{{ with .Arm }}v{{ . }}{{ end }}{{ with .Mips }}_{{ . }}{{ end }}{{ if not (eq .Amd64 "v1") }}{{ .Amd64 }}{{ end }}'
     ids: [fastdeploy]
     maintainer: "Jairo <jairo.jggc@gmail.com>"
     description: "CLI multiplataforma para despliegues automáticos y rápidos de aplicaciones"
