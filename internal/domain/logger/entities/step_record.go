@@ -42,7 +42,7 @@ func HydrateStepRecord(
 	endTime time.Time,
 	reason string,
 	tasks []*TaskRecord,
-	err error) (*StepRecord, error) {
+	StepErr error) (*StepRecord, error) {
 
 	id, err := uuid.NewRandom()
 	if err != nil {
@@ -56,7 +56,7 @@ func HydrateStepRecord(
 		endTime: endTime,
 		reason: reason,
 		tasks: tasks,
-		err: err,
+		err: StepErr,
 	}, nil
 }
 

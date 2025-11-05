@@ -1,6 +1,8 @@
 package mapper
 
 import (
+	"errors"
+
 	"github.com/jairoprogramador/fastdeploy-core/internal/domain/logger/entities"
 	"github.com/jairoprogramador/fastdeploy-core/internal/domain/logger/vos"
 	"github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/logger/dto"
@@ -11,6 +13,10 @@ func StepToDTO(step *entities.StepRecord) dto.StepDTO {
 	for _, task := range step.Tasks() {
 		tasks = append(tasks, TaskToDTO(task))
 	}
+	errString := ""
+	if step.Error() != nil {
+		errString = step.Error().Error()
+	}
 	return dto.StepDTO{
 		Name: step.Name(),
 		Status: step.Status().String(),
@@ -18,7 +24,7 @@ func StepToDTO(step *entities.StepRecord) dto.StepDTO {
 		EndTime: step.EndTime(),
 		Reason: step.Reason(),
 		Tasks: tasks,
-		Err: step.Error(),
+		Err: errString,
 	}
 }
 
@@ -43,5 +49,5 @@ func StepToDomain(stepDTO dto.StepDTO) (*entities.StepRecord, error) {
 		stepDTO.EndTime,
 		stepDTO.Reason,
 		tasks,
-		stepDTO.Err)
+		errors.New(stepDTO.Err))
 }

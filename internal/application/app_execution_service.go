@@ -19,6 +19,7 @@ import (
 	execVos "github.com/jairoprogramador/fastdeploy-core/internal/domain/execution/vos"
 
 	logAgg "github.com/jairoprogramador/fastdeploy-core/internal/domain/logger/aggregates"
+	logEnt "github.com/jairoprogramador/fastdeploy-core/internal/domain/logger/entities"
 
 	proAgg "github.com/jairoprogramador/fastdeploy-core/internal/domain/project/aggregates"
 	proPor "github.com/jairoprogramador/fastdeploy-core/internal/domain/project/ports"
@@ -69,41 +70,47 @@ func NewAppExecutionService(
 	}
 }
 
+func (s *AppExecutionService) MarkStepAsFailed(namesParams appDto.NamesParams, logger *logAgg.Logger, step *logEnt.StepRecord, stepErr error) {
+	s.logger.MarkStepAsRunning(namesParams, logger, step)
+	s.logger.MarkStepAsFailed(namesParams, logger, step, stepErr)
+	s.logger.FinishExecution(namesParams, logger)
+}
+
 func (s *AppExecutionService) Run(request appDto.ExecutorRequest) error {
 	ctx := context.Background()
 
 	configProject, err := s.configRepository.Load(request.PathProject())
 	if err != nil {
-		s.logger.ShowError(request.FinalStepName(), err)
+		s.logger.ShowError("load project", err)
 		return nil
 	}
 
 	environments, err := s.templateRepository.LoadEnvironments(ctx, configProject.Template())
 	if err != nil {
-		s.logger.ShowError(request.FinalStepName(), err)
+		s.logger.ShowError("load environments", err)
 		return nil
 	}
 
 	environment := request.Environment()
 	if !s.existsEnvironment(environments, request.Environment()) {
-		if len(environments) >= 0 {
+		if len(environments) > 0 {
 			environment = environments[0].Value()
 		} else {
 			err := fmt.Errorf("el ambiente '%s' no se encontró en la plantilla", request.Environment())
-			s.logger.ShowError(request.FinalStepName(), err)
+			s.logger.ShowError("validate environment", err)
 			return nil
 		}
 	}
 
 	deployment, err := s.templateRepository.LoadDeployment(ctx, configProject.Template(), environment)
 	if err != nil {
-		s.logger.ShowError(request.FinalStepName(), err)
+		s.logger.ShowError("load deployment", err)
 		return nil
 	}
 
 	if !deployment.ExistsStep(request.FinalStepName()) {
 		err := fmt.Errorf("el paso '%s' no se encontró en la plantilla", request.FinalStepName())
-		s.logger.ShowError(request.FinalStepName(), err)
+		s.logger.ShowError("validate step", err)
 		return nil
 	}
 
@@ -164,11 +171,9 @@ func (s *AppExecutionService) Run(request appDto.ExecutorRequest) error {
 	for _, stepRecord := range order.StepsRecord() {
 		stepLog, err := s.logger.AddStep(namesParams, execLogger, stepRecord.Name())
 		if err != nil {
-			s.logger.MarkStepAsFailed(namesParams, execLogger, stepLog, err)
-			s.logger.FinishExecution(namesParams, execLogger)
+			s.MarkStepAsFailed(namesParams, execLogger, stepLog, err)
 			return nil
 		}
-
 		if stepRecord.Status() == execVos.StepStatusSkipped {
 			s.logger.MarkStepAsSkipped(namesParams, execLogger, stepLog)
 			continue
@@ -179,23 +184,20 @@ func (s *AppExecutionService) Run(request appDto.ExecutorRequest) error {
 
 		err = s.processStepVariables(namesParams, runParams, stepDef, order)
 		if err != nil {
-			s.logger.MarkStepAsFailed(namesParams, execLogger, stepLog, err)
-			s.logger.FinishExecution(namesParams, execLogger)
+			s.MarkStepAsFailed(namesParams, execLogger, stepLog, err)
 			return nil
 		}
 
 		fingerprintsStateStepCurrent, err := s.getFingerprintsStateStepCurrent(stepRecord.Name(),
 			pathTemplateLocal, environment, fingerprintCurrentCode, order.GetOutputsMapForFingerprint())
 		if err != nil {
-			s.logger.MarkStepAsFailed(namesParams, execLogger, stepLog, err)
-			s.logger.FinishExecution(namesParams, execLogger)
+			s.MarkStepAsFailed(namesParams, execLogger, stepLog, err)
 			return nil
 		}
 
 		fingerprintsStateStepLatest, err := s.getFingerprintsStateStepLatest(namesParams, runParams)
 		if err != nil {
-			s.logger.MarkStepAsFailed(namesParams, execLogger, stepLog, err)
-			s.logger.FinishExecution(namesParams, execLogger)
+			s.MarkStepAsFailed(namesParams, execLogger, stepLog, err)
 			return nil
 		}
 

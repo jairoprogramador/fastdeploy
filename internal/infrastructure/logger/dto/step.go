@@ -9,5 +9,5 @@ type StepDTO struct {
 	EndTime time.Time `yaml:"end_time,omitempty"`
 	Reason string `yaml:"reason,omitempty"`
 	Tasks []TaskDTO `yaml:"tasks"`
-	Err error `yaml:"err,omitempty"`
+	Err string `yaml:"err,omitempty"`
 }
