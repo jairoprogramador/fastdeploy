@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 
 	shared "github.com/jairoprogramador/fastdeploy-core/internal/domain/shared"
 
@@ -75,17 +76,19 @@ func NewStepDefinition(
 	commandNames := make(map[string]struct{})
 	for _, command := range commands {
 		if _, exists := commandNames[command.Name()]; exists {
-			return StepDefinition{}, fmt.Errorf("command %s duplicado", command.Name())
+			return StepDefinition{}, fmt.Errorf("comando name %s duplicado", command.Name())
 		}
 		commandNames[command.Name()] = struct{}{}
 	}
 
 	cmds := make(map[string]struct{})
 	for _, command := range commands {
-		if _, exists := cmds[command.Cmd()]; exists {
-			return StepDefinition{}, fmt.Errorf("comando duplicado: %s", command.Cmd())
+		cmdWorkdirItem := command.Workdir() + command.Cmd()
+		cmdWorkdirItem = strings.TrimSpace(cmdWorkdirItem)
+		if _, exists := cmds[cmdWorkdirItem]; exists {
+			return StepDefinition{}, fmt.Errorf("comando %s duplicado in %s", command.Cmd(), command.Workdir())
 		}
-		cmds[command.Cmd()] = struct{}{}
+		cmds[cmdWorkdirItem] = struct{}{}
 	}
 
 	variableNames := make(map[string]struct{})
