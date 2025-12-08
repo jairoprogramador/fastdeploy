@@ -46,7 +46,7 @@ func (se *StepRecord) FinalizeCommand(
 		return err
 	}
 
-	se.updateStatus()
+	se.UpdateStatus()
 
 	return nil
 }
@@ -60,7 +60,7 @@ func (se *StepRecord) SearchCommand(commandName string) (*CommandRecord, error) 
 	return nil, fmt.Errorf("no se encontró el comando '%s' en el paso '%s'", commandName, se.name)
 }
 
-func (se *StepRecord) updateStatus() {
+func (se *StepRecord) UpdateStatus() {
 	if se.status == exeVos.StepStatusSkipped {
 		return
 	}
@@ -93,6 +93,7 @@ func (se *StepRecord) Name() string {
 }
 
 func (se *StepRecord) Status() exeVos.StepStatus {
+	se.UpdateStatus()
 	return se.status
 }
 

@@ -218,8 +218,14 @@ func (s *AppExecutionService) Run(request appDto.ExecutorRequest) error {
 				s.logger.FinishExecution(namesParams, execLogger)
 				return nil
 			}
+
 			if stepRecord.Status() == execVos.StepStatusSuccessful {
 				s.logger.MarkStepAsSuccessful(namesParams, execLogger, stepLog)
+			} else {
+				err := fmt.Errorf("estado inesperado del paso '%s': %s %s", stepRecord.Name(), stepRecord.Status().String(), err)
+				s.logger.MarkStepAsFailed(namesParams, execLogger, stepLog, err)
+				s.logger.FinishExecution(namesParams, execLogger)
+				return nil
 			}
 		} else {
 			order.MarkStepAsCached(stepRecord.Name())
@@ -391,6 +397,7 @@ func (s *AppExecutionService) executeStep(
 		}
 		s.logger.MarkTaskAsSuccessful(namesParams, logger, taskLog, stepLog)
 	}
+	stepRecord.UpdateStatus()
 	return nil
 }
 
