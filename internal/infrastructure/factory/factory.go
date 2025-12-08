@@ -79,7 +79,7 @@ func (f *Factory) BuildExecutorService() *applic.AppExecutionService {
 	stateRepository := iStaRep.NewFileFingerprintRepository(f.pathStateRoot)
 	configRepository := iProje.NewYamlConfigRepository()
 	templateRepository := iDefin.NewYamlTemplateRepository(f.pathRepositoriesRoot, cmdExecutor)
-	gitManager := iAppli.NewLocalGitService(cmdExecutor)
+	gitManager := iAppli.NewGitLocalService(cmdExecutor)
 
 	loggerRepository := iLogRep.NewFileLoggerRepository(f.pathStateRoot)
 	consolePresenter := iLogSer.NewConsolePresenterService()

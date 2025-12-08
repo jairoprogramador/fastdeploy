@@ -45,7 +45,7 @@ func (r *YamlConfigRepository) Load(pathProject string) (*proAgg.MyProject, erro
 	data, err := os.ReadFile(pathFileConfig)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, fmt.Errorf("no se encontró el archivo fdconfig.yaml")
+			return nil, err
 		} else {
 			return nil, err
 		}

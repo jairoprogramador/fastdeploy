@@ -2,13 +2,11 @@ package application
 
 import (
 	"bytes"
-	//"io"
-	//"os"
 	"context"
-	"time"
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"time"
 
 	"github.com/briandowns/spinner"
 	"github.com/jairoprogramador/fastdeploy-core/internal/application/ports"

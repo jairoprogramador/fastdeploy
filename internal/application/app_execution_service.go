@@ -11,7 +11,7 @@ import (
 	stateAgg "github.com/jairoprogramador/fastdeploy-core/internal/domain/state/aggregates"
 	statePor "github.com/jairoprogramador/fastdeploy-core/internal/domain/state/ports"
 	stateSer "github.com/jairoprogramador/fastdeploy-core/internal/domain/state/services"
-	statevos "github.com/jairoprogramador/fastdeploy-core/internal/domain/state/vos"
+	stateVos "github.com/jairoprogramador/fastdeploy-core/internal/domain/state/vos"
 
 	execAgg "github.com/jairoprogramador/fastdeploy-core/internal/domain/execution/aggregates"
 	execEnt "github.com/jairoprogramador/fastdeploy-core/internal/domain/execution/entities"
@@ -56,7 +56,7 @@ func NewAppExecutionService(
 	gitManager appPor.GitService,
 	logger appPor.LoggerService,
 ) *AppExecutionService {
-	return &AppExecutionService {
+	return &AppExecutionService{
 		varResolver:           varResolver,
 		fingerprintService:    fingerprintService,
 		workspaceMgr:          workspaceMgr,
@@ -234,7 +234,7 @@ func (s *AppExecutionService) Run(request appDto.ExecutorRequest) error {
 
 func (s *AppExecutionService) getFingerprintsStateStepCurrent(
 	stepName, templatePath, environment string,
-	fingerprintCurrentCode statevos.Fingerprint,
+	fingerprintCurrentCode stateVos.Fingerprint,
 	varsMap map[string]string) (*stateAgg.FingerprintState, error) {
 
 	fingerprintCurrentVars, err := s.fingerprintService.GenerateFromVariables(varsMap)
@@ -265,7 +265,7 @@ func (s *AppExecutionService) getFingerprintsStateStepLatest(namesParams appDto.
 	if err != nil {
 		return nil, err
 	}
-	fingerprintsCodeLatest, ok := fingerprintsStateCodeLatest.GetFingerprint(statevos.ScopeCode)
+	fingerprintsCodeLatest, ok := fingerprintsStateCodeLatest.GetFingerprint(stateVos.ScopeCode)
 	if ok {
 		fingerprintsStateStepLatest.AddFingerprintdCode(fingerprintsCodeLatest)
 	}

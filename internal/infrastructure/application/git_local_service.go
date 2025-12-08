@@ -9,19 +9,19 @@ import (
 	"github.com/jairoprogramador/fastdeploy-core/internal/application/ports"
 )
 
-type LocalGitService struct {
+type GitLocalService struct {
 	executor ports.CommandService
 }
 
-func NewLocalGitService(
+func NewGitLocalService(
 	executor ports.CommandService) ports.GitService {
 
-	return &LocalGitService{
+	return &GitLocalService{
 		executor: executor,
 	}
 }
 
-func (g *LocalGitService) IsGit(pathProject string) (bool, error) {
+func (g *GitLocalService) IsGit(pathProject string) (bool, error) {
 	_, err := os.Stat(filepath.Join(pathProject, ".git"))
 	if err != nil {
 		return false, err
@@ -29,7 +29,7 @@ func (g *LocalGitService) IsGit(pathProject string) (bool, error) {
 	return true, nil
 }
 
-func (g *LocalGitService) GetCommitHash(ctx context.Context, pathProject string) (string, error) {
+func (g *GitLocalService) GetCommitHash(ctx context.Context, pathProject string) (string, error) {
 	hash, _, err := g.executor.Run(ctx, pathProject, "git rev-parse --short HEAD")
 	if err != nil {
 		return "", err
@@ -40,7 +40,7 @@ func (g *LocalGitService) GetCommitHash(ctx context.Context, pathProject string)
 	return hash, nil
 }
 
-func (g *LocalGitService) ExistChanges(ctx context.Context, pathProject string) (bool, error) {
+func (g *GitLocalService) ExistChanges(ctx context.Context, pathProject string) (bool, error) {
 
 	_, codeExit, err := g.executor.Run(ctx, pathProject, "git diff --quiet")
 	if err != nil {
