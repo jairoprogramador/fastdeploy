@@ -8,10 +8,9 @@ import (
 	appDto "github.com/jairoprogramador/fastdeploy-core/internal/application/dto"
 	appPor "github.com/jairoprogramador/fastdeploy-core/internal/application/ports"
 
-	stateAgg "github.com/jairoprogramador/fastdeploy-core/internal/domain/state/aggregates"
-	statePor "github.com/jairoprogramador/fastdeploy-core/internal/domain/state/ports"
-	stateSer "github.com/jairoprogramador/fastdeploy-core/internal/domain/state/services"
-	stateVos "github.com/jairoprogramador/fastdeploy-core/internal/domain/state/vos"
+	// Usaremos nuestro dominio de statedetermination consistentemente
+	sdt_services "github.com/jairoprogramador/fastdeploy-core/internal/domain/statedetermination/services"
+	sdt_vos "github.com/jairoprogramador/fastdeploy-core/internal/domain/statedetermination/vos"
 
 	execAgg "github.com/jairoprogramador/fastdeploy-core/internal/domain/execution/aggregates"
 	execEnt "github.com/jairoprogramador/fastdeploy-core/internal/domain/execution/entities"
@@ -33,20 +32,21 @@ import (
 
 type AppExecutionService struct {
 	varResolver           execSer.ResolverService
-	fingerprintService    stateSer.FingerprintService
+	fingerprintService    sdt_services.FingerprintService // Corregido para usar nuestro servicio
 	workspaceMgr          appPor.StepWorkspaceService
 	cmdExecutor           appPor.CommandService
-	variablesRepository   statePor.VariablesRepository
-	fingerprintRepository statePor.FingerprintRepository
+	variablesRepository   statePor.VariablesRepository   // TODO: Esto parece de otro dominio de estado
+	fingerprintRepository statePor.FingerprintRepository // TODO: Esto parece de otro dominio de estado
 	configRepository      proPor.ConfigRepository
 	templateRepository    defPor.DefinitionRepository
 	gitManager            appPor.GitService
 	logger                appPor.LoggerService
+	stateManager          *sdt_services.StateManager // Corregido para usar nuestro servicio
 }
 
 func NewAppExecutionService(
 	varResolver execSer.ResolverService,
-	fingerprintService stateSer.FingerprintService,
+	fingerprintService sdt_services.FingerprintService,
 	workspaceMgr appPor.StepWorkspaceService,
 	cmdExecutor appPor.CommandService,
 	variablesRepository statePor.VariablesRepository,
@@ -55,6 +55,7 @@ func NewAppExecutionService(
 	templateRepository defPor.DefinitionRepository,
 	gitManager appPor.GitService,
 	logger appPor.LoggerService,
+	stateManager *sdt_services.StateManager,
 ) *AppExecutionService {
 	return &AppExecutionService{
 		varResolver:           varResolver,
@@ -67,6 +68,7 @@ func NewAppExecutionService(
 		templateRepository:    templateRepository,
 		gitManager:            gitManager,
 		logger:                logger,
+		stateManager:          stateManager,
 	}
 }
 
@@ -195,15 +197,19 @@ func (s *AppExecutionService) Run(request appDto.ExecutorRequest) error {
 			return nil
 		}
 
-		fingerprintsStateStepLatest, err := s.getFingerprintsStateStepLatest(namesParams, runParams)
+		sdtStep, err := sdt_vos.NewStep(stepRecord.Name())
 		if err != nil {
 			s.MarkStepAsFailed(namesParams, execLogger, stepLog, err)
 			return nil
 		}
 
-		decision := stateSer.Decide(fingerprintsStateStepLatest, fingerprintsStateStepCurrent, stepDef.TriggersInt())
+		shouldExecute, err := s.stateManager.HasStateChanged(request.PathProject(), sdtStep, fingerprintsStateStepCurrent, sdt_vos.NewCachePolicy(0))
+		if err != nil {
+			// Log the error but proceed with execution as a safe default
+			s.logger.ShowWarning(fmt.Sprintf("Could not determine state change for step %s, proceeding with execution. Error: %v", stepRecord.Name(), err))
+		}
 
-		if decision.ShouldExecute() {
+		if shouldExecute {
 			err = s.processStep(
 				namesParams,
 				runParams,
@@ -229,7 +235,7 @@ func (s *AppExecutionService) Run(request appDto.ExecutorRequest) error {
 			}
 		} else {
 			order.MarkStepAsCached(stepRecord.Name())
-			s.logger.MarkStepAsCached(namesParams, execLogger, stepLog, decision.Reason())
+			s.logger.MarkStepAsCached(namesParams, execLogger, stepLog, "State has not changed")
 			continue
 		}
 	}
@@ -240,43 +246,32 @@ func (s *AppExecutionService) Run(request appDto.ExecutorRequest) error {
 
 func (s *AppExecutionService) getFingerprintsStateStepCurrent(
 	stepName, templatePath, environment string,
-	fingerprintCurrentCode stateVos.Fingerprint,
-	varsMap map[string]string) (*stateAgg.FingerprintState, error) {
+	fingerprintCurrentCode sdt_vos.Fingerprint,
+	varsMap map[string]string) (sdt_vos.CurrentStateFingerprints, error) {
 
 	fingerprintCurrentVars, err := s.fingerprintService.GenerateFromVariables(varsMap)
 	if err != nil {
-		return &stateAgg.FingerprintState{}, err
+		return sdt_vos.CurrentStateFingerprints{}, err
 	}
 
-	fingerprintCurrentRecipe, err := s.fingerprintService.GenerateFromStepDefinition(templatePath, appDto.NewRunParams(environment, stepName))
+	fingerprintCurrentInstruction, err := s.fingerprintService.GenerateFromStepDefinition(templatePath, appDto.NewRunParams(environment, stepName))
 	if err != nil {
-		return &stateAgg.FingerprintState{}, err
+		return sdt_vos.CurrentStateFingerprints{}, err
 	}
 
-	fingerprintsStateStepCurrent := stateAgg.NewFingerprintState(stepName)
-	fingerprintsStateStepCurrent.AddFingerprintdCode(fingerprintCurrentCode)
-	fingerprintsStateStepCurrent.AddFingerprintdRecipe(fingerprintCurrentRecipe)
-	fingerprintsStateStepCurrent.AddFingerprintdVars(fingerprintCurrentVars)
-
-	return fingerprintsStateStepCurrent, nil
-}
-
-func (s *AppExecutionService) getFingerprintsStateStepLatest(namesParams appDto.NamesParams, runParams appDto.RunParams) (*stateAgg.FingerprintState, error) {
-
-	fingerprintsStateStepLatest, err := s.fingerprintRepository.FindStep(namesParams, runParams)
+	// ACL: No necesitamos traducir el environment aquí porque ya lo hacemos en el StateManager.
+	// Pasamos el string directamente.
+	sdtEnv, err := sdt_vos.NewEnvironment(environment)
 	if err != nil {
-		return nil, err
-	}
-	fingerprintsStateCodeLatest, err := s.fingerprintRepository.FindCode(namesParams, runParams)
-	if err != nil {
-		return nil, err
-	}
-	fingerprintsCodeLatest, ok := fingerprintsStateCodeLatest.GetFingerprint(stateVos.ScopeCode)
-	if ok {
-		fingerprintsStateStepLatest.AddFingerprintdCode(fingerprintsCodeLatest)
+		return sdt_vos.CurrentStateFingerprints{}, err
 	}
 
-	return fingerprintsStateStepLatest, nil
+	return sdt_vos.NewCurrentStateFingerprints(
+		fingerprintCurrentCode,
+		fingerprintCurrentInstruction,
+		fingerprintCurrentVars,
+		sdtEnv,
+	), nil
 }
 
 func (s *AppExecutionService) processStepVariables(namesParams appDto.NamesParams, runParams appDto.RunParams, stepDefinition defEnt.StepDefinition, order *execAgg.ExecutionRecord) error {
@@ -301,7 +296,7 @@ func (s *AppExecutionService) processStep(
 	runParams appDto.RunParams,
 	order *execAgg.ExecutionRecord,
 	ctx context.Context,
-	stateCurrent *stateAgg.FingerprintState,
+	stateCurrent sdt_vos.CurrentStateFingerprints,
 	stepRecord *execEnt.StepRecord,
 	logger *logAgg.Logger) error {
 
@@ -311,19 +306,19 @@ func (s *AppExecutionService) processStep(
 	}
 
 	if stepRecord.Status() == execVos.StepStatusSuccessful {
-
 		if err := s.variablesRepository.SaveByStep(namesParams, runParams, order.GetOutputsMapForSave()); err != nil {
 			return err
 		}
 
-		if err := s.fingerprintRepository.SaveStep(namesParams, runParams, stateCurrent); err != nil {
-			return err
+		sdtStep, err := sdt_vos.NewStep(stepRecord.Name())
+		if err != nil {
+			return err // Could not create a valid domain step, cannot update state
 		}
 
-		if err := s.fingerprintRepository.SaveCode(namesParams, runParams, stateCurrent); err != nil {
-			return err
+		if err := s.stateManager.UpdateState(order.ProjectPath(), sdtStep, stateCurrent); err != nil {
+			// Log a warning, as the step itself was successful, but state saving failed.
+			s.logger.ShowWarning(fmt.Sprintf("Step %s executed successfully, but failed to update state: %v", stepRecord.Name(), err))
 		}
-
 	}
 	return nil
 }

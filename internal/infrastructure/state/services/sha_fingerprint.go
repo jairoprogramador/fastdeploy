@@ -19,7 +19,7 @@ import (
 
 type ShaFingerprintService struct{}
 
-func NewShaFingerprintService() staSer.FingerprintService {
+func NewShaFingerprintService() staSer.FingerprintServicee {
 	return &ShaFingerprintService{}
 }
 

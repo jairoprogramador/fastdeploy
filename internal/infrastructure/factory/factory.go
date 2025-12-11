@@ -8,6 +8,9 @@ import (
 	applic "github.com/jairoprogramador/fastdeploy-core/internal/application"
 	appPor "github.com/jairoprogramador/fastdeploy-core/internal/application/ports"
 
+	dStatePorts "github.com/jairoprogramador/fastdeploy-core/internal/domain/state/ports"
+	dStateServices "github.com/jairoprogramador/fastdeploy-core/internal/domain/state/services"
+
 	iLogRep "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/logger/repository"
 	iLogSer "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/logger/service"
 
@@ -72,11 +75,11 @@ func (f *Factory) BuildLogService() appPor.LoggerService {
 
 func (f *Factory) BuildExecutorService() *applic.AppExecutionService {
 	varResolver := iExecu.NewResolverService()
-	fingerprintService := iStaSer.NewShaFingerprintService()
+	fingerprintGenerator := iStaSer.NewShaFingerprintGenerator()
 	fileManager := iAppli.NewFileStepWorkspaceService(f.pathProjectsRoot, f.pathRepositoriesRoot)
 	cmdExecutor := iAppli.NewExecCommandService()
+	// Mantenemos este repo de variables por ahora, ya que parece ser para otro propósito
 	varsRepository := iStaRep.NewFileVarsRepository(f.pathStateRoot)
-	stateRepository := iStaRep.NewFileFingerprintRepository(f.pathStateRoot)
 	configRepository := iProje.NewYamlConfigRepository()
 	templateRepository := iDefin.NewYamlTemplateRepository(f.pathRepositoriesRoot, cmdExecutor)
 	gitManager := iAppli.NewGitLocalService(cmdExecutor)
@@ -85,17 +88,21 @@ func (f *Factory) BuildExecutorService() *applic.AppExecutionService {
 	consolePresenter := iLogSer.NewConsolePresenterService()
 	logger := applic.NewAppLoggerService(loggerRepository, configRepository, consolePresenter)
 
+	// Construimos nuestro dominio de `statedetermination` (ahora `state`)
+	stateRepository := iStaRep.NewFileStateRepository(f.pathProjectsRoot)
+	stateManager := dStateServices.NewStateManager(stateRepository)
+
 	return applic.NewAppExecutionService(
 		varResolver,
-		fingerprintService,
+		fingerprintGenerator,
 		fileManager,
 		cmdExecutor,
 		varsRepository,
-		stateRepository,
 		configRepository,
 		templateRepository,
 		gitManager,
 		logger,
+		stateManager,
 	)
 }
 
