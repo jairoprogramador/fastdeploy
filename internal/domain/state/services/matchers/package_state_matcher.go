@@ -13,6 +13,5 @@ func (m *PackageStateMatcher) Match(entry *aggregates.StateEntry, current vos.Cu
 	if !m.matchCommon(entry, current) {
 		return false
 	}
-	// environment is ignored for package step
 	return entry.Code().Equals(current.Code())
 }

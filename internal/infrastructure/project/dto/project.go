@@ -1,10 +1,10 @@
 package dto
 
 type ProjectDTO struct {
-	ID          string `yaml:"id"`
-	Name        string `yaml:"name"`
-	Version     string `yaml:"version"`
-	Description string `yaml:"description"`
-	Team        string `yaml:"team"`
+	ID           string `yaml:"id"`
+	Name         string `yaml:"name"`
+	Version      string `yaml:"version"`
+	Team         string `yaml:"team"`
+	Description  string `yaml:"description"`
 	Organization string `yaml:"organization"`
 }

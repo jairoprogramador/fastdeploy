@@ -13,6 +13,5 @@ func (m *SupplyStateMatcher) Match(entry *aggregates.StateEntry, current vos.Cur
 	if !m.matchCommon(entry, current) {
 		return false
 	}
-	// code is ignored for supply step
 	return entry.Environment().String() == current.Environment().String()
 }

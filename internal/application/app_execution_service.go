@@ -1,5 +1,5 @@
 package application
-
+/*
 import (
 	"context"
 	"errors"
@@ -9,8 +9,8 @@ import (
 	appPor "github.com/jairoprogramador/fastdeploy-core/internal/application/ports"
 
 	// Usaremos nuestro dominio de statedetermination consistentemente
-	sdt_services "github.com/jairoprogramador/fastdeploy-core/internal/domain/statedetermination/services"
-	sdt_vos "github.com/jairoprogramador/fastdeploy-core/internal/domain/statedetermination/vos"
+	sdt_services "github.com/jairoprogramador/fastdeploy-core/internal/domain/state/services"
+	sdt_vos "github.com/jairoprogramador/fastdeploy-core/internal/domain/state/vos"
 
 	execAgg "github.com/jairoprogramador/fastdeploy-core/internal/domain/execution/aggregates"
 	execEnt "github.com/jairoprogramador/fastdeploy-core/internal/domain/execution/entities"
@@ -37,7 +37,7 @@ type AppExecutionService struct {
 	cmdExecutor           appPor.CommandService
 	variablesRepository   statePor.VariablesRepository   // TODO: Esto parece de otro dominio de estado
 	fingerprintRepository statePor.FingerprintRepository // TODO: Esto parece de otro dominio de estado
-	configRepository      proPor.ConfigRepository
+	configRepository      proPor.ProjectRepository
 	templateRepository    defPor.DefinitionRepository
 	gitManager            appPor.GitService
 	logger                appPor.LoggerService
@@ -51,7 +51,7 @@ func NewAppExecutionService(
 	cmdExecutor appPor.CommandService,
 	variablesRepository statePor.VariablesRepository,
 	fingerprintRepository statePor.FingerprintRepository,
-	configRepository proPor.ConfigRepository,
+	configRepository proPor.ProjectRepository,
 	templateRepository defPor.DefinitionRepository,
 	gitManager appPor.GitService,
 	logger appPor.LoggerService,
@@ -508,3 +508,4 @@ func (s *AppExecutionService) existsEnvironment(environments []defVos.Environmen
 	}
 	return false
 }
+ */

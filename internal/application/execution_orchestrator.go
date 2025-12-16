@@ -1,22 +1,20 @@
 package application
-
-import (
+/* import (
 	"context"
 	"fmt"
 
-	"fastdeploy/internal/domain/execution"
-	execvos "fastdeploy/internal/domain/execution/vos"
-	"fastdeploy/internal/domain/planning"
-	"fastdeploy/internal/domain/shared/vos"
-	"fastdeploy/internal/domain/state/services"
-	"fastdeploy/internal/domain/versioning"
+	"github.com/jairoprogramador/fastdeploy-core/internal/domain/definition/entities"
+	"github.com/jairoprogramador/fastdeploy-core/internal/domain/execution/aggregates"
+	execvos "github.com/jairoprogramador/fastdeploy-core/internal/domain/execution/vos"
+	"github.com/jairoprogramador/fastdeploy-core/internal/domain/planning"
+	"github.com/jairoprogramador/fastdeploy-core/internal/domain/state/services"
 )
 
 // OrchestratorInput encapsula todos los datos necesarios para iniciar una ejecución.
 type OrchestratorInput struct {
 	Project   *ProjectInfo
 	Workspace *WorkspaceInfo
-	Steps     []*vos.StepDefinition
+	Steps     []*entities.StepDefinition
 }
 
 // ProjectInfo y WorkspaceInfo podrían moverse a VOs de aplicación.
@@ -27,14 +25,14 @@ type WorkspaceInfo struct{ Path string }
 type ExecutionOrchestrator struct {
 	stateManager      *services.StateManager
 	versionCalculator *versioning.VersionCalculator
-	stepExecutor      *execution.StepExecutor
+	stepExecutor      *aggregates.StepExecutor
 }
 
 // NewExecutionOrchestrator es el constructor.
 func NewExecutionOrchestrator(
 	stateManager *services.StateManager,
 	versionCalc *versioning.VersionCalculator,
-	stepExec *execution.StepExecutor,
+	stepExec *aggregates.StepExecutor,
 ) *ExecutionOrchestrator {
 	return &ExecutionOrchestrator{
 		stateManager:      stateManager,
@@ -58,23 +56,23 @@ func (o *ExecutionOrchestrator) Run(ctx context.Context, input *OrchestratorInpu
 		// 1. Decidir si el paso debe ejecutarse (lógica de estado)
 		decision, err := o.stateManager.ShouldExecute(ctx, plannedStep.Step, input.Workspace.Path)
 		if err != nil {
-			firstError = o.handleStepError(plan, i, fmt.Errorf("error al comprobar el estado del paso '%s': %w", plannedStep.Step.Name, err))
+			firstError = o.handleStepError(plan, i, fmt.Errorf("error al comprobar el estado del paso '%s': %w", plannedStep.Step.Name(), err))
 			continue // Continuar para marcar los demás como omitidos
 		}
 
 		if !decision.Execute {
 			plannedStep.Action = planning.ActionSkipCached
-			plannedStep.Reason = "El estado no ha cambiado desde la última ejecución exitosa."
+			plannedStep.Reason = decision.Reason
 			// TODO: Cargar variables desde el estado cacheado si es necesario.
 			continue
 		}
 		plannedStep.Action = planning.ActionExecute
 
 		// 2. Enriquecer variables (versión, commit)
-		isTestStepOnly := len(input.Steps) > 0 && i == len(input.Steps)-1 && plannedStep.Step.IsTest()
+		isTestStepOnly := len(input.Steps) > 0 && i == len(input.Steps)-1 && plannedStep.Step.Name() == "test"
 		version, commit, err := o.versionCalculator.CalculateNextVersion(ctx, input.Workspace.Path, isTestStepOnly)
 		if err != nil {
-			firstError = o.handleStepError(plan, i, fmt.Errorf("error al calcular la versión para el paso '%s': %w", plannedStep.Step.Name, err))
+			firstError = o.handleStepError(plan, i, fmt.Errorf("error al calcular la versión para el paso '%s': %w", plannedStep.Step.Name(), err))
 			continue
 		}
 		globalVars["var.commit_sha"] = commit.Hash
@@ -84,13 +82,13 @@ func (o *ExecutionOrchestrator) Run(ctx context.Context, input *OrchestratorInpu
 		result, execErr := o.stepExecutor.Execute(ctx, plannedStep.Step, globalVars, input.Workspace.Path)
 		if execErr != nil || (result != nil && result.Status == execvos.Failure) {
 			errMsg := o.getExecutionErrorMessage(execErr, result)
-			firstError = o.handleStepError(plan, i, fmt.Errorf("error al ejecutar el paso '%s': %s", plannedStep.Step.Name, errMsg))
+			firstError = o.handleStepError(plan, i, fmt.Errorf("error al ejecutar el paso '%s': %s", plannedStep.Step.Name(), errMsg))
 			continue
 		}
 
 		// 4. Actualizar estado y variables globales
 		if err := o.stateManager.SaveState(ctx, plannedStep.Step, input.Workspace.Path); err != nil {
-			fmt.Printf("ADVERTENCIA: no se pudo guardar el estado para el paso '%s': %v\n", plannedStep.Step.Name, err)
+			fmt.Printf("ADVERTENCIA: no se pudo guardar el estado para el paso '%s': %v\n", plannedStep.Step.Name(), err)
 		}
 		for k, v := range result.OutputVars {
 			globalVars[k] = v
@@ -108,7 +106,7 @@ func (o *ExecutionOrchestrator) initializeGlobalVariables(input *OrchestratorInp
 	}
 }
 
-func (o *ExecutionOrchestrator) createInitialPlan(steps []*vos.StepDefinition) *planning.ExecutionPlan {
+func (o *ExecutionOrchestrator) createInitialPlan(steps []*entities.StepDefinition) *planning.ExecutionPlan {
 	plannedSteps := make([]*planning.PlannedStep, len(steps))
 	for i, step := range steps {
 		plannedSteps[i] = &planning.PlannedStep{Step: step, Action: planning.ActionExecute} // Asumimos ejecución por defecto
@@ -122,7 +120,7 @@ func (o *ExecutionOrchestrator) handleStepError(plan *planning.ExecutionPlan, fa
 
 	for j := failedIndex + 1; j < len(plan.Steps); j++ {
 		plan.Steps[j].Action = planning.ActionSkipFailedDep
-		plan.Steps[j].Reason = fmt.Sprintf("Omitido porque el paso '%s' falló.", plan.Steps[failedIndex].Step.Name)
+		plan.Steps[j].Reason = fmt.Sprintf("Omitido porque el paso '%s' falló.", plan.Steps[failedIndex].Step.Name())
 	}
 
 	// Devuelve el primer error que ocurrió.
@@ -138,3 +136,4 @@ func (o *ExecutionOrchestrator) getExecutionErrorMessage(execErr error, result *
 	}
 	return "la ejecución del paso falló sin un error explícito"
 }
+ */

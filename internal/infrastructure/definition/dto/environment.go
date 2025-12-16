@@ -1,6 +1,6 @@
 package dto
 
-type EnvironmentDefinitionDTO struct {
+type EnvironmentDTO struct {
 	Name  string `yaml:"name"`
-	Value string `yaml:"value"`
+	Value string `yaml.value:"value"`
 }

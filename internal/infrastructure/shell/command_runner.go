@@ -5,7 +5,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"fastdeploy/internal/domain/execution/ports"
+	"github.com/jairoprogramador/fastdeploy-core/internal/domain/execution/ports"
 )
 
 // OSCommandRunner es una implementación de la interfaz CommandRunner

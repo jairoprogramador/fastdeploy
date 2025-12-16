@@ -1,5 +1,5 @@
 package application
-
+/*
 import (
 	appDto "github.com/jairoprogramador/fastdeploy-core/internal/application/dto"
 	appPor "github.com/jairoprogramador/fastdeploy-core/internal/application/ports"
@@ -13,13 +13,13 @@ import (
 
 type AppLoggerService struct {
 	loggerRepository ports.LoggerRepository
-	configRepository proPor.ConfigRepository
+	configRepository proPor.ProjectRepository
 	presenter        appPor.PresenterService
 }
 
 func NewAppLoggerService(
 	loggerRepository ports.LoggerRepository,
-	configRepository proPor.ConfigRepository,
+	configRepository proPor.ProjectRepository,
 	presenter appPor.PresenterService) appPor.LoggerService {
 	return &AppLoggerService{
 		loggerRepository: loggerRepository,
@@ -209,3 +209,4 @@ func (l *AppLoggerService) FinishExecution(namesParams appDto.NamesParams, logge
 	}
 	return l.loggerRepository.Save(namesParams, logger)
 }
+ */
