@@ -2,25 +2,23 @@ package aggregates
 
 import (
 	"sort"
-
-	"github.com/jairoprogramador/fastdeploy-core/internal/domain/state/vos"
 )
 
 const maxEntries = 5
 
 type StateTable struct {
-	step    vos.Step
+	name    string
 	entries []*StateEntry
 }
 
-func NewStateTable(step vos.Step) *StateTable {
+func NewStateTable(name string) *StateTable {
 	return &StateTable{
-		step:    step,
+		name:    name,
 		entries: make([]*StateEntry, 0, maxEntries),
 	}
 }
 
-func LoadStateTable(step vos.Step, entries []*StateEntry) *StateTable {
+func LoadStateTable(name string, entries []*StateEntry) *StateTable {
 	sort.Slice(entries, func(i, j int) bool {
 		return entries[i].CreatedAt().Before(entries[j].CreatedAt())
 	})
@@ -30,7 +28,7 @@ func LoadStateTable(step vos.Step, entries []*StateEntry) *StateTable {
 	}
 
 	return &StateTable{
-		step:    step,
+		name:    name,
 		entries: entries,
 	}
 }
@@ -39,8 +37,8 @@ func (st *StateTable) Entries() []*StateEntry {
 	return st.entries
 }
 
-func (st *StateTable) Step() vos.Step {
-	return st.step
+func (st *StateTable) Name() string {
+	return st.name
 }
 
 func (st *StateTable) AddEntry(newEntry *StateEntry) {

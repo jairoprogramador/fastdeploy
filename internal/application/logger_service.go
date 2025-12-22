@@ -1,6 +1,8 @@
 package application
-/*
+
 import (
+	"context"
+
 	appDto "github.com/jairoprogramador/fastdeploy-core/internal/application/dto"
 	appPor "github.com/jairoprogramador/fastdeploy-core/internal/application/ports"
 
@@ -11,31 +13,31 @@ import (
 	"github.com/jairoprogramador/fastdeploy-core/internal/domain/logger/ports"
 )
 
-type AppLoggerService struct {
+type LoggerService struct {
 	loggerRepository ports.LoggerRepository
 	configRepository proPor.ProjectRepository
 	presenter        appPor.PresenterService
 }
 
-func NewAppLoggerService(
+func NewLoggerService(
 	loggerRepository ports.LoggerRepository,
 	configRepository proPor.ProjectRepository,
-	presenter appPor.PresenterService) appPor.LoggerService {
-	return &AppLoggerService{
+	presenter appPor.PresenterService) *LoggerService {
+	return &LoggerService{
 		loggerRepository: loggerRepository,
 		configRepository: configRepository,
 		presenter:        presenter,
 	}
 }
 
-func (l *AppLoggerService) ShowLog(pathProject string) error {
+func (l *LoggerService) ShowLog(pathProject string) error {
 
-	configProject, err := l.configRepository.Load(pathProject)
+	configProject, err := l.configRepository.Load(context.Background(), pathProject)
 	if err != nil {
 		return err
 	}
 
-	namesParams := appDto.NewNamesParams(configProject.Project().Name(), configProject.Template().NameTemplate())
+	namesParams := appDto.NewNamesParams(configProject.Name, configProject.TemplateURL)
 
 	logger, err := l.loggerRepository.Find(namesParams)
 	if err != nil {
@@ -54,7 +56,7 @@ func (l *AppLoggerService) ShowLog(pathProject string) error {
 	return nil
 }
 
-func (l *AppLoggerService) ShowError(itemName string, itemErr error) error {
+func (l *LoggerService) ShowError(itemName string, itemErr error) error {
 	logger := aggregates.NewLogger(nil, "")
 	logger.Start()
 
@@ -77,7 +79,7 @@ func (l *AppLoggerService) ShowError(itemName string, itemErr error) error {
 	return nil
 }
 
-func (l *AppLoggerService) StartLog(namesParams appDto.NamesParams, contextData map[string]string, revision string) (*aggregates.Logger, error) {
+func (l *LoggerService) StartLog(namesParams appDto.NamesParams, contextData map[string]string, revision string) (*aggregates.Logger, error) {
 	log := aggregates.NewLogger(contextData, revision)
 	log.Start()
 
@@ -91,7 +93,7 @@ func (l *AppLoggerService) StartLog(namesParams appDto.NamesParams, contextData 
 	return log, nil
 }
 
-func (l *AppLoggerService) AddStep(namesParams appDto.NamesParams, logger *aggregates.Logger, stepName string) (*entities.StepRecord, error) {
+func (l *LoggerService) AddStep(namesParams appDto.NamesParams, logger *aggregates.Logger, stepName string) (*entities.StepRecord, error) {
 	step, err := entities.NewStepRecord(stepName)
 	if err != nil {
 		return nil, err
@@ -108,7 +110,7 @@ func (l *AppLoggerService) AddStep(namesParams appDto.NamesParams, logger *aggre
 	return step, nil
 }
 
-func (l *AppLoggerService) AddTaskToStep(namesParams appDto.NamesParams, logger *aggregates.Logger, stepName, taskName string) (*entities.TaskRecord, error) {
+func (l *LoggerService) AddTaskToStep(namesParams appDto.NamesParams, logger *aggregates.Logger, stepName, taskName string) (*entities.TaskRecord, error) {
 	step, err := logger.GetStep(stepName)
 	if err != nil {
 		return nil, err
@@ -128,7 +130,7 @@ func (l *AppLoggerService) AddTaskToStep(namesParams appDto.NamesParams, logger 
 	return task, nil
 }
 
-func (l *AppLoggerService) MarkStepAsSuccessful(namesParams appDto.NamesParams, logger *aggregates.Logger, step *entities.StepRecord) error {
+func (l *LoggerService) MarkStepAsSuccessful(namesParams appDto.NamesParams, logger *aggregates.Logger, step *entities.StepRecord) error {
 	step.MarkAsSuccess()
 	if l.presenter != nil {
 		l.presenter.Step(step)
@@ -136,7 +138,7 @@ func (l *AppLoggerService) MarkStepAsSuccessful(namesParams appDto.NamesParams, 
 	return l.loggerRepository.Save(namesParams, logger)
 }
 
-func (l *AppLoggerService) MarkStepAsFailed(namesParams appDto.NamesParams, logger *aggregates.Logger, step *entities.StepRecord, stepErr error) error {
+func (l *LoggerService) MarkStepAsFailed(namesParams appDto.NamesParams, logger *aggregates.Logger, step *entities.StepRecord, stepErr error) error {
 	step.MarkAsFailure(stepErr)
 	if l.presenter != nil {
 		l.presenter.Step(step)
@@ -144,7 +146,7 @@ func (l *AppLoggerService) MarkStepAsFailed(namesParams appDto.NamesParams, logg
 	return l.loggerRepository.Save(namesParams, logger)
 }
 
-func (l *AppLoggerService) MarkStepAsSkipped(namesParams appDto.NamesParams, logger *aggregates.Logger, step *entities.StepRecord) error {
+func (l *LoggerService) MarkStepAsSkipped(namesParams appDto.NamesParams, logger *aggregates.Logger, step *entities.StepRecord) error {
 	step.MarkAsSkipped()
 	if l.presenter != nil {
 		l.presenter.Step(step)
@@ -152,7 +154,7 @@ func (l *AppLoggerService) MarkStepAsSkipped(namesParams appDto.NamesParams, log
 	return l.loggerRepository.Save(namesParams, logger)
 }
 
-func (l *AppLoggerService) MarkStepAsCached(namesParams appDto.NamesParams, logger *aggregates.Logger, step *entities.StepRecord, reason string) error {
+func (l *LoggerService) MarkStepAsCached(namesParams appDto.NamesParams, logger *aggregates.Logger, step *entities.StepRecord, reason string) error {
 	step.MarkAsCached(reason)
 	if l.presenter != nil {
 		l.presenter.Step(step)
@@ -160,7 +162,7 @@ func (l *AppLoggerService) MarkStepAsCached(namesParams appDto.NamesParams, logg
 	return l.loggerRepository.Save(namesParams, logger)
 }
 
-func (l *AppLoggerService) MarkStepAsRunning(namesParams appDto.NamesParams, logger *aggregates.Logger, step *entities.StepRecord) error {
+func (l *LoggerService) MarkStepAsRunning(namesParams appDto.NamesParams, logger *aggregates.Logger, step *entities.StepRecord) error {
 	step.MarkAsRunning()
 	if l.presenter != nil {
 		l.presenter.Step(step)
@@ -168,7 +170,7 @@ func (l *AppLoggerService) MarkStepAsRunning(namesParams appDto.NamesParams, log
 	return l.loggerRepository.Save(namesParams, logger)
 }
 
-func (l *AppLoggerService) MarkTaskAsSuccessful(namesParams appDto.NamesParams, logger *aggregates.Logger, task *entities.TaskRecord, step *entities.StepRecord) error {
+func (l *LoggerService) MarkTaskAsSuccessful(namesParams appDto.NamesParams, logger *aggregates.Logger, task *entities.TaskRecord, step *entities.StepRecord) error {
 	task.MarkAsSuccess()
 	if l.presenter != nil {
 		l.presenter.Task(task, step)
@@ -176,7 +178,7 @@ func (l *AppLoggerService) MarkTaskAsSuccessful(namesParams appDto.NamesParams, 
 	return l.loggerRepository.Save(namesParams, logger)
 }
 
-func (l *AppLoggerService) MarkTaskAsFailed(namesParams appDto.NamesParams, logger *aggregates.Logger, task *entities.TaskRecord, taskErr error, step *entities.StepRecord) error {
+func (l *LoggerService) MarkTaskAsFailed(namesParams appDto.NamesParams, logger *aggregates.Logger, task *entities.TaskRecord, taskErr error, step *entities.StepRecord) error {
 	task.MarkAsFailure(taskErr)
 	if l.presenter != nil {
 		l.presenter.Task(task, step)
@@ -184,7 +186,7 @@ func (l *AppLoggerService) MarkTaskAsFailed(namesParams appDto.NamesParams, logg
 	return l.loggerRepository.Save(namesParams, logger)
 }
 
-func (l *AppLoggerService) MarkTaskAsRunning(namesParams appDto.NamesParams, logger *aggregates.Logger, task *entities.TaskRecord, step *entities.StepRecord) error {
+func (l *LoggerService) MarkTaskAsRunning(namesParams appDto.NamesParams, logger *aggregates.Logger, task *entities.TaskRecord, step *entities.StepRecord) error {
 	task.MarkAsRunning()
 	if l.presenter != nil {
 		l.presenter.Task(task, step)
@@ -192,21 +194,20 @@ func (l *AppLoggerService) MarkTaskAsRunning(namesParams appDto.NamesParams, log
 	return l.loggerRepository.Save(namesParams, logger)
 }
 
-func (l *AppLoggerService) SetTaskCommand(namesParams appDto.NamesParams, logger *aggregates.Logger, task *entities.TaskRecord, command string) error {
+func (l *LoggerService) SetTaskCommand(namesParams appDto.NamesParams, logger *aggregates.Logger, task *entities.TaskRecord, command string) error {
 	task.SetCommand(command)
 	return l.loggerRepository.Save(namesParams, logger)
 }
 
-func (l *AppLoggerService) AddOutputToTask(namesParams appDto.NamesParams, logger *aggregates.Logger, task *entities.TaskRecord, outputLine string) error {
+func (l *LoggerService) AddOutputToTask(namesParams appDto.NamesParams, logger *aggregates.Logger, task *entities.TaskRecord, outputLine string) error {
 	task.AddOutput(outputLine)
 	return l.loggerRepository.Save(namesParams, logger)
 }
 
-func (l *AppLoggerService) FinishExecution(namesParams appDto.NamesParams, logger *aggregates.Logger) error {
+func (l *LoggerService) FinishExecution(namesParams appDto.NamesParams, logger *aggregates.Logger) error {
 	logger.RecalculateStatus()
 	if l.presenter != nil {
 		l.presenter.FinalSummary(logger)
 	}
 	return l.loggerRepository.Save(namesParams, logger)
 }
- */

@@ -1,6 +1,6 @@
 package vos
 
-import "errors"
+/* import "errors"
 
 type ScopeName string
 
@@ -14,3 +14,4 @@ func NewScopeName(value string) (ScopeName, error) {
 func (e ScopeName) String() string {
 	return string(e)
 }
+ */

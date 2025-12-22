@@ -29,8 +29,8 @@ func NewVarsFileName(scopeName string) (FileName, error) {
 	return newFileName(scopeName, varsExtension)
 }
 
-func NewStateTableFileName(stepName string) (FileName, error) {
-	return newFileName(stepName, stateExtension)
+func NewStateFileName(scopeName string) (FileName, error) {
+	return newFileName(scopeName, stateExtension)
 }
 
 func (f FileName) String() string {

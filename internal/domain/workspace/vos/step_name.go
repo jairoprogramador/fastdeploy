@@ -1,6 +1,6 @@
 package vos
 
-import "errors"
+/* import "errors"
 
 type StepName string
 
@@ -13,4 +13,4 @@ func NewStepName(value string) (StepName, error) {
 
 func (e StepName) String() string {
 	return string(e)
-}
+} */

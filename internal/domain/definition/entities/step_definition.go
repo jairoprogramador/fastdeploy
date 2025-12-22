@@ -52,14 +52,14 @@ func NewStepDefinition(
 	}, nil
 }
 
-func (s *StepDefinition) Name() vos.StepNameDefinition {
+func (s *StepDefinition) NameDef() vos.StepNameDefinition {
 	return s.name
 }
 
-func (s *StepDefinition) Commands() []vos.CommandDefinition {
+func (s *StepDefinition) CommandsDef() []vos.CommandDefinition {
 	return s.commands
 }
 
-func (s *StepDefinition) Variables() []vos.VariableDefinition {
+func (s *StepDefinition) VariablesDef() []vos.VariableDefinition {
 	return s.variables
 }

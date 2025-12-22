@@ -1,6 +1,9 @@
 package services
 
 import (
+	"path/filepath"
+	"strings"
+
 	"github.com/jairoprogramador/fastdeploy-core/internal/domain/state/aggregates"
 	"github.com/jairoprogramador/fastdeploy-core/internal/domain/state/ports"
 	"github.com/jairoprogramador/fastdeploy-core/internal/domain/state/vos"
@@ -17,14 +20,17 @@ func NewStateManager(stateRepo ports.StateRepository) *StateManager {
 }
 
 func (sm *StateManager) HasStateChanged(
-	workspacePath string,
-	step vos.Step,
+	filePath string,
 	currentState vos.CurrentStateFingerprints,
 	policy vos.CachePolicy,
 ) (bool, error) {
-	stateTable, err := sm.stateRepo.Get(workspacePath, step)
+
+	stateTable, err := sm.stateRepo.Get(filePath)
 	if err != nil {
 		return true, err
+	}
+	if stateTable == nil {
+		return true, nil
 	}
 
 	match, err := sm.findMatch(stateTable, currentState, policy)
@@ -36,16 +42,17 @@ func (sm *StateManager) HasStateChanged(
 }
 
 func (sm *StateManager) UpdateState(
-	workspacePath string,
-	step vos.Step,
+	filePath string,
 	currentState vos.CurrentStateFingerprints,
 ) error {
-	stateTable, err := sm.stateRepo.Get(workspacePath, step)
+	stateTable, err := sm.stateRepo.Get(filePath)
 	if err != nil {
 		return err
 	}
 	if stateTable == nil {
-		stateTable = aggregates.NewStateTable(step)
+		fileName := filepath.Base(filePath)
+		tableName := strings.TrimSuffix(fileName, filepath.Ext(fileName))
+		stateTable = aggregates.NewStateTable(tableName)
 	}
 
 	newEntry := aggregates.NewStateEntry(
@@ -56,7 +63,7 @@ func (sm *StateManager) UpdateState(
 	)
 	stateTable.AddEntry(newEntry)
 
-	return sm.stateRepo.Save(workspacePath, stateTable)
+	return sm.stateRepo.Save(filePath, stateTable)
 }
 
 func (sm *StateManager) findMatch(
@@ -64,7 +71,7 @@ func (sm *StateManager) findMatch(
 	currentState vos.CurrentStateFingerprints,
 	policy vos.CachePolicy,
 ) (*aggregates.StateEntry, error) {
-	matcher, err := NewStateMatcherFactory(st.Step(), policy)
+	matcher, err := NewStateMatcherFactory(st.Name(), policy)
 	if err != nil {
 		return nil, err
 	}

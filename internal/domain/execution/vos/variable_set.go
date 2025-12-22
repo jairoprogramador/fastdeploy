@@ -9,3 +9,13 @@ func (vs VariableSet) Clone() VariableSet {
 	}
 	return clone
 }
+
+func (vs VariableSet) Add(key, value string) {
+	vs[key] = value
+}
+
+func (vs VariableSet) AddAll(other VariableSet) {
+	for k, v := range other {
+		vs[k] = v
+	}
+}

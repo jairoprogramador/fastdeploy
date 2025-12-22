@@ -12,33 +12,26 @@ func newFingerprint(value string) vos.Fingerprint {
 	return fp
 }
 
-func newStep(value string) vos.Step {
-	step, _ := vos.NewStep(value)
-	return step
-}
-
 func newEnv(value string) vos.Environment {
 	env, _ := vos.NewEnvironment(value)
 	return env
 }
 
 func TestNewStateTable(t *testing.T) {
-	step := newStep(vos.StepTest)
-	stateTable := NewStateTable(step)
+	stateTable := NewStateTable(vos.StepTest)
 	if stateTable == nil {
 		t.Fatal("NewStateTable() devolvió nil")
 	}
 	if len(stateTable.entries) != 0 {
 		t.Errorf("Se esperaba una tabla de estado vacía, pero tiene %d entradas", len(stateTable.entries))
 	}
-	if stateTable.Step() != step {
-		t.Errorf("Se esperaba que el step fuera %s, pero se obtuvo %s", step, stateTable.Step())
+	if stateTable.Name() != vos.StepTest {
+		t.Errorf("Se esperaba que el nombre fuera %s, pero se obtuvo %s", vos.StepTest, stateTable.Name())
 	}
 }
 
 func TestStateTable_AddEntry_MaintainsOrder(t *testing.T) {
-	step := newStep(vos.StepTest)
-	st := NewStateTable(step)
+	st := NewStateTable(vos.StepTest)
 	env := newEnv("dev")
 	now := time.Now().UTC()
 
@@ -74,8 +67,7 @@ func TestStateTable_AddEntry_MaintainsOrder(t *testing.T) {
 }
 
 func TestStateTable_AddEntry_MaxEntries(t *testing.T) {
-	step := newStep(vos.StepTest)
-	st := NewStateTable(step)
+	st := NewStateTable(vos.StepTest)
 	env := newEnv("dev")
 
 	// Llenar la tabla con N entradas
@@ -122,7 +114,6 @@ func TestStateTable_AddEntry_MaxEntries(t *testing.T) {
 }
 
 func TestLoadStateTable(t *testing.T) {
-	step := newStep(vos.StepDeploy)
 	env := newEnv("test")
 	now := time.Now().UTC()
 
@@ -134,7 +125,7 @@ func TestLoadStateTable(t *testing.T) {
 		entry1.createdAt = now.Add(1 * time.Second)
 
 		entries := []*StateEntry{entry2, entry1}
-		st := LoadStateTable(step, entries)
+		st := LoadStateTable(vos.StepDeploy, entries)
 
 		if len(st.Entries()) != 2 {
 			t.Fatalf("Se esperaban 2 entradas, pero se obtuvieron %d", len(st.Entries()))
@@ -153,7 +144,7 @@ func TestLoadStateTable(t *testing.T) {
 			entries = append(entries, e)
 		}
 
-		st := LoadStateTable(step, entries)
+		st := LoadStateTable(vos.StepDeploy, entries)
 
 		if len(st.Entries()) != maxEntries {
 			t.Errorf("La tabla no se truncó a maxEntries. Se esperaban %d, se obtuvieron %d", maxEntries, len(st.Entries()))
@@ -166,7 +157,7 @@ func TestLoadStateTable(t *testing.T) {
 
 	t.Run("debería funcionar con una lista de entradas vacía", func(t *testing.T) {
 		entries := []*StateEntry{}
-		st := LoadStateTable(step, entries)
+		st := LoadStateTable(vos.StepDeploy, entries)
 		if len(st.Entries()) != 0 {
 			t.Errorf("Se esperaba una tabla vacía, pero se obtuvieron %d entradas", len(st.Entries()))
 		}

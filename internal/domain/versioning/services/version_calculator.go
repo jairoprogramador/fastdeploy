@@ -8,29 +8,40 @@ import (
 	"strings"
 	"time"
 
-	"fastdeploy/internal/domain/versioning/ports"
-	"fastdeploy/internal/domain/versioning/vos"
+	"github.com/jairoprogramador/fastdeploy-core/internal/domain/versioning/ports"
+	"github.com/jairoprogramador/fastdeploy-core/internal/domain/versioning/vos"
 )
 
 // Regexp para parsear tags SemVer como v1.2.3
 var semverTagRegex = regexp.MustCompile(`^v?(\d+)\.(\d+)\.(\d+)$`)
 
-// Regexp para identificar tipos de commit convencionales
+// Regexp para parsear tipos de commit convencionales
 var conventionalCommitRegex = regexp.MustCompile(`^(feat|fix|build|chore|ci|docs|style|refactor|perf|test)(\(.*\))?(!?):`)
 
-// VersionCalculator calcula la siguiente versión semántica basada en el historial de commits.
-type VersionCalculator struct {
+// changeLevel define el nivel de cambio semántico.
+type changeLevel int
+
+// Definimos constantes para la precedencia de los cambios.
+const (
+	changeNone changeLevel = iota
+	changePatch
+	changeMinor
+	changeMajor
+)
+
+// VersionCalculatorService calcula la siguiente versión semántica basada en el historial de commits.
+type VersionCalculatorService struct {
 	gitRepo ports.GitRepository
 }
 
 // NewVersionCalculator crea una nueva instancia de VersionCalculator.
-func NewVersionCalculator(gitRepo ports.GitRepository) *VersionCalculator {
-	return &VersionCalculator{gitRepo: gitRepo}
+func NewVersionCalculator(gitRepo ports.GitRepository) ports.VersionCalculator {
+	return &VersionCalculatorService{gitRepo: gitRepo}
 }
 
 // CalculateNextVersion determina la siguiente versión y el commit actual.
 // Si 'forceDateVersion' es true, devuelve una versión basada en la fecha actual.
-func (vc *VersionCalculator) CalculateNextVersion(ctx context.Context, repoPath string, forceDateVersion bool) (*vos.Version, *vos.Commit, error) {
+func (vc *VersionCalculatorService) CalculateNextVersion(ctx context.Context, repoPath string, forceDateVersion bool) (*vos.Version, *vos.Commit, error) {
 	lastCommit, err := vc.gitRepo.GetLastCommit(ctx, repoPath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("no se pudo obtener el último commit: %w", err)
@@ -63,7 +74,7 @@ func (vc *VersionCalculator) CalculateNextVersion(ctx context.Context, repoPath 
 	return &nextVersion, lastCommit, nil
 }
 
-func (vc *VersionCalculator) parseVersionFromTag(tag string) vos.Version {
+func (vc *VersionCalculatorService) parseVersionFromTag(tag string) vos.Version {
 	matches := semverTagRegex.FindStringSubmatch(tag)
 	if len(matches) != 4 {
 		return vos.Version{Major: 0, Minor: 0, Patch: 0, Raw: "v0.0.0"} // Versión inicial
@@ -74,13 +85,13 @@ func (vc *VersionCalculator) parseVersionFromTag(tag string) vos.Version {
 	return vos.Version{Major: major, Minor: minor, Patch: patch, Raw: tag}
 }
 
-func (vc *VersionCalculator) calculateIncrement(current vos.Version, commits []*vos.Commit) vos.Version {
-	var isMajor, isMinor, isPatch bool
+func (vc *VersionCalculatorService) calculateIncrement(current vos.Version, commits []*vos.Commit) vos.Version {
+	highestChange := changeNone
 
 	for _, commit := range commits {
 		if strings.Contains(commit.Message, "BREAKING CHANGE") {
-			isMajor = true
-			break // Un cambio mayor tiene la máxima precedencia
+			highestChange = changeMajor
+			break // Un cambio mayor tiene la máxima precedencia, no necesitamos seguir buscando.
 		}
 
 		matches := conventionalCommitRegex.FindStringSubmatch(commit.Message)
@@ -89,27 +100,38 @@ func (vc *VersionCalculator) calculateIncrement(current vos.Version, commits []*
 			breakingExclamation := matches[3]
 
 			if breakingExclamation == "!" {
-				isMajor = true
-				break
+				highestChange = changeMajor
+				break // Un cambio mayor tiene la máxima precedencia.
 			}
-			if commitType == "feat" {
-				isMinor = true
-			}
-			if commitType == "fix" {
-				isPatch = true
+
+			switch commitType {
+			case "feat":
+				if highestChange < changeMinor {
+					highestChange = changeMinor
+				}
+			case "fix":
+				if highestChange < changePatch {
+					highestChange = changePatch
+				}
 			}
 		}
 	}
 
 	next := current
-	if isMajor {
+	if highestChange == changeNone {
+		// Si no hubo cambios, devolvemos la versión actual sin modificar.
+		return next
+	}
+
+	switch highestChange {
+	case changeMajor:
 		next.Major++
 		next.Minor = 0
 		next.Patch = 0
-	} else if isMinor {
+	case changeMinor:
 		next.Minor++
 		next.Patch = 0
-	} else if isPatch {
+	case changePatch:
 		next.Patch++
 	}
 

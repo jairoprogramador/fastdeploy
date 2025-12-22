@@ -2,7 +2,6 @@ package aggregates
 
 import (
 	"github.com/jairoprogramador/fastdeploy-core/internal/domain/project/vos"
-	"path/filepath"
 )
 
 type Project struct {
@@ -10,7 +9,6 @@ type Project struct {
 	data                  vos.ProjectData
 	templateRepo          vos.TemplateRepository
 	projectLocalPath      string
-	repositoriesLocalPath string
 	isIDDirty             bool
 }
 
@@ -18,14 +16,12 @@ func NewProject(
 	id vos.ProjectID,
 	data vos.ProjectData,
 	templateRepo vos.TemplateRepository,
-	projectLocalPath string,
-	repositoriesLocalPath string) *Project {
+	projectLocalPath string) *Project {
 	return &Project{
 		id:                    id,
 		data:                  data,
 		templateRepo:          templateRepo,
 		projectLocalPath:      projectLocalPath,
-		repositoriesLocalPath: repositoriesLocalPath,
 	}
 }
 
@@ -37,10 +33,6 @@ func (p *Project) SyncID() bool {
 		return true
 	}
 	return false
-}
-
-func (p *Project) TemplateLocalPath() string {
-	return filepath.Join(p.repositoriesLocalPath, p.templateRepo.DirName())
 }
 
 func (p *Project) IsIDDirty() bool {

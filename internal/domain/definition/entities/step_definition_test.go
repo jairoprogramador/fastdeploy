@@ -25,9 +25,9 @@ func TestNewStepDefinition(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		assert.NotNil(t, step)
-		assert.Equal(t, stepName, step.Name())
-		assert.Len(t, step.Commands(), 2)
-		assert.Len(t, step.Variables(), 2)
+		assert.Equal(t, stepName, step.NameDef())
+		assert.Len(t, step.CommandsDef(), 2)
+		assert.Len(t, step.VariablesDef(), 2)
 	})
 
 	t.Run("should create a valid step definition without variables", func(t *testing.T) {
@@ -38,8 +38,8 @@ func TestNewStepDefinition(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		assert.NotNil(t, step)
-		assert.Len(t, step.Commands(), 1)
-		assert.Empty(t, step.Variables())
+		assert.Len(t, step.CommandsDef(), 1)
+		assert.Empty(t, step.VariablesDef())
 	})
 
 	t.Run("should return error if commands slice is empty", func(t *testing.T) {
@@ -83,6 +83,6 @@ func TestNewStepDefinition(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		assert.NotNil(t, step)
-		assert.Len(t, step.Commands(), 2)
+		assert.Len(t, step.CommandsDef(), 2)
 	})
 }

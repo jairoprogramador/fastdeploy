@@ -71,7 +71,7 @@ func TestCommandExecutor_Execute_Success(t *testing.T) {
 
 	fileProcessor.On("Process", mock.Anything, vars).Return(nil).Once()
 	interpolator.On("Interpolate", cmd.Cmd(), vars).Return(interpolatedCmd, nil).Once()
-	runner.On("Run", ctx, interpolatedCmd, filepath.Join(pathRoot, workdirCmd)).Return(&vos.CommandResult{ExitCode: 0, Output: outputCmd}, nil).Once()
+	runner.On("Run", ctx, interpolatedCmd, filepath.Join(pathRoot, workdirCmd)).Return(&vos.CommandResult{ExitCode: 0, RawStdout: outputCmd, NormalizedStdout: outputCmd}, nil).Once()
 	outputExtractor.On("Extract", outputCmd, cmd.Outputs()).Return(extractedVarsCmd, nil).Once()
 	fileProcessor.On("Restore").Return(nil).Once()
 

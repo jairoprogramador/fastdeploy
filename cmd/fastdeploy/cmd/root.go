@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -10,8 +11,6 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/factory"
-
-	appDto "github.com/jairoprogramador/fastdeploy-core/internal/application/dto"
 )
 
 var (
@@ -43,27 +42,16 @@ var rootCmd = &cobra.Command{
 			environment = args[1]
 		}
 
-		skippedSteps := make(map[string]struct{})
-		if skipTest {
-			skippedSteps["test"] = struct{}{}
-		}
-		if skipSupply {
-			skippedSteps["supply"] = struct{}{}
-		}
-
 		factoryApp, err := factory.NewFactory()
 		if err != nil {
 			return err
 		}
 
-		executorService := factoryApp.BuildExecutorService()
-
-		executorRequest := appDto.NewExecutorRequest(
-			environment,
-			finalStepName,
-			factoryApp.PathAppProject(),
-			skippedSteps)
-		err = executorService.Run(executorRequest)
+		orchestrator, err := factoryApp.BuildExecutionOrchestrator()
+		if err != nil {
+			return err
+		}
+		err = orchestrator.ExecutePlan(context.Background(), finalStepName, environment)
 		if err != nil {
 			return err
 		}

@@ -37,7 +37,7 @@ func TestStepExecutor_Execute_Success(t *testing.T) {
 
 	step, _ := entities.NewStep("test-step",
 		entities.WithCommands([]vos.Command{cmd1, cmd2}),
-		entities.WithWorkspaceRoot(pathRoot),
+		entities.WithWorkspaceStep(pathRoot),
 	)
 	initialVars := vos.VariableSet{varInitName1: varInitValue1}
 

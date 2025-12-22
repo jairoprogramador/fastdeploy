@@ -2,6 +2,8 @@ package services
 
 import (
 	"errors"
+	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -10,23 +12,25 @@ import (
 )
 
 type mockStateRepository struct {
-	GetFunc  func(workspacePath string, step vos.Step) (*aggregates.StateTable, error)
-	SaveFunc func(workspacePath string, stateTable *aggregates.StateTable) error
+	GetFunc  func(filePath string) (*aggregates.StateTable, error)
+	SaveFunc func(filePath string, stateTable *aggregates.StateTable) error
 
 	saveCalledWith *aggregates.StateTable
 }
 
-func (m *mockStateRepository) Get(workspacePath string, step vos.Step) (*aggregates.StateTable, error) {
+func (m *mockStateRepository) Get(filePath string) (*aggregates.StateTable, error) {
 	if m.GetFunc != nil {
-		return m.GetFunc(workspacePath, step)
+		return m.GetFunc(filePath)
 	}
-	return aggregates.NewStateTable(step), nil
+	fileName := filepath.Base(filePath)
+	tableName := strings.TrimSuffix(fileName, filepath.Ext(fileName))
+	return aggregates.NewStateTable(tableName), nil
 }
 
-func (m *mockStateRepository) Save(workspacePath string, stateTable *aggregates.StateTable) error {
+func (m *mockStateRepository) Save(filePath string, stateTable *aggregates.StateTable) error {
 	m.saveCalledWith = stateTable
 	if m.SaveFunc != nil {
-		return m.SaveFunc(workspacePath, stateTable)
+		return m.SaveFunc(filePath, stateTable)
 	}
 	return nil
 }
@@ -36,9 +40,9 @@ func newFingerprint(v string) vos.Fingerprint {
 	return fp
 }
 
-func newStep(v string) vos.Step {
-	s, _ := vos.NewStep(v)
-	return s
+func newTableName(filePath string) string {
+	fileName := filepath.Base(filePath)
+	return strings.TrimSuffix(fileName, filepath.Ext(fileName))
 }
 
 func newEnv(v string) vos.Environment {
@@ -47,7 +51,6 @@ func newEnv(v string) vos.Environment {
 }
 
 func TestStateManager_HasStateChanged(t *testing.T) {
-	step := newStep(vos.StepTest)
 	env := newEnv("dev")
 
 	fpCode1 := "code1"
@@ -70,7 +73,7 @@ func TestStateManager_HasStateChanged(t *testing.T) {
 	testCases := []struct {
 		name         string
 		repo         *mockStateRepository
-		step         vos.Step
+		filePath     string
 		currentState vos.CurrentStateFingerprints
 		wantChanged  bool
 		wantErr      bool
@@ -78,25 +81,38 @@ func TestStateManager_HasStateChanged(t *testing.T) {
 		{
 			name: "debería devolver true (changed) si el repositorio devuelve un error (ej. no encontrado)",
 			repo: &mockStateRepository{
-				GetFunc: func(workspacePath string, step vos.Step) (*aggregates.StateTable, error) {
+				GetFunc: func(filePath string) (*aggregates.StateTable, error) {
 					return nil, errors.New("file not found")
 				},
 			},
-			step:         step,
+			filePath:     "/fake/path/any.tb",
 			currentState: currentState,
 			wantChanged:  true,
 			wantErr:      true,
 		},
 		{
+			name: "debería devolver true (changed) si Get devuelve (nil, nil) (ej. no existe el statefile)",
+			repo: &mockStateRepository{
+				GetFunc: func(filePath string) (*aggregates.StateTable, error) {
+					return nil, nil
+				},
+			},
+			filePath:     "/fake/path/any.tb",
+			currentState: currentState,
+			wantChanged:  true,
+			wantErr:      false,
+		},
+		{
 			name: "debería devolver false (not changed) si se encuentra una coincidencia",
 			repo: &mockStateRepository{
-				GetFunc: func(workspacePath string, step vos.Step) (*aggregates.StateTable, error) {
-					table := aggregates.NewStateTable(step)
+				GetFunc: func(filePath string) (*aggregates.StateTable, error) {
+					tableName := newTableName(filePath)
+					table := aggregates.NewStateTable(tableName)
 					table.AddEntry(matchingEntry)
 					return table, nil
 				},
 			},
-			step:         step,
+			filePath:     "/fake/path/test.tb",
 			currentState: currentState,
 			wantChanged:  false,
 			wantErr:      false,
@@ -104,9 +120,9 @@ func TestStateManager_HasStateChanged(t *testing.T) {
 		{
 			name: "debería devolver true (changed) si no se encuentra una coincidencia",
 			repo: &mockStateRepository{
-				GetFunc: func(workspacePath string, step vos.Step) (*aggregates.StateTable, error) {
-					// Tabla con una entrada que no coincide
-					table := aggregates.NewStateTable(step)
+				GetFunc: func(filePath string) (*aggregates.StateTable, error) {
+					tableName := newTableName(filePath)
+					table := aggregates.NewStateTable(tableName)
 					nonMatchingEntry := aggregates.NewStateEntry(
 						newFingerprint("other-code"),
 						newFingerprint("inst1"),
@@ -115,7 +131,7 @@ func TestStateManager_HasStateChanged(t *testing.T) {
 					return table, nil
 				},
 			},
-			step:         step,
+			filePath:     "/fake/path/test.tb",
 			currentState: currentState,
 			wantChanged:  true,
 			wantErr:      false,
@@ -123,21 +139,27 @@ func TestStateManager_HasStateChanged(t *testing.T) {
 		{
 			name: "debería devolver true (changed) si la coincidencia ha expirado por tiempo",
 			repo: &mockStateRepository{
-				GetFunc: func(workspacePath string, step vos.Step) (*aggregates.StateTable, error) {
-					table := aggregates.NewStateTable(step)
+				GetFunc: func(filePath string) (*aggregates.StateTable, error) {
+					tableName := newTableName(filePath)
+					table := aggregates.NewStateTable(tableName)
 					table.AddEntry(expiredMatchingEntry)
 					return table, nil
 				},
 			},
-			step:         step,
+			filePath:     "/fake/path/test.tb",
 			currentState: currentState,
-			wantChanged:  true, // Debe ejecutar porque la entrada expiró
+			wantChanged:  true,
 			wantErr:      false,
 		},
 		{
-			name:         "debería devolver true (changed) y un error si el step es inválido",
-			repo:         &mockStateRepository{},
-			step:         newStep("invalid-step"),
+			name: "debería devolver true (changed) y un error si el nombre de la tabla es inválido para el factory",
+			repo: &mockStateRepository{
+				GetFunc: func(filePath string) (*aggregates.StateTable, error) {
+					tableName := newTableName(filePath)
+					return aggregates.NewStateTable(tableName), nil
+				},
+			},
+			filePath:     "/fake/path/invalid-name.tb",
 			currentState: currentState,
 			wantChanged:  true,
 			wantErr:      true,
@@ -151,7 +173,7 @@ func TestStateManager_HasStateChanged(t *testing.T) {
 
 			// Usamos una política por defecto para las pruebas
 			policy := vos.NewCachePolicy(0)
-			gotChanged, err := sm.HasStateChanged("/fake/path", tc.step, tc.currentState, policy)
+			gotChanged, err := sm.HasStateChanged(tc.filePath, tc.currentState, policy)
 
 			if (err != nil) != tc.wantErr {
 				t.Errorf("HasStateChanged() error = %v, wantErr %v", err, tc.wantErr)
@@ -165,7 +187,6 @@ func TestStateManager_HasStateChanged(t *testing.T) {
 }
 
 func TestStateManager_UpdateState(t *testing.T) {
-	step := newStep(vos.StepDeploy)
 	env := newEnv("prod")
 
 	currentState := vos.NewCurrentStateFingerprints(
@@ -176,16 +197,18 @@ func TestStateManager_UpdateState(t *testing.T) {
 	testCases := []struct {
 		name       string
 		repo       *mockStateRepository
+		filePath   string
 		expectErr  bool
 		verifySave func(t *testing.T, repo *mockStateRepository)
 	}{
 		{
 			name: "debería propagar el error si Get falla",
 			repo: &mockStateRepository{
-				GetFunc: func(workspacePath string, step vos.Step) (*aggregates.StateTable, error) {
+				GetFunc: func(filePath string) (*aggregates.StateTable, error) {
 					return nil, errors.New("I/O error")
 				},
 			},
+			filePath:  "/fake/path/any.tb",
 			expectErr: true,
 			verifySave: func(t *testing.T, repo *mockStateRepository) {
 				if repo.saveCalledWith != nil {
@@ -196,10 +219,11 @@ func TestStateManager_UpdateState(t *testing.T) {
 		{
 			name: "debería crear una nueva tabla si Get devuelve (nil, nil) y guardar la nueva entrada",
 			repo: &mockStateRepository{
-				GetFunc: func(workspacePath string, step vos.Step) (*aggregates.StateTable, error) {
+				GetFunc: func(filePath string) (*aggregates.StateTable, error) {
 					return nil, nil // Simula que el archivo no existe, pero sin error
 				},
 			},
+			filePath:  "/fake/path/new-table.tb",
 			expectErr: false,
 			verifySave: func(t *testing.T, repo *mockStateRepository) {
 				if repo.saveCalledWith == nil {
@@ -208,23 +232,26 @@ func TestStateManager_UpdateState(t *testing.T) {
 				if len(repo.saveCalledWith.Entries()) != 1 {
 					t.Errorf("Se esperaba 1 entrada en la tabla guardada, pero se obtuvieron %d", len(repo.saveCalledWith.Entries()))
 				}
-				if repo.saveCalledWith.Step() != step {
-					t.Errorf("El step de la tabla guardada es incorrecto")
+				expectedTableName := "new-table"
+				if repo.saveCalledWith.Name() != expectedTableName {
+					t.Errorf("El nombre de la tabla guardada es incorrecto: got %q, want %q", repo.saveCalledWith.Name(), expectedTableName)
 				}
 			},
 		},
 		{
 			name: "debería añadir a una tabla existente y guardarla",
 			repo: &mockStateRepository{
-				GetFunc: func(workspacePath string, step vos.Step) (*aggregates.StateTable, error) {
+				GetFunc: func(filePath string) (*aggregates.StateTable, error) {
 					// Devuelve una tabla que ya tiene una entrada
-					table := aggregates.NewStateTable(step)
+					tableName := newTableName(filePath)
+					table := aggregates.NewStateTable(tableName)
 					existingEntry := aggregates.NewStateEntry(
 						newFingerprint("old"), newFingerprint("old"), newFingerprint("old"), env)
 					table.AddEntry(existingEntry)
 					return table, nil
 				},
 			},
+			filePath:  "/fake/path/existing.tb",
 			expectErr: false,
 			verifySave: func(t *testing.T, repo *mockStateRepository) {
 				if repo.saveCalledWith == nil {
@@ -238,10 +265,11 @@ func TestStateManager_UpdateState(t *testing.T) {
 		{
 			name: "debería devolver un error si Save falla",
 			repo: &mockStateRepository{
-				SaveFunc: func(workspacePath string, stateTable *aggregates.StateTable) error {
+				SaveFunc: func(filePath string, stateTable *aggregates.StateTable) error {
 					return errors.New("disk full")
 				},
 			},
+			filePath:   "/fake/path/any.tb",
 			expectErr:  true,
 			verifySave: nil, // No verificamos el guardado si se espera un error
 		},
@@ -251,7 +279,7 @@ func TestStateManager_UpdateState(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			sm := NewStateManager(tc.repo)
 
-			err := sm.UpdateState("/fake/path", step, currentState)
+			err := sm.UpdateState(tc.filePath, currentState)
 
 			if (err != nil) != tc.expectErr {
 				t.Errorf("UpdateState() error = %v, wantErr %v", err, tc.expectErr)

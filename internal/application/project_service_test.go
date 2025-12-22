@@ -35,26 +35,6 @@ func (f *fakeProjectRepository) Save(ctx context.Context, path string, data *por
 	return nil
 }
 
-// fakeGitCloner es un mock para ClonerTemplate.
-type fakeGitCloner struct {
-	EnsureClonedFunc func(ctx context.Context, repoURL, ref, localPath string) error
-	RunFunc          func(ctx context.Context, command string, workDir string) (*ports.CommandResultDTO, error)
-}
-
-func (f *fakeGitCloner) EnsureCloned(ctx context.Context, repoURL, ref, localPath string) error {
-	if f.EnsureClonedFunc != nil {
-		return f.EnsureClonedFunc(ctx, repoURL, ref, localPath)
-	}
-	return nil
-}
-
-func (f *fakeGitCloner) Run(ctx context.Context, command string, workDir string) (*ports.CommandResultDTO, error) {
-	if f.RunFunc != nil {
-		return f.RunFunc(ctx, command, workDir)
-	}
-	return &ports.CommandResultDTO{Output: "", ExitCode: 0}, nil
-}
-
 func newValidMockDTO(modifiers ...func(*ports.ProjectConfigDTO)) *ports.ProjectConfigDTO {
 	// 1. Define los datos base y consistentes
 	projectName := "test-project"
@@ -81,7 +61,7 @@ func newValidMockDTO(modifiers ...func(*ports.ProjectConfigDTO)) *ports.ProjectC
 	return dto
 }
 
-func TestProjectService_Initialize_Success(t *testing.T) {
+func TestProjectService_Load_Success(t *testing.T) {
 	// --- Arrange ---
 	ctx := context.Background()
 
@@ -90,21 +70,19 @@ func TestProjectService_Initialize_Success(t *testing.T) {
 			return newValidMockDTO(), nil // Usamos el helper sin modificaciones
 		},
 	}
-	mockCloner := &fakeGitCloner{}
-	service := application.NewProjectService(mockRepo, mockCloner)
+	service := application.NewProjectService(mockRepo)
 
 	// --- Act ---
-	project, err := service.Initialize(ctx, "/fake/path", "/fake/repos")
+	project, err := service.Load(ctx, "/fake/path")
 
 	// --- Assert ---
 	require.NoError(t, err)
 	require.NotNil(t, project)
 	assert.Equal(t, "test-project", project.Data().Name())
-	assert.Equal(t, "/fake/repos/template", project.TemplateLocalPath())
 	assert.False(t, mockRepo.saveCalled, "Save no debería haber sido llamado porque el ID no cambió")
 }
 
-func TestProjectService_Initialize_IDChangesAndSaves(t *testing.T) {
+func TestProjectService_Load_IDChangesAndSaves(t *testing.T) {
 	// --- Arrange ---
 	ctx := context.Background()
 
@@ -116,11 +94,10 @@ func TestProjectService_Initialize_IDChangesAndSaves(t *testing.T) {
 			}), nil
 		},
 	}
-	mockCloner := &fakeGitCloner{}
-	service := application.NewProjectService(mockRepo, mockCloner)
+	service := application.NewProjectService(mockRepo)
 
 	// --- Act ---
-	project, err := service.Initialize(ctx, "/fake/path", "/fake/repos")
+	project, err := service.Load(ctx, "/fake/path")
 
 	// --- Assert ---
 	require.NoError(t, err)
@@ -132,7 +109,7 @@ func TestProjectService_Initialize_IDChangesAndSaves(t *testing.T) {
 	assert.True(t, mockRepo.saveCalled, "Save debería haber sido llamado porque el ID cambió")
 }
 
-func TestProjectService_Initialize_RepoLoadFails(t *testing.T) {
+func TestProjectService_Load_RepoLoadFails(t *testing.T) {
 	// --- Arrange ---
 	ctx := context.Background()
 	expectedError := errors.New("failed to read file")
@@ -142,11 +119,10 @@ func TestProjectService_Initialize_RepoLoadFails(t *testing.T) {
 			return nil, expectedError
 		},
 	}
-	mockCloner := &fakeGitCloner{}
-	service := application.NewProjectService(mockRepo, mockCloner)
+	service := application.NewProjectService(mockRepo)
 
 	// --- Act ---
-	project, err := service.Initialize(ctx, "/fake/path", "/fake/repos")
+	project, err := service.Load(ctx, "/fake/path")
 
 	// --- Assert ---
 	require.Error(t, err)
@@ -154,7 +130,7 @@ func TestProjectService_Initialize_RepoLoadFails(t *testing.T) {
 	assert.Contains(t, err.Error(), expectedError.Error())
 }
 
-func TestProjectService_Initialize_SaveFailsAfterIDChange(t *testing.T) {
+func TestProjectService_Load_SaveFailsAfterIDChange(t *testing.T) {
 	// --- Arrange ---
 	ctx := context.Background()
 	expectedError := errors.New("permission denied")
@@ -169,41 +145,14 @@ func TestProjectService_Initialize_SaveFailsAfterIDChange(t *testing.T) {
 			return expectedError
 		},
 	}
-	mockCloner := &fakeGitCloner{}
-	service := application.NewProjectService(mockRepo, mockCloner)
+	service := application.NewProjectService(mockRepo)
 
 	// --- Act ---
-	project, err := service.Initialize(ctx, "/fake/path", "/fake/repos")
+	project, err := service.Load(ctx, "/fake/path")
 
 	// --- Assert ---
 	require.Error(t, err)
 	assert.Nil(t, project)
 	assert.True(t, mockRepo.saveCalled)
-	assert.Contains(t, err.Error(), expectedError.Error())
-}
-
-func TestProjectService_Initialize_ClonerFails(t *testing.T) {
-	// --- Arrange ---
-	ctx := context.Background()
-	expectedError := errors.New("git command not found")
-
-	mockRepo := &fakeProjectRepository{
-		LoadFunc: func(ctx context.Context, path string) (*ports.ProjectConfigDTO, error) {
-			return newValidMockDTO(), nil // ID válido, la carga es exitosa
-		},
-	}
-	mockCloner := &fakeGitCloner{
-		EnsureClonedFunc: func(ctx context.Context, repoURL, ref, localPath string) error {
-			return expectedError
-		},
-	}
-	service := application.NewProjectService(mockRepo, mockCloner)
-
-	// --- Act ---
-	project, err := service.Initialize(ctx, "/fake/path", "/fake/repos")
-
-	// --- Assert ---
-	require.Error(t, err)
-	assert.Nil(t, project)
 	assert.Contains(t, err.Error(), expectedError.Error())
 }

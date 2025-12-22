@@ -30,10 +30,10 @@ func NewCommandExecutor(
 	}
 }
 
-func (ce *CommandExecutor) Execute(ctx context.Context, command vos.Command, currentVars vos.VariableSet, workspaceRoot string) *vos.ExecutionResult {
+func (ce *CommandExecutor) Execute(ctx context.Context, command vos.Command, currentVars vos.VariableSet, workspaceStep string) *vos.ExecutionResult {
 	absPathsFiles := make([]string, len(command.TemplateFiles()))
 	for i, filePath := range command.TemplateFiles() {
-		absPathsFiles[i] = filepath.Join(workspaceRoot, command.Workdir(), filePath)
+		absPathsFiles[i] = filepath.Join(workspaceStep, command.Workdir(), filePath)
 	}
 
 	if err := ce.fileProcessor.Process(absPathsFiles, currentVars); err != nil {
@@ -46,7 +46,7 @@ func (ce *CommandExecutor) Execute(ctx context.Context, command vos.Command, cur
 		return &vos.ExecutionResult{Status: vos.Failure, Error: fmt.Errorf("falló al interpolar el comando: %w", err)}
 	}
 
-	execDir := filepath.Join(workspaceRoot, command.Workdir())
+	execDir := filepath.Join(workspaceStep, command.Workdir())
 	cmdResult, err := ce.runner.Run(ctx, interpolatedCmd, execDir)
 	if err != nil {
 		return &vos.ExecutionResult{Status: vos.Failure, Error: fmt.Errorf("no se pudo iniciar el comando: %w", err)}
@@ -55,23 +55,23 @@ func (ce *CommandExecutor) Execute(ctx context.Context, command vos.Command, cur
 	if cmdResult.ExitCode != 0 {
 		return &vos.ExecutionResult{
 			Status: vos.Failure,
-			Logs:   cmdResult.Output,
+			Logs:   cmdResult.CombinedOutput(),
 			Error:  fmt.Errorf("el comando %s falló con código de salida %d", interpolatedCmd, cmdResult.ExitCode),
 		}
 	}
 
-	extractedVars, err := ce.outputExtractor.Extract(cmdResult.Output, command.Outputs())
+	extractedVars, err := ce.outputExtractor.Extract(cmdResult.NormalizedStdout, command.Outputs())
 	if err != nil {
 		return &vos.ExecutionResult{
 			Status: vos.Failure,
-			Logs:   cmdResult.Output,
+			Logs:   cmdResult.CombinedOutput(),
 			Error:  fmt.Errorf("falló al extraer las salidas: %w", err),
 		}
 	}
 
 	return &vos.ExecutionResult{
 		Status:     vos.Success,
-		Logs:       cmdResult.Output,
+		Logs:       cmdResult.CombinedOutput(),
 		OutputVars: extractedVars,
 	}
 }

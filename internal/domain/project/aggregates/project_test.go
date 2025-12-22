@@ -1,7 +1,6 @@
 package aggregates_test
 
 import (
-	"path/filepath"
 	"testing"
 
 	"github.com/jairoprogramador/fastdeploy-core/internal/domain/project/aggregates"
@@ -27,10 +26,9 @@ func TestNewProject(t *testing.T) {
 		data, repo := setupProjectData(t)
 		id := vos.GenerateProjectID(data.Name(), data.Organization(), data.Team())
 		projectPath := "/path/to/project"
-		reposPath := "/path/to/repos"
 
 		// Act
-		project := aggregates.NewProject(id, data, repo, projectPath, reposPath)
+		project := aggregates.NewProject(id, data, repo, projectPath)
 
 		// Assert
 		require.NotNil(t, project)
@@ -46,7 +44,7 @@ func TestProject_SyncID(t *testing.T) {
 		// Arrange
 		data, repo := setupProjectData(t)
 		correctID := vos.GenerateProjectID(data.Name(), data.Organization(), data.Team())
-		project := aggregates.NewProject(correctID, data, repo, "", "")
+		project := aggregates.NewProject(correctID, data, repo, "")
 
 		// Act
 		synced := project.SyncID()
@@ -61,7 +59,7 @@ func TestProject_SyncID(t *testing.T) {
 		// Arrange
 		data, repo := setupProjectData(t)
 		initialID := vos.NewProjectID("stale-id") // An old or incorrect ID
-		project := aggregates.NewProject(initialID, data, repo, "", "")
+		project := aggregates.NewProject(initialID, data, repo, "")
 
 		// Act
 		synced := project.SyncID()
@@ -73,22 +71,5 @@ func TestProject_SyncID(t *testing.T) {
 		expectedID := vos.GenerateProjectID(data.Name(), data.Organization(), data.Team())
 		assert.True(t, expectedID.Equals(project.ID()), "ID should be updated to the correct generated value")
 		assert.True(t, project.IsIDDirty(), "Project should be marked as dirty after ID sync")
-	})
-}
-
-func TestProject_TemplateLocalPath(t *testing.T) {
-	t.Run("should return the correct local path for the template", func(t *testing.T) {
-		// Arrange
-		data, repo := setupProjectData(t)
-		id := vos.NewProjectID("any-id")
-		reposPath := "/home/user/.fastdeploy/templates"
-		project := aggregates.NewProject(id, data, repo, "", reposPath)
-
-		// Act
-		localPath := project.TemplateLocalPath()
-
-		// Assert
-		expectedPath := filepath.Join(reposPath, repo.DirName())
-		assert.Equal(t, expectedPath, localPath)
 	})
 }

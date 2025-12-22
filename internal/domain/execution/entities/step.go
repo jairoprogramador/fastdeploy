@@ -7,10 +7,10 @@ import (
 )
 
 type Step struct {
-	workspaceRoot string
+	workspaceStep string // falta, es la dirccion donde se copia la platilla
 	name          string
 	commands      []vos.Command
-	variables     []vos.VariableSet
+	variables     vos.VariableSet
 }
 
 type StepOption func(*Step)
@@ -41,15 +41,15 @@ func WithCommands(commands []vos.Command) StepOption {
 	}
 }
 
-func WithVariables(variables []vos.VariableSet) StepOption {
+func WithVariables(variables vos.VariableSet) StepOption {
 	return func(s *Step) {
 		s.variables = variables
 	}
 }
 
-func WithWorkspaceRoot(workspaceRoot string) StepOption {
+func WithWorkspaceStep(workspaceRoot string) StepOption {
 	return func(s *Step) {
-		s.workspaceRoot = workspaceRoot
+		s.workspaceStep = workspaceRoot
 	}
 }
 
@@ -58,7 +58,7 @@ func (sd Step) Name() string {
 }
 
 func (sd Step) WorkspaceRoot() string {
-	return sd.workspaceRoot
+	return sd.workspaceStep
 }
 
 func (sd Step) Commands() []vos.Command {
@@ -67,8 +67,10 @@ func (sd Step) Commands() []vos.Command {
 	return commandsCopy
 }
 
-func (sd Step) Variables() []vos.VariableSet {
-	variablesCopy := make([]vos.VariableSet, len(sd.variables))
-	copy(variablesCopy, sd.variables)
+func (sd Step) Variables() vos.VariableSet {
+	variablesCopy := make(vos.VariableSet, len(sd.variables))
+	for k, v := range sd.variables {
+		variablesCopy[k] = v
+	}
 	return variablesCopy
 }

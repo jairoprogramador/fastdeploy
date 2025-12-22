@@ -1,0 +1,79 @@
+package application
+
+import (
+	"fmt"
+
+	defEnt "github.com/jairoprogramador/fastdeploy-core/internal/domain/definition/entities"
+	defVos "github.com/jairoprogramador/fastdeploy-core/internal/domain/definition/vos"
+	execEnt "github.com/jairoprogramador/fastdeploy-core/internal/domain/execution/entities"
+	execVos "github.com/jairoprogramador/fastdeploy-core/internal/domain/execution/vos"
+)
+
+func mapToExecutionStep(defStep *defEnt.StepDefinition, workspaceStep string) (*execEnt.Step, error) {
+	execCmds, err := mapToExecutionCommands(defStep.CommandsDef())
+	if err != nil {
+		return nil, fmt.Errorf("error al mapear los comandos para el paso '%s': %w", defStep.NameDef().Name(), err)
+	}
+
+	execVars, err := mapToExecutionVariables(defStep.VariablesDef())
+	if err != nil {
+		return nil, fmt.Errorf("error al mapear las variables para el paso '%s': %w", defStep.NameDef().Name(), err)
+	}
+
+	execStep, err := execEnt.NewStep(
+		defStep.NameDef().Name(),
+		execEnt.WithCommands(execCmds),
+		execEnt.WithVariables(execVars),
+		execEnt.WithWorkspaceStep(workspaceStep),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("error al crear el paso de ejecución para '%s': %w", defStep.NameDef().Name(), err)
+	}
+
+	return &execStep, nil
+}
+
+func mapToExecutionVariables(defVars []defVos.VariableDefinition) (execVos.VariableSet, error) {
+	execVars := make(map[string]string, len(defVars))
+	for _, defVar := range defVars {
+		execVars[defVar.Name()] = fmt.Sprintf("%v", defVar.Value())
+	}
+	return execVars, nil
+}
+
+func mapToExecutionCommands(defCmds []defVos.CommandDefinition) ([]execVos.Command, error) {
+	execCmds := make([]execVos.Command, 0, len(defCmds))
+	for _, defCmd := range defCmds {
+		cmdOutputs := mapToExecutionOutputs(defCmd.Outputs())
+
+		execCmd, err := execVos.NewCommand(
+			defCmd.Name(),
+			defCmd.Cmd(),
+			execVos.WithTemplateFiles(defCmd.TemplateFiles()),
+			execVos.WithWorkdir(defCmd.Workdir()),
+			execVos.WithOutputs(cmdOutputs),
+		)
+		if err != nil {
+			return nil, err
+		}
+		execCmds = append(execCmds, execCmd)
+	}
+
+	return execCmds, nil
+}
+
+func mapToExecutionOutputs(defOutputs []defVos.OutputDefinition) []execVos.CommandOutput {
+	if len(defOutputs) == 0 {
+		return nil
+	}
+
+	execOutputs := make([]execVos.CommandOutput, 0, len(defOutputs))
+	for _, defOutput := range defOutputs {
+		output, _ := execVos.NewCommandOutput(
+			defOutput.Name(),
+			defOutput.Probe(),
+		)
+		execOutputs = append(execOutputs, output)
+	}
+	return execOutputs
+}

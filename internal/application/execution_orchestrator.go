@@ -1,139 +1,272 @@
 package application
-/* import (
+
+import (
 	"context"
 	"fmt"
-
-	"github.com/jairoprogramador/fastdeploy-core/internal/domain/definition/entities"
-	"github.com/jairoprogramador/fastdeploy-core/internal/domain/execution/aggregates"
-	execvos "github.com/jairoprogramador/fastdeploy-core/internal/domain/execution/vos"
-	"github.com/jairoprogramador/fastdeploy-core/internal/domain/planning"
-	"github.com/jairoprogramador/fastdeploy-core/internal/domain/state/services"
+	defAggs "github.com/jairoprogramador/fastdeploy-core/internal/domain/definition/aggregates"
+	defPorts "github.com/jairoprogramador/fastdeploy-core/internal/domain/definition/ports"
+	defVos "github.com/jairoprogramador/fastdeploy-core/internal/domain/definition/vos"
+	execPorts "github.com/jairoprogramador/fastdeploy-core/internal/domain/execution/ports"
+	"github.com/jairoprogramador/fastdeploy-core/internal/domain/execution/vos"
+	"github.com/jairoprogramador/fastdeploy-core/internal/domain/project/aggregates"
+	projectPorts "github.com/jairoprogramador/fastdeploy-core/internal/domain/project/ports"
+	statePorts "github.com/jairoprogramador/fastdeploy-core/internal/domain/state/ports"
+	stateVos "github.com/jairoprogramador/fastdeploy-core/internal/domain/state/vos"
+	versioningPorts "github.com/jairoprogramador/fastdeploy-core/internal/domain/versioning/ports"
+	workspaceAggs "github.com/jairoprogramador/fastdeploy-core/internal/domain/workspace/aggregates"
 )
 
-// OrchestratorInput encapsula todos los datos necesarios para iniciar una ejecución.
-type OrchestratorInput struct {
-	Project   *ProjectInfo
-	Workspace *WorkspaceInfo
-	Steps     []*entities.StepDefinition
-}
-
-// ProjectInfo y WorkspaceInfo podrían moverse a VOs de aplicación.
-type ProjectInfo struct{ ID, Name, Team string }
-type WorkspaceInfo struct{ Path string }
-
-// ExecutionOrchestrator orquesta el flujo completo de ejecución de pasos.
+// ExecutionOrchestrator orquesta la ejecución de un plan completo,
+// coordinando los contextos de definición, estado y ejecución.
 type ExecutionOrchestrator struct {
-	stateManager      *services.StateManager
-	versionCalculator *versioning.VersionCalculator
-	stepExecutor      *aggregates.StepExecutor
+	projectPath        string
+	rootFastdeployPath string
+	projectSvc         *ProjectService
+	workspaceSvc       *WorkspaceService
+	gitCloner          projectPorts.ClonerTemplate
+	versionCalculator  versioningPorts.VersionCalculator
+	planBuilder        defPorts.PlanBuilder
+	fingerprintSvc     statePorts.FingerprintService
+	stateManager       statePorts.StateManager
+	stepExecutor       execPorts.StepExecutor
 }
 
-// NewExecutionOrchestrator es el constructor.
+// NewExecutionOrchestrator crea una nueva instancia del orquestador.
 func NewExecutionOrchestrator(
-	stateManager *services.StateManager,
-	versionCalc *versioning.VersionCalculator,
-	stepExec *aggregates.StepExecutor,
+	projectPath string,
+	rootFastdeployPath string,
+	projectSvc *ProjectService,
+	workspaceSvc *WorkspaceService,
+	gitCloner projectPorts.ClonerTemplate,
+	versionCalculator versioningPorts.VersionCalculator,
+	planBuilder defPorts.PlanBuilder,
+	fingerprintSvc statePorts.FingerprintService,
+	stateManager statePorts.StateManager,
+	stepExecutor execPorts.StepExecutor,
 ) *ExecutionOrchestrator {
 	return &ExecutionOrchestrator{
-		stateManager:      stateManager,
-		versionCalculator: versionCalc,
-		stepExecutor:      stepExec,
+		projectPath:        projectPath,
+		rootFastdeployPath: rootFastdeployPath,
+		projectSvc:         projectSvc,
+		workspaceSvc:       workspaceSvc,
+		gitCloner:          gitCloner,
+		versionCalculator:  versionCalculator,
+		planBuilder:        planBuilder,
+		fingerprintSvc:     fingerprintSvc,
+		stateManager:       stateManager,
+		stepExecutor:       stepExecutor,
 	}
 }
 
-// Run ejecuta el flujo principal de orquestación.
-func (o *ExecutionOrchestrator) Run(ctx context.Context, input *OrchestratorInput) (*planning.ExecutionPlan, error) {
-	globalVars := o.initializeGlobalVariables(input)
-	plan := o.createInitialPlan(input.Steps)
-	var firstError error
+// ExecutePlan es el caso de uso principal que ejecuta un plan de despliegue.
+func (o *ExecutionOrchestrator) ExecutePlan(ctx context.Context, stepName, envName string) error {
+	// 1. Inicializar, Cargar y Clonar
+	project, err := o.loadProject(ctx, o.projectPath)
+	if err != nil {
+		return err
+	}
+	workspace, err := o.loadWorkspace(project, o.rootFastdeployPath)
+	if err != nil {
+		return err
+	}
 
-	for i, plannedStep := range plan.Steps {
-		// Si una dependencia falló, este paso ya está marcado como omitido.
-		if plannedStep.Action == planning.ActionSkipFailedDep {
-			continue
-		}
+	templateLocalPath := workspace.TemplatePath()
+	err = o.cloneTemplate(ctx, project, templateLocalPath)
+	if err != nil {
+		return err
+	}
 
-		// 1. Decidir si el paso debe ejecutarse (lógica de estado)
-		decision, err := o.stateManager.ShouldExecute(ctx, plannedStep.Step, input.Workspace.Path)
+	planDef, err := o.buildPlan(ctx, templateLocalPath, stepName, envName)
+	if err != nil {
+		return err
+	}
+
+	version, commit, err := o.versionCalculator.CalculateNextVersion(ctx, templateLocalPath, false)
+	if err != nil {
+		return err
+	}
+
+	environment := planDef.Environment().Name()
+	projectVars := o.prepareProjectVariables(project)
+	othersVars := o.prepareOthersVariables(
+		environment, o.projectPath, version.String(), commit.String())
+
+	cumulativeVars := make(vos.VariableSet)
+	cumulativeVars.AddAll(projectVars)
+	cumulativeVars.AddAll(othersVars)
+
+	fmt.Println("Analizando cambios y calculando plan de ejecución...")
+
+	// 3. Bucle de Ejecución Paso a Paso
+	for _, stepDef := range planDef.Steps() {
+
+		// 3a. Comprobación de Estado (Cache Check)
+		fingerprints, err := o.generateStepFingerprints(o.projectPath, environment, workspace, stepDef.NameDef())
 		if err != nil {
-			firstError = o.handleStepError(plan, i, fmt.Errorf("error al comprobar el estado del paso '%s': %w", plannedStep.Step.Name(), err))
-			continue // Continuar para marcar los demás como omitidos
+			return fmt.Errorf("error al generar fingerprint para el paso '%s': %w", stepDef.NameDef().Name(), err)
 		}
 
-		if !decision.Execute {
-			plannedStep.Action = planning.ActionSkipCached
-			plannedStep.Reason = decision.Reason
-			// TODO: Cargar variables desde el estado cacheado si es necesario.
-			continue
-		}
-		plannedStep.Action = planning.ActionExecute
-
-		// 2. Enriquecer variables (versión, commit)
-		isTestStepOnly := len(input.Steps) > 0 && i == len(input.Steps)-1 && plannedStep.Step.Name() == "test"
-		version, commit, err := o.versionCalculator.CalculateNextVersion(ctx, input.Workspace.Path, isTestStepOnly)
+		stateTablePath, err := workspace.StateTablePath(stepDef.NameDef().Name())
 		if err != nil {
-			firstError = o.handleStepError(plan, i, fmt.Errorf("error al calcular la versión para el paso '%s': %w", plannedStep.Step.Name(), err))
-			continue
+			return fmt.Errorf("error al obtener la ruta del estado del paso '%s': %w", stepDef.NameDef().Name(), err)
 		}
-		globalVars["var.commit_sha"] = commit.Hash
-		globalVars["var.service_version"] = version.Raw
-
-		// 3. Ejecutar el paso
-		result, execErr := o.stepExecutor.Execute(ctx, plannedStep.Step, globalVars, input.Workspace.Path)
-		if execErr != nil || (result != nil && result.Status == execvos.Failure) {
-			errMsg := o.getExecutionErrorMessage(execErr, result)
-			firstError = o.handleStepError(plan, i, fmt.Errorf("error al ejecutar el paso '%s': %s", plannedStep.Step.Name(), errMsg))
-			continue
+		hasChanged, err := o.stateManager.HasStateChanged(stateTablePath, fingerprints, stateVos.NewCachePolicy(0))
+		if err != nil {
+			return fmt.Errorf("error al comprobar el estado del paso '%s': %w", stepDef.NameDef().Name(), err)
 		}
 
-		// 4. Actualizar estado y variables globales
-		if err := o.stateManager.SaveState(ctx, plannedStep.Step, input.Workspace.Path); err != nil {
-			fmt.Printf("ADVERTENCIA: no se pudo guardar el estado para el paso '%s': %v\n", plannedStep.Step.Name(), err)
+		if !hasChanged {
+			fmt.Printf("  - Paso '%s' no ha cambiado (cache HIT). Omitiendo.\n", stepDef.NameDef().Name())
+			continue // Saltar al siguiente paso
 		}
-		for k, v := range result.OutputVars {
-			globalVars[k] = v
+
+		fmt.Printf("  - Paso '%s' ha cambiado. Ejecutando...\n", stepDef.NameDef().Name())
+
+		// 3b. Ejecución del Paso
+		execStep, err := mapToExecutionStep(stepDef, workspace.ScopeWorkdirPath(planDef.Environment().String(), stepDef.NameDef().Name()))
+		if err != nil {
+			return fmt.Errorf("error al mapear la definición del paso '%s': %w", stepDef.NameDef().Name(), err)
+		}
+
+		execResult, err := o.stepExecutor.Execute(ctx, execStep, cumulativeVars)
+		if err != nil {
+			return fmt.Errorf("la ejecución del paso '%s' falló: %w", stepDef.NameDef().Name(), err)
+		}
+		if execResult.Error != nil || execResult.Status == vos.Failure {
+			fmt.Println("--- Logs del fallo ---")
+			fmt.Println(execResult.Logs)
+			fmt.Println("--------------------")
+			return fmt.Errorf("el paso '%s' finalizó con error: %w", stepDef.NameDef().Name(), execResult.Error)
+		}
+
+		// 3c. Actualización de Variables y Estado
+		fmt.Printf("Paso '%s' completado. Salida:\n%s\n", stepDef.NameDef().Name(), execResult.Logs)
+		for key, value := range execResult.OutputVars {
+			cumulativeVars[key] = value
+		}
+
+		if err := o.stateManager.UpdateState(stateTablePath, fingerprints); err != nil {
+			// Esto es una advertencia. El flujo principal fue exitoso, pero el estado no se guardó.
+			fmt.Printf("ADVERTENCIA: no se pudo guardar el estado del paso '%s'. Se re-ejecutará la próxima vez. Error: %v\n", stepDef.NameDef().Name(), err)
 		}
 	}
 
-	return plan, firstError
+	fmt.Println("\n¡Ejecución completada con éxito!")
+	return nil
 }
 
-func (o *ExecutionOrchestrator) initializeGlobalVariables(input *OrchestratorInput) execvos.VariableSet {
-	return execvos.VariableSet{
-		"project.id":   input.Project.ID,
-		"project.name": input.Project.Name,
-		"project.team": input.Project.Team,
+func (o *ExecutionOrchestrator) loadProject(ctx context.Context, projectPath string) (*aggregates.Project, error) {
+	// 1. Cargar el Proyecto
+	project, err := o.projectSvc.Load(ctx, projectPath)
+	if err != nil {
+		return nil, fmt.Errorf("error al cargar el proyecto: %w", err)
 	}
+	return project, nil
 }
 
-func (o *ExecutionOrchestrator) createInitialPlan(steps []*entities.StepDefinition) *planning.ExecutionPlan {
-	plannedSteps := make([]*planning.PlannedStep, len(steps))
-	for i, step := range steps {
-		plannedSteps[i] = &planning.PlannedStep{Step: step, Action: planning.ActionExecute} // Asumimos ejecución por defecto
+func (o *ExecutionOrchestrator) loadWorkspace(project *aggregates.Project, rootFastdeployPath string) (*workspaceAggs.Workspace, error) {
+	// 2. Crear el Workspace
+	workspace, err := o.workspaceSvc.NewWorkspace(
+		rootFastdeployPath, project.Data().Name(), project.TemplateRepo().DirName())
+	if err != nil {
+		return nil, fmt.Errorf("error al cargar el workspace: %w", err)
 	}
-	return planning.NewExecutionPlan(plannedSteps)
+	return workspace, nil
 }
 
-func (o *ExecutionOrchestrator) handleStepError(plan *planning.ExecutionPlan, failedIndex int, err error) error {
-	plan.Steps[failedIndex].Action = planning.ActionSkipFailedDep
-	plan.Steps[failedIndex].Reason = err.Error()
-
-	for j := failedIndex + 1; j < len(plan.Steps); j++ {
-		plan.Steps[j].Action = planning.ActionSkipFailedDep
-		plan.Steps[j].Reason = fmt.Sprintf("Omitido porque el paso '%s' falló.", plan.Steps[failedIndex].Step.Name())
+func (o *ExecutionOrchestrator) cloneTemplate(
+	ctx context.Context, project *aggregates.Project, templateLocalPath string) error {
+	// 3. Asegurar que el template está clonado
+	err := o.gitCloner.EnsureCloned(ctx, project.TemplateRepo().URL(),
+		project.TemplateRepo().Ref(), templateLocalPath)
+	if err != nil {
+		return fmt.Errorf("no se pudo clonar el repositorio de plantillas: %w", err)
 	}
-
-	// Devuelve el primer error que ocurrió.
-	return err
+	return nil
 }
 
-func (o *ExecutionOrchestrator) getExecutionErrorMessage(execErr error, result *execvos.ExecutionResult) string {
-	if execErr != nil {
-		return execErr.Error()
+func (o *ExecutionOrchestrator) buildPlan(
+	ctx context.Context, templateLocalPath, stepName, envName string) (*defAggs.ExecutionPlanDefinition, error) {
+
+	// 4. Cargar la definición del plan desde el template clonado
+	planDef, err := o.planBuilder.Build(ctx, templateLocalPath, stepName, envName)
+	if err != nil {
+		return nil, fmt.Errorf("error al cargar la definición del plan: %w", err)
 	}
-	if result != nil && result.Error != nil {
-		return result.Error.Error()
-	}
-	return "la ejecución del paso falló sin un error explícito"
+
+	return planDef, nil
 }
- */
+
+func (o *ExecutionOrchestrator) prepareProjectVariables(project *aggregates.Project) vos.VariableSet {
+	vars := make(vos.VariableSet)
+	vars.Add("project_id", project.ID().String()[:8])
+	vars.Add("project_name", project.Data().Name())
+	vars.Add("project_organization", project.Data().Organization())
+	vars.Add("project_team", project.Data().Team())
+	//vars.Add("project_version", project.Data().Version())
+	return vars
+}
+
+func (o *ExecutionOrchestrator) prepareOthersVariables(environment, projectWorkdir, version, commit string) vos.VariableSet {
+	vars := make(vos.VariableSet)
+	vars.Add("project_version", version)
+	vars.Add("project_revision", commit)
+	vars.Add("environment", environment)
+	vars.Add("project_workdir", projectWorkdir)
+	vars.Add("tool_name", "fastdeploy")
+	return vars
+}
+
+func (o *ExecutionOrchestrator) generateCodeFingerprint(projectPath string) (stateVos.Fingerprint, error) {
+	codeFp, err := o.fingerprintSvc.FromDirectory(projectPath)
+	if err != nil {
+		return stateVos.Fingerprint{}, fmt.Errorf("no se pudo generar el fingerprint para el proyecto: %w", err)
+	}
+	return codeFp, nil
+}
+
+func (o *ExecutionOrchestrator) generateInstructionFingerprint(templateInstPath string) (stateVos.Fingerprint, error) {
+	codeFp, err := o.fingerprintSvc.FromDirectory(templateInstPath)
+	if err != nil {
+		return stateVos.Fingerprint{}, fmt.Errorf("no se pudo generar el fingerprint para las instrucciones: %w", err)
+	}
+	return codeFp, nil
+}
+
+func (o *ExecutionOrchestrator) generateVarsFingerprint(templateVarsPath string) (stateVos.Fingerprint, error) {
+	codeFp, err := o.fingerprintSvc.FromDirectory(templateVarsPath)
+	if err != nil {
+		return stateVos.Fingerprint{}, fmt.Errorf("no se pudo generar el fingerprint para las variables: %w", err)
+	}
+	return codeFp, nil
+}
+
+func (o *ExecutionOrchestrator) generateStepFingerprints(
+	projectPath, environment string,
+	workspace *workspaceAggs.Workspace,
+	stepDef defVos.StepNameDefinition) (stateVos.CurrentStateFingerprints, error) {
+
+	envFp, err := stateVos.NewEnvironment(environment)
+	if err != nil {
+		return stateVos.CurrentStateFingerprints{}, err
+	}
+
+	codeFp, err := o.generateCodeFingerprint(projectPath)
+	if err != nil {
+		return stateVos.CurrentStateFingerprints{}, err
+	}
+
+	instructionPath := workspace.StepTemplatePath(stepDef.FullName())
+	instFp, err := o.generateInstructionFingerprint(instructionPath)
+	if err != nil {
+		return stateVos.CurrentStateFingerprints{}, err
+	}
+
+	varsPath := workspace.VarsTemplatePath(stepDef.Name(), environment)
+	varsFp, err := o.generateVarsFingerprint(varsPath)
+	if err != nil {
+		return stateVos.CurrentStateFingerprints{}, err
+	}
+
+	return stateVos.NewCurrentStateFingerprints(codeFp, instFp, varsFp, envFp), nil
+}

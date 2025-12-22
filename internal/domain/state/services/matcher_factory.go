@@ -8,8 +8,8 @@ import (
 	"github.com/jairoprogramador/fastdeploy-core/internal/domain/state/vos"
 )
 
-func NewStateMatcherFactory(step vos.Step, policy vos.CachePolicy) (ports.StateMatcher, error) {
-	switch step.String() {
+func NewStateMatcherFactory(tableName string, policy vos.CachePolicy) (ports.StateMatcher, error) {
+	switch tableName {
 	case vos.StepTest:
 		return &matchers.TestStateMatcher{Policy: policy}, nil
 	case vos.StepSupply:
@@ -19,6 +19,6 @@ func NewStateMatcherFactory(step vos.Step, policy vos.CachePolicy) (ports.StateM
 	case vos.StepDeploy:
 		return &matchers.DeployStateMatcher{}, nil
 	default:
-		return nil, fmt.Errorf("no state matcher found for step: %s", step)
+		return nil, fmt.Errorf("no state matcher found for name: %s", tableName)
 	}
 }

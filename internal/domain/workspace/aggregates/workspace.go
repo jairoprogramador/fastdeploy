@@ -12,7 +12,11 @@ type Workspace struct {
 	templateName vos.TemplateName
 }
 
-func NewWorkspace(rootPath vos.RootPath, projectName vos.ProjectName, templateName vos.TemplateName) (*Workspace, error) {
+func NewWorkspace(
+	rootPath vos.RootPath,
+	projectName vos.ProjectName,
+	templateName vos.TemplateName) (*Workspace, error) {
+
 	return &Workspace{
 		rootPath:     rootPath,
 		projectName:  projectName,
@@ -20,12 +24,24 @@ func NewWorkspace(rootPath vos.RootPath, projectName vos.ProjectName, templateNa
 	}, nil
 }
 
-func (w *Workspace) templatePath() string {
+func (w *Workspace) TemplatePath() string {
+	return filepath.Join(w.rootPath.Path(), "repositories", w.templateName.String())
+}
+
+func (w *Workspace) StepTemplatePath(stepName string) string {
+	return filepath.Join(w.TemplatePath(), "steps", stepName)
+}
+
+func (w *Workspace) VarsTemplatePath(stepName, environment string) string {
+	return filepath.Join(w.TemplatePath(), "variables", environment, stepName)
+}
+
+func (w *Workspace) WorkspacePath() string {
 	return filepath.Join(w.rootPath.Path(), w.projectName.String(), w.templateName.String())
 }
 
 func (w *Workspace) VarsDirPath() string {
-	return filepath.Join(w.templatePath(), "vars")
+	return filepath.Join(w.WorkspacePath(), "vars")
 }
 
 func (w *Workspace) VarsFilePath(fileName vos.FileName) string {
@@ -33,17 +49,21 @@ func (w *Workspace) VarsFilePath(fileName vos.FileName) string {
 }
 
 func (w *Workspace) WorkdirPath() string {
-	return filepath.Join(w.templatePath(), "workdir")
+	return filepath.Join(w.WorkspacePath(), "workdir")
 }
 
-func (w *Workspace) ScopeWorkdirPath(scope vos.ScopeName, stepName vos.StepName) string {
-	return filepath.Join(w.WorkdirPath(), scope.String(), stepName.String())
+func (w *Workspace) ScopeWorkdirPath(scope string, stepName string) string {
+	return filepath.Join(w.WorkdirPath(), scope, stepName)
 }
 
 func (w *Workspace) StateDirPath() string {
-	return filepath.Join(w.templatePath(), "state")
+	return filepath.Join(w.WorkspacePath(), "state")
 }
 
-func (w *Workspace) StateTablePath(fileName vos.FileName) string {
-	return filepath.Join(w.StateDirPath(), fileName.String())
+func (w *Workspace) StateTablePath(stateName string) (string, error) {
+	fileName, err := vos.NewStateFileName(stateName)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(w.StateDirPath(), fileName.String()), nil
 }
