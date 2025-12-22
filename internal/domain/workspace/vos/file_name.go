@@ -14,7 +14,7 @@ type FileName struct {
 	value string
 }
 
-func newFileName(name, extension string) (FileName, error) {
+func NewFileName(name, extension string) (FileName, error) {
 	if name == "" {
 		return FileName{}, fmt.Errorf("base name for file cannot be empty")
 	}
@@ -26,11 +26,11 @@ func newFileName(name, extension string) (FileName, error) {
 }
 
 func NewVarsFileName(scopeName string) (FileName, error) {
-	return newFileName(scopeName, varsExtension)
+	return NewFileName(scopeName, varsExtension)
 }
 
 func NewStateFileName(scopeName string) (FileName, error) {
-	return newFileName(scopeName, stateExtension)
+	return NewFileName(scopeName, stateExtension)
 }
 
 func (f FileName) String() string {

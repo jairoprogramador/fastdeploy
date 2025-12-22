@@ -33,7 +33,11 @@ func (w *Workspace) StepTemplatePath(stepName string) string {
 }
 
 func (w *Workspace) VarsTemplatePath(stepName, environment string) string {
-	return filepath.Join(w.TemplatePath(), "variables", environment, stepName)
+	fileNameStep, err := vos.NewFileName(stepName, "yaml")
+	if err != nil {
+		return ""
+	}
+	return filepath.Join(w.TemplatePath(), "variables", environment, fileNameStep.String())
 }
 
 func (w *Workspace) WorkspacePath() string {

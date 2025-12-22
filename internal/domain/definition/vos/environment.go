@@ -14,7 +14,7 @@ func NewEnvironment(value, name string) (EnvironmentDefinition, error) {
 	if name == "" {
 		return EnvironmentDefinition{}, errors.New("el nombre del entorno no puede estar vacío")
 	}
-	return EnvironmentDefinition{value: value}, nil
+	return EnvironmentDefinition{value: value, name: name}, nil
 }
 
 func (e EnvironmentDefinition) String() string {

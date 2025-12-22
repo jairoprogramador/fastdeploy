@@ -29,15 +29,16 @@ func (oe *OutputExtractor) Extract(commandOutput string, outputs []vos.CommandOu
 
 		matches := re.FindStringSubmatch(commandOutput)
 
-		if len(matches) < 2 {
-			return nil, fmt.Errorf("no se encontró la variable de salida '%s' en la salida '%s' del comando. Sonda utilizada: %s", output.Name(), commandOutput, output.Probe())
-		}
+		if output.Name() != "" {
+			if len(matches) < 2 {
+				return nil, fmt.Errorf("no se encontró la variable de salida '%s' en la salida '%s' del comando. Sonda utilizada: %s", output.Name(), commandOutput, output.Probe())
+			}
 
-		if matches[1] == "" {
-			return nil, fmt.Errorf("la variable de salida '%s' extrajo un valor vacío. Sonda utilizada: %s", output.Name(), output.Probe())
+			if matches[1] == "" {
+				return nil, fmt.Errorf("la variable de salida '%s' extrajo un valor vacío. Sonda utilizada: %s", output.Name(), output.Probe())
+			}
+			extractedVars[output.Name()] = matches[1]
 		}
-
-		extractedVars[output.Name()] = matches[1]
 	}
 
 	return extractedVars, nil

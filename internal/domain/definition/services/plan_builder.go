@@ -26,11 +26,10 @@ func (b *PlanBuilder) Build(
 	ctx context.Context,
 	templatePath, finalStepName, envName string) (*aggregates.ExecutionPlanDefinition, error) {
 	// 1. Validar y obtener el entorno
-	env, err := b.resolveEnvironment(ctx, templatePath, envName)
+	environment, err := b.resolveEnvironment(ctx, templatePath, envName)
 	if err != nil {
 		return nil, err
 	}
-
 	// 2. Obtener y filtrar los pasos
 	stepsToExecute, err := b.resolveSteps(ctx, templatePath, finalStepName)
 	if err != nil {
@@ -40,7 +39,7 @@ func (b *PlanBuilder) Build(
 	// 3. Ensamblar cada paso con sus comandos y variables
 	assembledSteps := make([]*entities.StepDefinition, 0, len(stepsToExecute))
 	for _, stepName := range stepsToExecute {
-		step, err := b.assembleStep(ctx, templatePath, stepName, env)
+		step, err := b.assembleStep(ctx, templatePath, stepName, environment)
 		if err != nil {
 			return nil, fmt.Errorf("error al ensamblar el paso '%s': %w", stepName.Name(), err)
 		}
@@ -48,7 +47,7 @@ func (b *PlanBuilder) Build(
 	}
 
 	// 4. Crear y devolver el agregado raíz
-	return aggregates.NewExecutionPlanDefinition(env, assembledSteps)
+	return aggregates.NewExecutionPlanDefinition(environment, assembledSteps)
 }
 
 func (b *PlanBuilder) resolveEnvironment(ctx context.Context, templatePath, envName string) (vos.EnvironmentDefinition, error) {

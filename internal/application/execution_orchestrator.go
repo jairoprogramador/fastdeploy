@@ -86,7 +86,8 @@ func (o *ExecutionOrchestrator) ExecutePlan(ctx context.Context, stepName, envNa
 		return err
 	}
 
-	environment := planDef.Environment().Name()
+	environment := planDef.Environment().String()
+
 	projectVars := o.prepareProjectVariables(project)
 	othersVars := o.prepareOthersVariables(
 		environment, o.projectPath, version.String(), commit.String())
@@ -191,7 +192,7 @@ func (o *ExecutionOrchestrator) buildPlan(
 	// 4. Cargar la definición del plan desde el template clonado
 	planDef, err := o.planBuilder.Build(ctx, templateLocalPath, stepName, envName)
 	if err != nil {
-		return nil, fmt.Errorf("error al cargar la definición del plan: %w", err)
+		return nil, fmt.Errorf("error al cargar la definición: %w", err)
 	}
 
 	return planDef, nil
@@ -234,7 +235,7 @@ func (o *ExecutionOrchestrator) generateInstructionFingerprint(templateInstPath 
 }
 
 func (o *ExecutionOrchestrator) generateVarsFingerprint(templateVarsPath string) (stateVos.Fingerprint, error) {
-	codeFp, err := o.fingerprintSvc.FromDirectory(templateVarsPath)
+	codeFp, err := o.fingerprintSvc.FromFile(templateVarsPath)
 	if err != nil {
 		return stateVos.Fingerprint{}, fmt.Errorf("no se pudo generar el fingerprint para las variables: %w", err)
 	}

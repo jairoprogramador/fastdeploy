@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"errors"
 
 	"github.com/jairoprogramador/fastdeploy-core/internal/domain/state/ports"
 	"github.com/jairoprogramador/fastdeploy-core/internal/domain/state/vos"
@@ -27,6 +28,9 @@ func NewSha256FingerprintService() ports.FingerprintService {
 func (s *Sha256FingerprintService) FromFile(filePath string) (vos.Fingerprint, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return vos.Fingerprint{}, nil
+		}
 		return vos.Fingerprint{}, fmt.Errorf("failed to open file %s: %w", filePath, err)
 	}
 	defer file.Close()

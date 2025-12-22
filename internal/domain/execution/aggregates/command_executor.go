@@ -30,7 +30,12 @@ func NewCommandExecutor(
 	}
 }
 
-func (ce *CommandExecutor) Execute(ctx context.Context, command vos.Command, currentVars vos.VariableSet, workspaceStep string) *vos.ExecutionResult {
+func (ce *CommandExecutor) Execute(
+	ctx context.Context,
+	command vos.Command,
+	currentVars vos.VariableSet,
+	workspaceStep string) *vos.ExecutionResult {
+
 	absPathsFiles := make([]string, len(command.TemplateFiles()))
 	for i, filePath := range command.TemplateFiles() {
 		absPathsFiles[i] = filepath.Join(workspaceStep, command.Workdir(), filePath)
@@ -46,7 +51,10 @@ func (ce *CommandExecutor) Execute(ctx context.Context, command vos.Command, cur
 		return &vos.ExecutionResult{Status: vos.Failure, Error: fmt.Errorf("falló al interpolar el comando: %w", err)}
 	}
 
-	execDir := filepath.Join(workspaceStep, command.Workdir())
+	execDir := ""
+	if command.Workdir() != "" {
+		execDir = filepath.Join(workspaceStep, command.Workdir())
+	}
 	cmdResult, err := ce.runner.Run(ctx, interpolatedCmd, execDir)
 	if err != nil {
 		return &vos.ExecutionResult{Status: vos.Failure, Error: fmt.Errorf("no se pudo iniciar el comando: %w", err)}

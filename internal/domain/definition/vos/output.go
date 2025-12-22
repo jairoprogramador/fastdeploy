@@ -9,9 +9,6 @@ type OutputDefinition struct {
 }
 
 func NewOutputDefinition(name, description, probe string) (OutputDefinition, error) {
-	if name == "" {
-		return OutputDefinition{}, errors.New("el nombre de la salida no puede estar vacío")
-	}
 	if probe == "" {
 		return OutputDefinition{}, errors.New("la sonda (probe) de la salida no puede estar vacía")
 	}
