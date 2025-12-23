@@ -96,7 +96,7 @@ func (o *ExecutionOrchestrator) ExecutePlan(ctx context.Context, stepName, envNa
 	cumulativeVars.AddAll(projectVars)
 	cumulativeVars.AddAll(othersVars)
 
-	fmt.Println("Analizando cambios y calculando plan de ejecución...")
+	fmt.Println("Iniciando la ejecución del plan...")
 
 	// 3. Bucle de Ejecución Paso a Paso
 	for _, stepDef := range planDef.Steps() {

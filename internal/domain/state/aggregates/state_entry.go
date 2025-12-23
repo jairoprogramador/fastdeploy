@@ -44,7 +44,7 @@ func (se StateEntry) CreatedAt() time.Time {
 	return se.createdAt
 }
 
-func (se *StateEntry) SetCreatedAtForTesting(t time.Time) {
+func (se *StateEntry) SetCreatedAt(t time.Time) {
 	se.createdAt = t
 }
 

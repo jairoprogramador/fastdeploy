@@ -68,7 +68,7 @@ func TestStateManager_HasStateChanged(t *testing.T) {
 	expiredMatchingEntry := aggregates.NewStateEntry(
 		newFingerprint(fpCode1), newFingerprint(fpInst1), newFingerprint(fpVars1), env)
 	// Forzamos su fecha de creación a ser de hace mucho tiempo para la prueba
-	expiredMatchingEntry.SetCreatedAtForTesting(time.Now().Add(-31 * 24 * time.Hour))
+	expiredMatchingEntry.SetCreatedAt(time.Now().Add(-31 * 24 * time.Hour))
 
 	testCases := []struct {
 		name         string

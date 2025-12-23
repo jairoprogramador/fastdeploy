@@ -3,6 +3,8 @@ package state
 import (
 	"encoding/gob"
 	"errors"
+	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -20,23 +22,35 @@ func (r *GobStateRepository) Get(filePath string) (*aggregates.StateTable, error
 	file, err := os.Open(filePath)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			// Es un caso válido que el archivo no exista la primera vez.
+			// Si el archivo no existe, no es un error. Simplemente no hay estado.
 			return nil, nil
 		}
 		return nil, err
 	}
 	defer file.Close()
 
-	var stateTable aggregates.StateTable
+	var stateTableDTO StateTableDTO
 	decoder := gob.NewDecoder(file)
-	if err := decoder.Decode(&stateTable); err != nil {
-		return nil, err
+
+	if err := decoder.Decode(&stateTableDTO); err != nil {
+		if err == io.EOF {
+			// Un archivo vacío significa que no hay estado, no es un error fatal.
+			return nil, nil
+		}
+		return nil, fmt.Errorf("error al decodificar el estado: %w", err)
 	}
 
-	return &stateTable, nil
+	return fromDTO(&stateTableDTO), nil
 }
 
 func (r *GobStateRepository) Save(filePath string, stateTable *aggregates.StateTable) error {
+	if stateTable == nil {
+		return errors.New("no se puede guardar una tabla de estado nula")
+	}
+
+	// Mapear del agregado de dominio al DTO
+	dto := toStateTableDTO(stateTable)
+
 	// Asegurarse de que el directorio exista
 	dir := filepath.Dir(filePath)
 	if err := os.MkdirAll(dir, 0755); err != nil {
@@ -50,8 +64,8 @@ func (r *GobStateRepository) Save(filePath string, stateTable *aggregates.StateT
 	defer file.Close()
 
 	encoder := gob.NewEncoder(file)
-	if err := encoder.Encode(stateTable); err != nil {
-		return err
+	if err := encoder.Encode(dto); err != nil {
+		return fmt.Errorf("error al codificar el estado: %w", err)
 	}
 
 	return nil

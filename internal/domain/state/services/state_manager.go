@@ -75,7 +75,6 @@ func (sm *StateManager) findMatch(
 	if err != nil {
 		return nil, err
 	}
-
 	for _, entry := range st.Entries() {
 		if matcher.Match(entry, currentState) {
 			return entry, nil
