@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"regexp"
 
 	"github.com/jairoprogramador/fastdeploy-core/internal/domain/execution/ports"
 	"github.com/jairoprogramador/fastdeploy-core/internal/domain/execution/vos"
@@ -68,7 +69,15 @@ func (ce *CommandExecutor) Execute(
 		}
 	}
 
-	extractedVars, err := ce.outputExtractor.Extract(cmdResult.NormalizedStdout, command.Outputs())
+	if err := ce.checkProbes(cmdResult.NormalizedStdout, command.Outputs()); err != nil {
+		return &vos.ExecutionResult{
+			Status: vos.Failure,
+			Logs:   cmdResult.CombinedOutput(),
+			Error:  fmt.Errorf("falló al verificar las salidas: %w", err),
+		}
+	}
+
+	extractedVars, err := ce.outputExtractor.ExtractVars(cmdResult.NormalizedStdout, command.Outputs())
 	if err != nil {
 		return &vos.ExecutionResult{
 			Status: vos.Failure,
@@ -82,4 +91,21 @@ func (ce *CommandExecutor) Execute(
 		Logs:       cmdResult.CombinedOutput(),
 		OutputVars: extractedVars,
 	}
+}
+
+func (ce *CommandExecutor)  checkProbes(commandOutput string, outputs []vos.CommandOutput) error {
+	for _, output := range outputs {
+		re, err := regexp.Compile(output.Probe())
+		if err != nil {
+			return fmt.Errorf("expresión regular '%s' inválida: %w", output.Probe(), err)
+		}
+
+		matches := re.FindStringSubmatch(commandOutput)
+
+		if len(matches) < 1 {
+			return fmt.Errorf("expresión regular '%s' no encontró coincidencia en la salida", output.Probe())
+		}
+	}
+
+	return nil
 }

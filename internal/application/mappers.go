@@ -44,7 +44,10 @@ func mapToExecutionVariables(defVars []defVos.VariableDefinition) (execVos.Varia
 func mapToExecutionCommands(defCmds []defVos.CommandDefinition) ([]execVos.Command, error) {
 	execCmds := make([]execVos.Command, 0, len(defCmds))
 	for _, defCmd := range defCmds {
-		cmdOutputs := mapToExecutionOutputs(defCmd.Outputs())
+		cmdOutputs, err := mapToExecutionOutputs(defCmd.Outputs())
+		if err != nil {
+			return nil, err
+		}
 
 		execCmd, err := execVos.NewCommand(
 			defCmd.Name(),
@@ -62,18 +65,21 @@ func mapToExecutionCommands(defCmds []defVos.CommandDefinition) ([]execVos.Comma
 	return execCmds, nil
 }
 
-func mapToExecutionOutputs(defOutputs []defVos.OutputDefinition) []execVos.CommandOutput {
+func mapToExecutionOutputs(defOutputs []defVos.OutputDefinition) ([]execVos.CommandOutput, error) {
 	if len(defOutputs) == 0 {
-		return nil
+		return nil, nil
 	}
 
 	execOutputs := make([]execVos.CommandOutput, 0, len(defOutputs))
 	for _, defOutput := range defOutputs {
-		output, _ := execVos.NewCommandOutput(
+		output, err := execVos.NewCommandOutput(
 			defOutput.Name(),
 			defOutput.Probe(),
 		)
+		if err != nil {
+			return nil, err
+		}
 		execOutputs = append(execOutputs, output)
 	}
-	return execOutputs
+	return execOutputs, nil
 }

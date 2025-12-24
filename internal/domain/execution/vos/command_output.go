@@ -10,9 +10,6 @@ type CommandOutput struct {
 }
 
 func NewCommandOutput(name, probe string) (CommandOutput, error) {
-	if name == "" {
-		return CommandOutput{}, errors.New("el nombre de la sonda de comando no puede estar vacío")
-	}
 	if probe == "" {
 		return CommandOutput{}, errors.New("la expresión de la sonda de comando no puede estar vacía")
 	}

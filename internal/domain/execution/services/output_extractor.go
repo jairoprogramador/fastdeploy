@@ -18,7 +18,7 @@ func NewOutputExtractor() ports.OutputExtractor {
 	return defaultOutputExtractor
 }
 
-func (oe *OutputExtractor) Extract(commandOutput string, outputs []vos.CommandOutput) (vos.VariableSet, error) {
+func (oe *OutputExtractor) ExtractVars(commandOutput string, outputs []vos.CommandOutput) (vos.VariableSet, error) {
 	extractedVars := make(vos.VariableSet)
 
 	for _, output := range outputs {

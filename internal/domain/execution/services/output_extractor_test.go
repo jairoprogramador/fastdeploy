@@ -81,7 +81,7 @@ func TestOutputExtractor_Extract(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result, err := extractor.Extract(tc.commandOutput, tc.outputs)
+			result, err := extractor.ExtractVars(tc.commandOutput, tc.outputs)
 
 			if tc.expectError {
 				require.Error(t, err, "Se esperaba un error pero no se obtuvo")

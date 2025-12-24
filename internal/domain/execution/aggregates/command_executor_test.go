@@ -45,7 +45,7 @@ func (m *MockInterpolator) Interpolate(input string, vars vos.VariableSet) (stri
 // MockOutputExtractor
 type MockOutputExtractor struct{ mock.Mock }
 
-func (m *MockOutputExtractor) Extract(commandOutput string, outputs []vos.CommandOutput) (vos.VariableSet, error) {
+func (m *MockOutputExtractor) ExtractVars(commandOutput string, outputs []vos.CommandOutput) (vos.VariableSet, error) {
 	args := m.Called(commandOutput, outputs)
 	if res := args.Get(0); res != nil {
 		return res.(vos.VariableSet), args.Error(1)
@@ -72,7 +72,7 @@ func TestCommandExecutor_Execute_Success(t *testing.T) {
 	fileProcessor.On("Process", mock.Anything, vars).Return(nil).Once()
 	interpolator.On("Interpolate", cmd.Cmd(), vars).Return(interpolatedCmd, nil).Once()
 	runner.On("Run", ctx, interpolatedCmd, filepath.Join(pathRoot, workdirCmd)).Return(&vos.CommandResult{ExitCode: 0, RawStdout: outputCmd, NormalizedStdout: outputCmd}, nil).Once()
-	outputExtractor.On("Extract", outputCmd, cmd.Outputs()).Return(extractedVarsCmd, nil).Once()
+	outputExtractor.On("ExtractVars", outputCmd, cmd.Outputs()).Return(extractedVarsCmd, nil).Once()
 	fileProcessor.On("Restore").Return(nil).Once()
 
 	// Act
@@ -87,11 +87,11 @@ func TestCommandExecutor_Execute_Success(t *testing.T) {
 
 func TestCommandExecutor_Execute_ErrorScenarios(t *testing.T) {
 	processErr, interpolateErr := errors.New("process"), errors.New("interpolate")
-    runErr, extractErr :=  errors.New("run"), errors.New("extract")
+	runErr, extractErr := errors.New("run"), errors.New("extract")
 
 	testCases := []struct {
-		name          string
-		setupMocks    func(*MockCommandRunner, *MockFileProcessor, *MockInterpolator, *MockOutputExtractor)
+		name       string
+		setupMocks func(*MockCommandRunner, *MockFileProcessor, *MockInterpolator, *MockOutputExtractor)
 	}{
 		{
 			name: "File Process Error",
@@ -131,7 +131,7 @@ func TestCommandExecutor_Execute_ErrorScenarios(t *testing.T) {
 				fp.On("Process", mock.Anything, mock.Anything).Return(nil).Once()
 				i.On("Interpolate", mock.Anything, mock.Anything).Return("cmd", nil).Once()
 				r.On("Run", mock.Anything, "cmd", mock.Anything).Return(&vos.CommandResult{ExitCode: 0}, nil).Once()
-				oe.On("Extract", mock.Anything, mock.Anything).Return(nil, extractErr).Once()
+				oe.On("ExtractVars", mock.Anything, mock.Anything).Return(nil, extractErr).Once()
 				fp.On("Restore").Return(nil).Once()
 			},
 		},
