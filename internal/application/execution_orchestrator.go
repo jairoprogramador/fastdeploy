@@ -3,17 +3,17 @@ package application
 import (
 	"context"
 	"fmt"
-	defAggs "github.com/jairoprogramador/fastdeploy-core/internal/domain/definition/aggregates"
-	defPorts "github.com/jairoprogramador/fastdeploy-core/internal/domain/definition/ports"
+	defAgg "github.com/jairoprogramador/fastdeploy-core/internal/domain/definition/aggregates"
+	defPrt "github.com/jairoprogramador/fastdeploy-core/internal/domain/definition/ports"
 	defVos "github.com/jairoprogramador/fastdeploy-core/internal/domain/definition/vos"
-	execPorts "github.com/jairoprogramador/fastdeploy-core/internal/domain/execution/ports"
-	"github.com/jairoprogramador/fastdeploy-core/internal/domain/execution/vos"
-	"github.com/jairoprogramador/fastdeploy-core/internal/domain/project/aggregates"
-	projectPorts "github.com/jairoprogramador/fastdeploy-core/internal/domain/project/ports"
-	statePorts "github.com/jairoprogramador/fastdeploy-core/internal/domain/state/ports"
-	stateVos "github.com/jairoprogramador/fastdeploy-core/internal/domain/state/vos"
-	versioningPorts "github.com/jairoprogramador/fastdeploy-core/internal/domain/versioning/ports"
-	workspaceAggs "github.com/jairoprogramador/fastdeploy-core/internal/domain/workspace/aggregates"
+	exePrt "github.com/jairoprogramador/fastdeploy-core/internal/domain/execution/ports"
+	exeVos "github.com/jairoprogramador/fastdeploy-core/internal/domain/execution/vos"
+	proAgg "github.com/jairoprogramador/fastdeploy-core/internal/domain/project/aggregates"
+	proPrt "github.com/jairoprogramador/fastdeploy-core/internal/domain/project/ports"
+	staPrt "github.com/jairoprogramador/fastdeploy-core/internal/domain/state/ports"
+	staVos "github.com/jairoprogramador/fastdeploy-core/internal/domain/state/vos"
+	verPrt "github.com/jairoprogramador/fastdeploy-core/internal/domain/versioning/ports"
+	worAgg "github.com/jairoprogramador/fastdeploy-core/internal/domain/workspace/aggregates"
 )
 
 // ExecutionOrchestrator orquesta la ejecución de un plan completo,
@@ -23,12 +23,13 @@ type ExecutionOrchestrator struct {
 	rootFastdeployPath string
 	projectSvc         *ProjectService
 	workspaceSvc       *WorkspaceService
-	gitCloner          projectPorts.ClonerTemplate
-	versionCalculator  versioningPorts.VersionCalculator
-	planBuilder        defPorts.PlanBuilder
-	fingerprintSvc     statePorts.FingerprintService
-	stateManager       statePorts.StateManager
-	stepExecutor       execPorts.StepExecutor
+	gitCloner          proPrt.ClonerTemplate
+	versionCalculator  verPrt.VersionCalculator
+	planBuilder        defPrt.PlanBuilder
+	fingerprintSvc     staPrt.FingerprintService
+	stateManager       staPrt.StateManager
+	stepExecutor       exePrt.StepExecutor
+	copyWorkdir        exePrt.CopyWorkdir
 }
 
 // NewExecutionOrchestrator crea una nueva instancia del orquestador.
@@ -37,12 +38,13 @@ func NewExecutionOrchestrator(
 	rootFastdeployPath string,
 	projectSvc *ProjectService,
 	workspaceSvc *WorkspaceService,
-	gitCloner projectPorts.ClonerTemplate,
-	versionCalculator versioningPorts.VersionCalculator,
-	planBuilder defPorts.PlanBuilder,
-	fingerprintSvc statePorts.FingerprintService,
-	stateManager statePorts.StateManager,
-	stepExecutor execPorts.StepExecutor,
+	gitCloner proPrt.ClonerTemplate,
+	versionCalculator verPrt.VersionCalculator,
+	planBuilder defPrt.PlanBuilder,
+	fingerprintSvc staPrt.FingerprintService,
+	stateManager staPrt.StateManager,
+	stepExecutor exePrt.StepExecutor,
+	copyWorkdir exePrt.CopyWorkdir,
 ) *ExecutionOrchestrator {
 	return &ExecutionOrchestrator{
 		projectPath:        projectPath,
@@ -55,6 +57,7 @@ func NewExecutionOrchestrator(
 		fingerprintSvc:     fingerprintSvc,
 		stateManager:       stateManager,
 		stepExecutor:       stepExecutor,
+		copyWorkdir:        copyWorkdir,
 	}
 }
 
@@ -92,14 +95,9 @@ func (o *ExecutionOrchestrator) ExecutePlan(ctx context.Context, stepName, envNa
 	othersVars := o.prepareOthersVariables(
 		environment, o.projectPath, version.String(), commit.String())
 
-	cumulativeVars := make(vos.VariableSet)
+	cumulativeVars := make(exeVos.VariableSet)
 	cumulativeVars.AddAll(projectVars)
 	cumulativeVars.AddAll(othersVars)
-	for key, value := range cumulativeVars {
-		fmt.Println("--------------------------------")
-		fmt.Println("key", key)
-		fmt.Println("value", value)
-	}
 
 	fmt.Println("Iniciando la ejecución del plan...")
 
@@ -116,7 +114,7 @@ func (o *ExecutionOrchestrator) ExecutePlan(ctx context.Context, stepName, envNa
 		if err != nil {
 			return fmt.Errorf("error al obtener la ruta del estado del paso '%s': %w", stepDef.NameDef().Name(), err)
 		}
-		hasChanged, err := o.stateManager.HasStateChanged(stateTablePath, fingerprints, stateVos.NewCachePolicy(0))
+		hasChanged, err := o.stateManager.HasStateChanged(stateTablePath, fingerprints, staVos.NewCachePolicy(0))
 		if err != nil {
 			return fmt.Errorf("error al comprobar el estado del paso '%s': %w", stepDef.NameDef().Name(), err)
 		}
@@ -126,19 +124,24 @@ func (o *ExecutionOrchestrator) ExecutePlan(ctx context.Context, stepName, envNa
 			continue // Saltar al siguiente paso
 		}
 
-		fmt.Printf("  - Paso '%s' ha cambiado. Ejecutando...\n", stepDef.NameDef().Name())
+		stepPathEnv := workspace.ScopeWorkdirPath(planDef.Environment().String(), stepDef.NameDef().Name())
+		err = o.copyWorkdir.Copy(ctx, workspace.StepTemplatePath(stepDef.NameDef().FullName()), stepPathEnv)
+		if err != nil {
+			return fmt.Errorf("error al copiar el paso '%s' al workspace: %w", stepPathEnv, err)
+		}
 
-		// 3b. Ejecución del Paso
-		execStep, err := mapToExecutionStep(stepDef, workspace.ScopeWorkdirPath(planDef.Environment().String(), stepDef.NameDef().Name()))
+		execStep, err := mapToExecutionStep(stepDef, stepPathEnv)
 		if err != nil {
 			return fmt.Errorf("error al mapear la definición del paso '%s': %w", stepDef.NameDef().Name(), err)
 		}
 
+		// 3b. Ejecución del Paso
+		fmt.Printf("  - Paso '%s' ha cambiado. Ejecutando...\n", stepDef.NameDef().Name())
 		execResult, err := o.stepExecutor.Execute(ctx, execStep, cumulativeVars)
 		if err != nil {
 			return fmt.Errorf("la ejecución del paso '%s' falló: %w", stepDef.NameDef().Name(), err)
 		}
-		if execResult.Error != nil || execResult.Status == vos.Failure {
+		if execResult.Error != nil || execResult.Status == exeVos.Failure {
 			fmt.Println("--- Logs del fallo ---")
 			fmt.Println(execResult.Logs)
 			fmt.Println("--------------------")
@@ -161,7 +164,7 @@ func (o *ExecutionOrchestrator) ExecutePlan(ctx context.Context, stepName, envNa
 	return nil
 }
 
-func (o *ExecutionOrchestrator) loadProject(ctx context.Context, projectPath string) (*aggregates.Project, error) {
+func (o *ExecutionOrchestrator) loadProject(ctx context.Context, projectPath string) (*proAgg.Project, error) {
 	// 1. Cargar el Proyecto
 	project, err := o.projectSvc.Load(ctx, projectPath)
 	if err != nil {
@@ -170,7 +173,7 @@ func (o *ExecutionOrchestrator) loadProject(ctx context.Context, projectPath str
 	return project, nil
 }
 
-func (o *ExecutionOrchestrator) loadWorkspace(project *aggregates.Project, rootFastdeployPath string) (*workspaceAggs.Workspace, error) {
+func (o *ExecutionOrchestrator) loadWorkspace(project *proAgg.Project, rootFastdeployPath string) (*worAgg.Workspace, error) {
 	// 2. Crear el Workspace
 	workspace, err := o.workspaceSvc.NewWorkspace(
 		rootFastdeployPath, project.Data().Name(), project.TemplateRepo().DirName())
@@ -181,7 +184,7 @@ func (o *ExecutionOrchestrator) loadWorkspace(project *aggregates.Project, rootF
 }
 
 func (o *ExecutionOrchestrator) cloneTemplate(
-	ctx context.Context, project *aggregates.Project, templateLocalPath string) error {
+	ctx context.Context, project *proAgg.Project, templateLocalPath string) error {
 	// 3. Asegurar que el template está clonado
 	err := o.gitCloner.EnsureCloned(ctx, project.TemplateRepo().URL(),
 		project.TemplateRepo().Ref(), templateLocalPath)
@@ -192,7 +195,7 @@ func (o *ExecutionOrchestrator) cloneTemplate(
 }
 
 func (o *ExecutionOrchestrator) buildPlan(
-	ctx context.Context, templateLocalPath, stepName, envName string) (*defAggs.ExecutionPlanDefinition, error) {
+	ctx context.Context, templateLocalPath, stepName, envName string) (*defAgg.ExecutionPlanDefinition, error) {
 
 	// 4. Cargar la definición del plan desde el template clonado
 	planDef, err := o.planBuilder.Build(ctx, templateLocalPath, stepName, envName)
@@ -203,8 +206,8 @@ func (o *ExecutionOrchestrator) buildPlan(
 	return planDef, nil
 }
 
-func (o *ExecutionOrchestrator) prepareProjectVariables(project *aggregates.Project) vos.VariableSet {
-	vars := make(vos.VariableSet)
+func (o *ExecutionOrchestrator) prepareProjectVariables(project *proAgg.Project) exeVos.VariableSet {
+	vars := make(exeVos.VariableSet)
 	vars.Add("project_id", project.ID().String()[:8])
 	vars.Add("project_name", project.Data().Name())
 	vars.Add("project_organization", project.Data().Organization())
@@ -213,8 +216,8 @@ func (o *ExecutionOrchestrator) prepareProjectVariables(project *aggregates.Proj
 	return vars
 }
 
-func (o *ExecutionOrchestrator) prepareOthersVariables(environment, projectWorkdir, version, commit string) vos.VariableSet {
-	vars := make(vos.VariableSet)
+func (o *ExecutionOrchestrator) prepareOthersVariables(environment, projectWorkdir, version, commit string) exeVos.VariableSet {
+	vars := make(exeVos.VariableSet)
 	vars.Add("project_version", version)
 	vars.Add("project_revision", commit)
 	vars.Add("environment", environment)
@@ -223,56 +226,56 @@ func (o *ExecutionOrchestrator) prepareOthersVariables(environment, projectWorkd
 	return vars
 }
 
-func (o *ExecutionOrchestrator) generateCodeFingerprint(projectPath string) (stateVos.Fingerprint, error) {
+func (o *ExecutionOrchestrator) generateCodeFingerprint(projectPath string) (staVos.Fingerprint, error) {
 	codeFp, err := o.fingerprintSvc.FromDirectory(projectPath)
 	if err != nil {
-		return stateVos.Fingerprint{}, fmt.Errorf("no se pudo generar el fingerprint para el proyecto: %w", err)
+		return staVos.Fingerprint{}, fmt.Errorf("no se pudo generar el fingerprint para el proyecto: %w", err)
 	}
 	return codeFp, nil
 }
 
-func (o *ExecutionOrchestrator) generateInstructionFingerprint(templateInstPath string) (stateVos.Fingerprint, error) {
+func (o *ExecutionOrchestrator) generateInstructionFingerprint(templateInstPath string) (staVos.Fingerprint, error) {
 	codeFp, err := o.fingerprintSvc.FromDirectory(templateInstPath)
 	if err != nil {
-		return stateVos.Fingerprint{}, fmt.Errorf("no se pudo generar el fingerprint para las instrucciones: %w", err)
+		return staVos.Fingerprint{}, fmt.Errorf("no se pudo generar el fingerprint para las instrucciones: %w", err)
 	}
 	return codeFp, nil
 }
 
-func (o *ExecutionOrchestrator) generateVarsFingerprint(templateVarsPath string) (stateVos.Fingerprint, error) {
+func (o *ExecutionOrchestrator) generateVarsFingerprint(templateVarsPath string) (staVos.Fingerprint, error) {
 	codeFp, err := o.fingerprintSvc.FromFile(templateVarsPath)
 	if err != nil {
-		return stateVos.Fingerprint{}, fmt.Errorf("no se pudo generar el fingerprint para las variables: %w", err)
+		return staVos.Fingerprint{}, fmt.Errorf("no se pudo generar el fingerprint para las variables: %w", err)
 	}
 	return codeFp, nil
 }
 
 func (o *ExecutionOrchestrator) generateStepFingerprints(
 	projectPath, environment string,
-	workspace *workspaceAggs.Workspace,
-	stepDef defVos.StepNameDefinition) (stateVos.CurrentStateFingerprints, error) {
+	workspace *worAgg.Workspace,
+	stepDef defVos.StepNameDefinition) (staVos.CurrentStateFingerprints, error) {
 
-	envFp, err := stateVos.NewEnvironment(environment)
+	envFp, err := staVos.NewEnvironment(environment)
 	if err != nil {
-		return stateVos.CurrentStateFingerprints{}, err
+		return staVos.CurrentStateFingerprints{}, err
 	}
 
 	codeFp, err := o.generateCodeFingerprint(projectPath)
 	if err != nil {
-		return stateVos.CurrentStateFingerprints{}, err
+		return staVos.CurrentStateFingerprints{}, err
 	}
 
 	instructionPath := workspace.StepTemplatePath(stepDef.FullName())
 	instFp, err := o.generateInstructionFingerprint(instructionPath)
 	if err != nil {
-		return stateVos.CurrentStateFingerprints{}, err
+		return staVos.CurrentStateFingerprints{}, err
 	}
 
 	varsPath := workspace.VarsTemplatePath(stepDef.Name(), environment)
 	varsFp, err := o.generateVarsFingerprint(varsPath)
 	if err != nil {
-		return stateVos.CurrentStateFingerprints{}, err
+		return staVos.CurrentStateFingerprints{}, err
 	}
 
-	return stateVos.NewCurrentStateFingerprints(codeFp, instFp, varsFp, envFp), nil
+	return staVos.NewCurrentStateFingerprints(codeFp, instFp, varsFp, envFp), nil
 }

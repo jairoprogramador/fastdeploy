@@ -69,6 +69,7 @@ func (f *Factory) BuildExecutionOrchestrator() (*applic.ExecutionOrchestrator, e
 	projectRepository := iProje.NewYAMLProjectRepository()
 	fingerprintService := iState.NewSha256FingerprintService()
 	stateRepository := iState.NewGobStateRepository()
+	copyWorkdir := iExecu.NewCopyWorkdir()
 
 	// Domain & Application Services
 	projectService := applic.NewProjectService(projectRepository)
@@ -93,6 +94,7 @@ func (f *Factory) BuildExecutionOrchestrator() (*applic.ExecutionOrchestrator, e
 		fingerprintService,
 		stateManager,
 		stepExecutor,
+		copyWorkdir,
 	)
 	return orchestrator, nil
 }
