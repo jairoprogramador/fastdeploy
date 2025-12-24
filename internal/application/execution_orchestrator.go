@@ -81,7 +81,7 @@ func (o *ExecutionOrchestrator) ExecutePlan(ctx context.Context, stepName, envNa
 		return err
 	}
 
-	version, commit, err := o.versionCalculator.CalculateNextVersion(ctx, templateLocalPath, false)
+	version, commit, err := o.versionCalculator.CalculateNextVersion(ctx, o.projectPath, false)
 	if err != nil {
 		return err
 	}
@@ -95,6 +95,11 @@ func (o *ExecutionOrchestrator) ExecutePlan(ctx context.Context, stepName, envNa
 	cumulativeVars := make(vos.VariableSet)
 	cumulativeVars.AddAll(projectVars)
 	cumulativeVars.AddAll(othersVars)
+	for key, value := range cumulativeVars {
+		fmt.Println("--------------------------------")
+		fmt.Println("key", key)
+		fmt.Println("value", value)
+	}
 
 	fmt.Println("Iniciando la ejecución del plan...")
 
