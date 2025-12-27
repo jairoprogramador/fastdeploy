@@ -28,11 +28,11 @@ func (w *Workspace) TemplatePath() string {
 	return filepath.Join(w.rootPath.Path(), "repositories", w.templateName.String())
 }
 
-func (w *Workspace) StepTemplatePath(stepName string) string {
-	return filepath.Join(w.TemplatePath(), "steps", stepName)
+func (w *Workspace) StepTemplatePath(stepNameDir string) string {
+	return filepath.Join(w.TemplatePath(), "steps", stepNameDir)
 }
 
-func (w *Workspace) VarsTemplatePath(stepName, environment string) string {
+func (w *Workspace) VarsTemplatePath(environment, stepName string) string {
 	fileNameStep, err := vos.NewFileName(stepName, "yaml")
 	if err != nil {
 		return ""
@@ -48,8 +48,12 @@ func (w *Workspace) VarsDirPath() string {
 	return filepath.Join(w.WorkspacePath(), "vars")
 }
 
-func (w *Workspace) VarsFilePath(fileName vos.FileName) string {
-	return filepath.Join(w.VarsDirPath(), fileName.String())
+func (w *Workspace) VarsFilePath(scopeName, stepName string) string {
+	fileName, err := vos.NewVarsFileName(stepName)
+	if err != nil {
+		return ""
+	}
+	return filepath.Join(w.VarsDirPath(), scopeName, fileName.String())
 }
 
 func (w *Workspace) WorkdirPath() string {

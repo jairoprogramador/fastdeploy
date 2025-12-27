@@ -6,17 +6,16 @@ import (
 	"path/filepath"
 
 	applic "github.com/jairoprogramador/fastdeploy-core/internal/application"
-	"github.com/jairoprogramador/fastdeploy-core/internal/domain/definition/services"
-	aggregates "github.com/jairoprogramador/fastdeploy-core/internal/domain/execution/aggregates"
-	servicesExec "github.com/jairoprogramador/fastdeploy-core/internal/domain/execution/services"
-	dStateServices "github.com/jairoprogramador/fastdeploy-core/internal/domain/state/services"
-	dVersionServices "github.com/jairoprogramador/fastdeploy-core/internal/domain/versioning/services"
-	iDefin "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/definition"
-	iExecu "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/execution"
+	defServ "github.com/jairoprogramador/fastdeploy-core/internal/domain/definition/services"
+	exeServ "github.com/jairoprogramador/fastdeploy-core/internal/domain/execution/services"
+	staServ "github.com/jairoprogramador/fastdeploy-core/internal/domain/state/services"
+	verServ "github.com/jairoprogramador/fastdeploy-core/internal/domain/versioning/services"
+	iDefini "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/definition"
+	iExecut "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/execution"
 	iState "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/state"
-	iGitRepo "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/versioning"
-	iLogSer "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/logger/service"
-	iLogRep "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/logger/repository"
+	iVersi "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/versioning"
+	iLgSer "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/logger/service"
+	iLgRep "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/logger/repository"
 	iProje "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/project"
 
 	"github.com/spf13/viper"
@@ -52,8 +51,8 @@ func (f *Factory) PathAppProject() string {
 }
 
 func (f *Factory) BuildLogService() *applic.LoggerService {
-	consolePresenter := iLogSer.NewConsolePresenterService()
-	loggerRepository := iLogRep.NewFileLoggerRepository("")
+	consolePresenter := iLgSer.NewConsolePresenterService()
+	loggerRepository := iLgRep.NewFileLoggerRepository("")
 	configRepository := iProje.NewYAMLProjectRepository()
 
 	return applic.NewLoggerService(loggerRepository, configRepository, consolePresenter)
@@ -61,27 +60,29 @@ func (f *Factory) BuildLogService() *applic.LoggerService {
 
 func (f *Factory) BuildExecutionOrchestrator() (*applic.ExecutionOrchestrator, error) {
 	// Infrastructure Layer
-	commandRunner := iExecu.NewShellCommandRunner()
-	fileSystem := iExecu.NewOSFileSystem()
+	commandRunner := iExecut.NewShellCommandRunner()
+	fileSystem := iExecut.NewOSFileSystem()
 	gitClonerTemplate := iProje.NewGitClonerTemplate()
-	gitRepository := iGitRepo.NewGoGitRepository()
-	definitionReader := iDefin.NewYamlDefinitionReader()
+	gitRepository := iVersi.NewGoGitRepository()
+	definitionReader := iDefini.NewYamlDefinitionReader()
 	projectRepository := iProje.NewYAMLProjectRepository()
 	fingerprintService := iState.NewSha256FingerprintService()
 	stateRepository := iState.NewGobStateRepository()
-	copyWorkdir := iExecu.NewCopyWorkdir()
+	copyWorkdir := iExecut.NewCopyWorkdir()
+	varsRepository := iExecut.NewGobVarsRepository()
 
 	// Domain & Application Services
 	projectService := applic.NewProjectService(projectRepository)
 	workspaceService := applic.NewWorkspaceService()
-	versionCalculator := dVersionServices.NewVersionCalculator(gitRepository)
-	planBuilder := services.NewPlanBuilder(definitionReader)
-	stateManager := dStateServices.NewStateManager(stateRepository)
-	interpolator := servicesExec.NewInterpolator()
-	fileProcessor := servicesExec.NewFileProcessor(fileSystem, interpolator)
-	outputExtractor := servicesExec.NewOutputExtractor()
-	commandExecutor := aggregates.NewCommandExecutor(commandRunner, fileProcessor, interpolator, outputExtractor)
-	stepExecutor := aggregates.NewStepExecutor(commandExecutor)
+	versionCalculator := verServ.NewVersionCalculator(gitRepository)
+	planBuilder := defServ.NewPlanBuilder(definitionReader)
+	stateManager := staServ.NewStateManager(stateRepository)
+	interpolator := exeServ.NewInterpolator()
+	fileProcessor := exeServ.NewFileProcessor(fileSystem, interpolator)
+	outputExtractor := exeServ.NewOutputExtractor()
+	commandExecutor := exeServ.NewCommandExecutor(commandRunner, fileProcessor, interpolator, outputExtractor)
+	variableResolver := exeServ.NewVariableResolver(interpolator)
+	stepExecutor := exeServ.NewStepExecutor(commandExecutor, variableResolver)
 
 	orchestrator := applic.NewExecutionOrchestrator(
 		f.pathAppProject,
@@ -95,6 +96,7 @@ func (f *Factory) BuildExecutionOrchestrator() (*applic.ExecutionOrchestrator, e
 		stateManager,
 		stepExecutor,
 		copyWorkdir,
+		varsRepository,
 	)
 	return orchestrator, nil
 }

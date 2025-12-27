@@ -2,15 +2,17 @@ package services
 
 import (
 	"fmt"
-	"os"
+	"regexp"
 	"strings"
 
-	"github.com/jairoprogramador/fastdeploy-core/internal/domain/execution/vos"
 	"github.com/jairoprogramador/fastdeploy-core/internal/domain/execution/ports"
+	"github.com/jairoprogramador/fastdeploy-core/internal/domain/execution/vos"
 )
 
 var (
 	defaultInterpolator ports.Interpolator = &Interpolator{}
+	// Regex para encontrar placeholders como ${var.nombre_de_variable}
+	varRegex = regexp.MustCompile(`\$\{var\.([a-zA-Z0-9_]+)\}`)
 )
 
 type Interpolator struct{}
@@ -20,25 +22,36 @@ func NewInterpolator() ports.Interpolator {
 }
 
 func (i *Interpolator) Interpolate(input string, vars vos.VariableSet) (string, error) {
-	sanitizedInput := strings.ReplaceAll(input, "${var.", "${var_")
+	var firstError error
 
-	mapping := func(key string) string {
-		if !strings.HasPrefix(key, "var_") {
-			return "${" + key + "}"
+	replacerFunc := func(placeholder string) string {
+		matches := varRegex.FindStringSubmatch(placeholder)
+		if len(matches) < 2 {
+			if firstError == nil {
+				firstError = fmt.Errorf("placeholder mal formado encontrado: %s", placeholder)
+			}
+			return placeholder
 		}
-		originalKey := strings.Replace(key, "var_", "", 1)
+		varName := matches[1]
 
-		val, exists := vars[originalKey]
+		val, exists := vars.Get(varName)
 		if !exists {
-			return ""
+			if firstError == nil {
+				firstError = fmt.Errorf("variable '%s' no encontrada para interpolación", varName)
+			}
+			return placeholder
 		}
-		return val
+		return val.Value()
 	}
 
-	result := os.Expand(sanitizedInput, mapping)
+	result := varRegex.ReplaceAllStringFunc(input, replacerFunc)
 
-	if strings.Contains(result, "${") {
-		return "", fmt.Errorf("interpolación incompleta, es posible que falten variables. Resultado: %s", result)
+	if firstError != nil {
+		return "", firstError
+	}
+
+	if strings.Contains(result, "${var.") {
+		return "", fmt.Errorf("interpolación incompleta, es posible que haya placeholders mal formados. Resultado: %s", result)
 	}
 
 	return result, nil

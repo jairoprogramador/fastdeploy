@@ -27,7 +27,7 @@ func TestOutputExtractor_Extract(t *testing.T) {
 			name:          "Extraccion Exitosa Simple",
 			outputs:       []vos.CommandOutput{newOutputCommandForTest("azure_cr", `azure_cr\s*=\s*"([^"]+)"`)},
 			commandOutput: `azure_cr = "valor"`,
-			expectedVars:  vos.VariableSet{"azure_cr": "valor"},
+			expectedVars:  vos.NewVariableSetFromMap(map[string]string{"azure_cr": "valor"}),
 			expectError:   false,
 		},
 		{
@@ -37,7 +37,7 @@ func TestOutputExtractor_Extract(t *testing.T) {
 				newOutputCommandForTest("id", `id:\s+(\d+)`),
 			},
 			commandOutput: "user: myuser, id: 12345",
-			expectedVars:  vos.VariableSet{"user": "myuser", "id": "12345"},
+			expectedVars:  vos.NewVariableSetFromMap(map[string]string{"user": "myuser", "id": "12345"}),
 			expectError:   false,
 		},
 		{
@@ -65,7 +65,7 @@ func TestOutputExtractor_Extract(t *testing.T) {
 			name:          "Sin OutputCommands definidos",
 			outputs:       []vos.CommandOutput{},
 			commandOutput: "some random output",
-			expectedVars:  vos.VariableSet{},
+			expectedVars:  vos.NewVariableSet(),
 			expectError:   false,
 		},
 		{

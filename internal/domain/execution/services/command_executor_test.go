@@ -1,4 +1,4 @@
-package aggregates_test
+package services_test
 
 import (
 	"context"
@@ -6,7 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/jairoprogramador/fastdeploy-core/internal/domain/execution/aggregates"
+	//"github.com/jairoprogramador/fastdeploy-core/internal/domain/execution/aggregates"
+	"github.com/jairoprogramador/fastdeploy-core/internal/domain/execution/services"
 	"github.com/jairoprogramador/fastdeploy-core/internal/domain/execution/vos"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -53,10 +54,15 @@ func (m *MockOutputExtractor) ExtractVars(commandOutput string, outputs []vos.Co
 	return nil, args.Error(1)
 }
 
+func newOutputVarForTest(name, value string, isShared bool) vos.OutputVar {
+	v, _ := vos.NewOutputVar(name, value, isShared)
+	return v
+}
+
 func TestCommandExecutor_Execute_Success(t *testing.T) {
 	runner, fileProcessor := new(MockCommandRunner), new(MockFileProcessor)
 	interpolator, outputExtractor := new(MockInterpolator), new(MockOutputExtractor)
-	executor := aggregates.NewCommandExecutor(runner, fileProcessor, interpolator, outputExtractor)
+	executor := services.NewCommandExecutor(runner, fileProcessor, interpolator, outputExtractor)
 
 	ctx := context.Background()
 	pathRoot := "/app"
@@ -64,10 +70,12 @@ func TestCommandExecutor_Execute_Success(t *testing.T) {
 	nameCmd, myCmd, workdirCmd := "name_cmd", "my command", "workdir_cmd"
 	interpolatedCmd := myCmd
 	outputCmd := "output url: myapp.com"
-	extractedVarsCmd := vos.VariableSet{"url": "myapp.com"}
+	extractedVarsCmd := vos.NewVariableSet()
+	extractedVarsCmd.Add(newOutputVarForTest("url", "myapp.com", false))
 
 	cmd, _ := vos.NewCommand(nameCmd, myCmd, vos.WithWorkdir(workdirCmd))
-	vars := vos.VariableSet{"image": "nginx"}
+	vars := vos.NewVariableSet()
+	vars.Add(newOutputVarForTest("image", "nginx", false))
 
 	fileProcessor.On("Process", mock.Anything, vars).Return(nil).Once()
 	interpolator.On("Interpolate", cmd.Cmd(), vars).Return(interpolatedCmd, nil).Once()
@@ -142,7 +150,7 @@ func TestCommandExecutor_Execute_ErrorScenarios(t *testing.T) {
 			runner, fileProcessor := new(MockCommandRunner), new(MockFileProcessor)
 			interpolator, outputExtractor := new(MockInterpolator), new(MockOutputExtractor)
 
-			executor := aggregates.NewCommandExecutor(runner, fileProcessor, interpolator, outputExtractor)
+			executor := services.NewCommandExecutor(runner, fileProcessor, interpolator, outputExtractor)
 			cmd, _ := vos.NewCommand("name_cmd", "my command")
 
 			tc.setupMocks(runner, fileProcessor, interpolator, outputExtractor)

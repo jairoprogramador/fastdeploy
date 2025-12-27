@@ -19,7 +19,7 @@ func NewOutputExtractor() ports.OutputExtractor {
 }
 
 func (oe *OutputExtractor) ExtractVars(commandOutput string, outputs []vos.CommandOutput) (vos.VariableSet, error) {
-	extractedVars := make(vos.VariableSet)
+	extractedVars := vos.NewVariableSet()
 
 	for _, output := range outputs {
 		re, err := regexp.Compile(output.Probe())
@@ -37,7 +37,11 @@ func (oe *OutputExtractor) ExtractVars(commandOutput string, outputs []vos.Comma
 			if matches[1] == "" {
 				return nil, fmt.Errorf("la variable de salida '%s' extrajo un valor vacío. Sonda utilizada: %s", output.Name(), output.Probe())
 			}
-			extractedVars[output.Name()] = matches[1]
+			outputVar, err := vos.NewOutputVar(output.Name(), matches[1], false)
+			if err != nil {
+				return nil, fmt.Errorf("falló al crear la variable de salida '%s': %w", output.Name(), err)
+			}
+			extractedVars.Add(outputVar)
 		}
 	}
 

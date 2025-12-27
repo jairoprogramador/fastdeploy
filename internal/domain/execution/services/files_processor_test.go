@@ -28,23 +28,29 @@ func (m *MockFileSystem) WriteFile(path string, data []byte) error {
 	return args.Error(0)
 }
 
-type MockInterpolator struct {
+type MockInterpolatorFilesProcessor struct {
 	mock.Mock
 }
 
-var _ ports.Interpolator = (*MockInterpolator)(nil)
+var _ ports.Interpolator = (*MockInterpolatorFilesProcessor)(nil)
 
-func (m *MockInterpolator) Interpolate(input string, vars vos.VariableSet) (string, error) {
+func (m *MockInterpolatorFilesProcessor) Interpolate(input string, vars vos.VariableSet) (string, error) {
 	args := m.Called(input, vars)
 	return args.String(0), args.Error(1)
 }
 
+func newOutputVarForTestFilesProcessor(name, value string, isShared bool) vos.OutputVar {
+	v, _ := vos.NewOutputVar(name, value, isShared)
+	return v
+}
+
 func TestFileProcessor_Process(t *testing.T) {
 	fs := new(MockFileSystem)
-	interpolator := new(MockInterpolator)
+	interpolator := new(MockInterpolatorFilesProcessor)
 	processor := services.NewFileProcessor(fs, interpolator)
 
-	vars := vos.VariableSet{"name": "World"}
+	vars := vos.NewVariableSet()
+	vars.Add(newOutputVarForTestFilesProcessor("name", "World", false))
 	filePath := "/tmp/test.txt"
 	originalContent := "Hello, ${var.name}!"
 	interpolatedContent := "Hello, World!"
@@ -64,10 +70,11 @@ func TestFileProcessor_Process(t *testing.T) {
 
 func TestFileProcessor_Process_Idempotency(t *testing.T) {
 	fs := new(MockFileSystem)
-	interpolator := new(MockInterpolator)
+	interpolator := new(MockInterpolatorFilesProcessor)
 	processor := services.NewFileProcessor(fs, interpolator)
 
-	vars := vos.VariableSet{"name": "World"}
+	vars := vos.NewVariableSet()
+	vars.Add(newOutputVarForTestFilesProcessor("name", "World", false))
 	filePath := "/tmp/test.txt"
 	originalContent := "Hello, ${var.name}!"
 	interpolatedContent := "Hello, World!"
@@ -92,10 +99,11 @@ func TestFileProcessor_Process_Idempotency(t *testing.T) {
 
 func TestFileProcessor_Restore(t *testing.T) {
 	fs := new(MockFileSystem)
-	interpolator := new(MockInterpolator)
+	interpolator := new(MockInterpolatorFilesProcessor)
 	processor := services.NewFileProcessor(fs, interpolator)
 
-	vars := vos.VariableSet{"name": "World"}
+	vars := vos.NewVariableSet()
+	vars.Add(newOutputVarForTestFilesProcessor("name", "World", false))
 	filePath := "/tmp/test.txt"
 	originalContent := "Hello, ${var.name}!"
 	interpolatedContent := "Hello, World!"
@@ -121,7 +129,7 @@ func TestFileProcessor_Restore(t *testing.T) {
 
 func TestFileProcessor_Process_ReadFileError(t *testing.T) {
 	fs := new(MockFileSystem)
-	interpolator := new(MockInterpolator)
+	interpolator := new(MockInterpolatorFilesProcessor)
 	processor := services.NewFileProcessor(fs, interpolator)
 
 	filePath := "/tmp/test.txt"
@@ -138,7 +146,7 @@ func TestFileProcessor_Process_ReadFileError(t *testing.T) {
 
 func TestFileProcessor_Restore_WriteFileError(t *testing.T) {
 	fs := new(MockFileSystem)
-	interpolator := new(MockInterpolator)
+	interpolator := new(MockInterpolatorFilesProcessor)
 	processor := services.NewFileProcessor(fs, interpolator)
 
 	// Proceso un archivo primero

@@ -30,6 +30,7 @@ type ExecutionOrchestrator struct {
 	stateManager       staPrt.StateManager
 	stepExecutor       exePrt.StepExecutor
 	copyWorkdir        exePrt.CopyWorkdir
+	varsRepository     exePrt.VarsRepository
 }
 
 // NewExecutionOrchestrator crea una nueva instancia del orquestador.
@@ -45,6 +46,7 @@ func NewExecutionOrchestrator(
 	stateManager staPrt.StateManager,
 	stepExecutor exePrt.StepExecutor,
 	copyWorkdir exePrt.CopyWorkdir,
+	varsRepository exePrt.VarsRepository,
 ) *ExecutionOrchestrator {
 	return &ExecutionOrchestrator{
 		projectPath:        projectPath,
@@ -58,6 +60,7 @@ func NewExecutionOrchestrator(
 		stateManager:       stateManager,
 		stepExecutor:       stepExecutor,
 		copyWorkdir:        copyWorkdir,
+		varsRepository:     varsRepository,
 	}
 }
 
@@ -100,11 +103,15 @@ func (o *ExecutionOrchestrator) ExecutePlan(ctx context.Context, stepName, envNa
 	cumulativeVars.AddAll(othersVars)
 
 	fmt.Println("Iniciando la ejecución del plan...")
+	fmt.Printf("  - Entorno: %s\n", environment)
+	fmt.Printf("  - Versión: %s\n", version.String())
+	fmt.Printf("  - Commit: %s\n", commit.String())
 
 	// 3. Bucle de Ejecución Paso a Paso
 	for _, stepDef := range planDef.Steps() {
 
-		// 3a. Comprobación de Estado (Cache Check)
+		fmt.Printf("Ejecutando paso %s ...\n", stepDef.NameDef().Name())
+
 		fingerprints, err := o.generateStepFingerprints(o.projectPath, environment, workspace, stepDef.NameDef())
 		if err != nil {
 			return fmt.Errorf("error al generar fingerprint para el paso '%s': %w", stepDef.NameDef().Name(), err)
@@ -119,8 +126,32 @@ func (o *ExecutionOrchestrator) ExecutePlan(ctx context.Context, stepName, envNa
 			return fmt.Errorf("error al comprobar el estado del paso '%s': %w", stepDef.NameDef().Name(), err)
 		}
 
+		varsStepPath := workspace.VarsFilePath(environment, stepDef.NameDef().Name())
+		varsStep, err := o.varsRepository.Get(varsStepPath)
+		if err != nil {
+			return fmt.Errorf("error al obtener las variables del paso '%s' en el entorno '%s': %w", stepDef.NameDef().Name(), environment, err)
+		}else {
+			fmt.Printf("  - variables del paso '%s' en el entorno '%s':\n", stepDef.NameDef().Name(), environment)
+			for _, v := range varsStep {
+				fmt.Printf("  - variable: '%s' = '%s'\n", v.Name(), v.Value())
+			}
+		}
+		cumulativeVars.AddAll(varsStep)
+
+		varsSharedPath := workspace.VarsFilePath("shared", stepDef.NameDef().Name())
+		varsShared, err := o.varsRepository.Get(varsSharedPath)
+		if err != nil {
+			return fmt.Errorf("error al obtener las variables del paso '%s' en el entorno 'shared': %w", stepDef.NameDef().Name(), err)
+		} else {
+			fmt.Printf("  - variables del paso '%s' en el entorno 'shared':\n", stepDef.NameDef().Name())
+			for _, v := range varsShared {
+				fmt.Printf("  - variable: '%s' = '%s'\n", v.Name(), v.Value())
+			}
+		}
+		cumulativeVars.AddAll(varsShared)
+
 		if !hasChanged {
-			fmt.Printf("  - Paso '%s' no ha cambiado (cache HIT). Omitiendo.\n", stepDef.NameDef().Name())
+			fmt.Printf("  - Paso '%s' ya fue ejecutado en este entorno. Omitiendo.\n", stepDef.NameDef().Name())
 			continue // Saltar al siguiente paso
 		}
 
@@ -135,8 +166,6 @@ func (o *ExecutionOrchestrator) ExecutePlan(ctx context.Context, stepName, envNa
 			return fmt.Errorf("error al mapear la definición del paso '%s': %w", stepDef.NameDef().Name(), err)
 		}
 
-		// 3b. Ejecución del Paso
-		fmt.Printf("  - Paso '%s' ha cambiado. Ejecutando...\n", stepDef.NameDef().Name())
 		execResult, err := o.stepExecutor.Execute(ctx, execStep, cumulativeVars)
 		if err != nil {
 			return fmt.Errorf("la ejecución del paso '%s' falló: %w", stepDef.NameDef().Name(), err)
@@ -149,9 +178,27 @@ func (o *ExecutionOrchestrator) ExecutePlan(ctx context.Context, stepName, envNa
 		}
 
 		// 3c. Actualización de Variables y Estado
-		fmt.Printf("Paso '%s' completado. Salida:\n%s\n", stepDef.NameDef().Name(), execResult.Logs)
-		for key, value := range execResult.OutputVars {
-			cumulativeVars[key] = value
+		fmt.Printf("  - Paso '%s' completado:\n%s\n", stepDef.NameDef().Name(), execResult.Logs)
+		cumulativeVars.AddAll(execResult.OutputVars)
+
+		outputSharedVars := execResult.OutputVars.Filter(func(v exeVos.OutputVar) bool {
+			return v.IsShared()
+		})
+		if !outputSharedVars.Equals(varsShared) {
+			err := o.varsRepository.Save(varsSharedPath, outputSharedVars)
+			if err != nil {
+				return fmt.Errorf("error al guardar las variables del paso '%s' del entorno '%s': %w", stepName, environment, err)
+			}
+		}
+
+		outputStepVars := execResult.OutputVars.Filter(func(v exeVos.OutputVar) bool {
+			return !v.IsShared()
+		})
+		if !outputStepVars.Equals(varsStep) {
+			err := o.varsRepository.Save(varsStepPath, outputStepVars)
+			if err != nil {
+				return fmt.Errorf("error al guardar las variables del paso '%s' del entorno '%s': %w", stepName, environment, err)
+			}
 		}
 
 		if err := o.stateManager.UpdateState(stateTablePath, fingerprints); err != nil {
@@ -160,7 +207,7 @@ func (o *ExecutionOrchestrator) ExecutePlan(ctx context.Context, stepName, envNa
 		}
 	}
 
-	fmt.Println("\n¡Ejecución completada con éxito!")
+	fmt.Println("¡Ejecución completada con éxito!")
 	return nil
 }
 
@@ -207,22 +254,24 @@ func (o *ExecutionOrchestrator) buildPlan(
 }
 
 func (o *ExecutionOrchestrator) prepareProjectVariables(project *proAgg.Project) exeVos.VariableSet {
-	vars := make(exeVos.VariableSet)
-	vars.Add("project_id", project.ID().String()[:8])
-	vars.Add("project_name", project.Data().Name())
-	vars.Add("project_organization", project.Data().Organization())
-	vars.Add("project_team", project.Data().Team())
-	//vars.Add("project_version", project.Data().Version())
+	vars := exeVos.NewVariableSetFromMap(map[string]string{
+		"project_id": project.ID().String()[:8],
+		"project_name": project.Data().Name(),
+		"project_organization": project.Data().Organization(),
+		"project_team": project.Data().Team(),
+	})
 	return vars
 }
 
 func (o *ExecutionOrchestrator) prepareOthersVariables(environment, projectWorkdir, version, commit string) exeVos.VariableSet {
-	vars := make(exeVos.VariableSet)
-	vars.Add("project_version", version)
-	vars.Add("project_revision", commit)
-	vars.Add("environment", environment)
-	vars.Add("project_workdir", projectWorkdir)
-	vars.Add("tool_name", "fastdeploy")
+	vars := exeVos.NewVariableSetFromMap(map[string]string{
+		"project_version": version,
+		"project_revision": commit[:8],
+		"project_revision_full": commit,
+		"environment": environment,
+		"project_workdir": projectWorkdir,
+		"tool_name": "fastdeploy",
+	})
 	return vars
 }
 
@@ -271,7 +320,7 @@ func (o *ExecutionOrchestrator) generateStepFingerprints(
 		return staVos.CurrentStateFingerprints{}, err
 	}
 
-	varsPath := workspace.VarsTemplatePath(stepDef.Name(), environment)
+	varsPath := workspace.VarsTemplatePath(environment, stepDef.Name())
 	varsFp, err := o.generateVarsFingerprint(varsPath)
 	if err != nil {
 		return staVos.CurrentStateFingerprints{}, err

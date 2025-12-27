@@ -9,8 +9,8 @@ const (
 )
 
 type ExecutionResult struct {
-	Status     StepStatus
-	Logs       string
-	OutputVars VariableSet
-	Error      error
+	Status        StepStatus
+	Logs          string
+	OutputVars    VariableSet
+	Error         error
 }

@@ -1,4 +1,4 @@
-package aggregates
+package services
 
 import (
 	"context"
@@ -86,14 +86,31 @@ func (ce *CommandExecutor) Execute(
 		}
 	}
 
+	outputVars := vos.NewVariableSet()
+	if len(extractedVars) > 0 {
+		isShared := filepath.Base(command.Workdir()) == vos.SharedScope
+
+		for name, value := range extractedVars {
+			outputVar, err := vos.NewOutputVar(name, value.Value(), isShared)
+			if err != nil {
+				return &vos.ExecutionResult{
+					Status: vos.Failure,
+					Logs:   cmdResult.CombinedOutput(),
+					Error:  fmt.Errorf("falló al crear la variable de salida '%s': %w", name, err),
+				}
+			}
+			outputVars.Add(outputVar)
+		}
+	}
+
 	return &vos.ExecutionResult{
-		Status:     vos.Success,
-		Logs:       cmdResult.CombinedOutput(),
-		OutputVars: extractedVars,
+		Status:        vos.Success,
+		Logs:          cmdResult.CombinedOutput(),
+		OutputVars:    outputVars,
 	}
 }
 
-func (ce *CommandExecutor)  checkProbes(commandOutput string, outputs []vos.CommandOutput) error {
+func (ce *CommandExecutor) checkProbes(commandOutput string, outputs []vos.CommandOutput) error {
 	for _, output := range outputs {
 		re, err := regexp.Compile(output.Probe())
 		if err != nil {

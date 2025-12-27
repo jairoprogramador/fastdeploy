@@ -7,5 +7,9 @@ import (
 )
 
 type CommandExecutor interface {
-	Execute(ctx context.Context, command vos.Command, currentVars vos.VariableSet, workspaceRoot string) *vos.ExecutionResult
+	Execute(
+		ctx context.Context,
+		command vos.Command,
+		currentVars vos.VariableSet,
+		workspaceStep string) *vos.ExecutionResult
 }

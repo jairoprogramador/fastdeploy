@@ -34,9 +34,13 @@ func mapToExecutionStep(defStep *defEnt.StepDefinition, workspaceStep string) (*
 }
 
 func mapToExecutionVariables(defVars []defVos.VariableDefinition) (execVos.VariableSet, error) {
-	execVars := make(map[string]string, len(defVars))
+	execVars := execVos.NewVariableSet()
 	for _, defVar := range defVars {
-		execVars[defVar.Name()] = fmt.Sprintf("%v", defVar.Value())
+		outputVar, err := execVos.NewOutputVar(defVar.Name(), fmt.Sprintf("%v", defVar.Value()), false)
+		if err != nil {
+			return execVos.NewVariableSet(), err
+		}
+		execVars.Add(outputVar)
 	}
 	return execVars, nil
 }

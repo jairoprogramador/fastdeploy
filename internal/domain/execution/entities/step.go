@@ -57,7 +57,7 @@ func (sd Step) Name() string {
 	return sd.name
 }
 
-func (sd Step) WorkspaceRoot() string {
+func (sd Step) WorkspaceStep() string {
 	return sd.workspaceStep
 }
 

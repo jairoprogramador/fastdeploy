@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	varsExtension = "vars"
+	varsExtension = "var"
 	stateExtension = "tb"
 )
 
@@ -25,12 +25,12 @@ func NewFileName(name, extension string) (FileName, error) {
 	return FileName{value: fmt.Sprintf("%s.%s", name, cleanExtension)}, nil
 }
 
-func NewVarsFileName(scopeName string) (FileName, error) {
-	return NewFileName(scopeName, varsExtension)
+func NewVarsFileName(stepName string) (FileName, error) {
+	return NewFileName(stepName, varsExtension)
 }
 
-func NewStateFileName(scopeName string) (FileName, error) {
-	return NewFileName(scopeName, stateExtension)
+func NewStateFileName(stepName string) (FileName, error) {
+	return NewFileName(stepName, stateExtension)
 }
 
 func (f FileName) String() string {
