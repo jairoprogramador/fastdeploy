@@ -3,139 +3,63 @@ package entities
 import (
 	"errors"
 	"fmt"
-	"slices"
 	"strings"
 
-	shared "github.com/jairoprogramador/fastdeploy-core/internal/domain/shared"
-
-	defVos "github.com/jairoprogramador/fastdeploy-core/internal/domain/definition/vos"
+	"github.com/jairoprogramador/fastdeploy-core/internal/domain/definition/vos"
 )
 
 type StepDefinition struct {
-	name      string
-	triggers  []defVos.TriggerDefinition
-	commands  []defVos.CommandDefinition
-	variables []defVos.VariableDefinition
+	name      vos.StepNameDefinition
+	commands  []vos.CommandDefinition
+	variables []vos.VariableDefinition
 }
 
 func NewStepDefinition(
-	name string,
-	triggers []defVos.TriggerDefinition,
-	commands []defVos.CommandDefinition,
-	variables []defVos.VariableDefinition) (StepDefinition, error) {
-
-	if name == "" {
-		return StepDefinition{}, errors.New("el nombre de la definición no puede estar vacío")
-	}
+	name vos.StepNameDefinition,
+	commands []vos.CommandDefinition,
+	variables []vos.VariableDefinition) (*StepDefinition, error) {
 
 	if len(commands) == 0 {
-		return StepDefinition{}, errors.New("la definición debe tener al menos un comando")
+		return nil, errors.New("un paso debe tener al menos un comando")
 	}
 
-	if len(triggers) > 0 {
-		validTriggers := shared.ScopesValid()
-		for _, trigger := range triggers {
-			if !slices.Contains(validTriggers, trigger.String()) {
-				return StepDefinition{}, fmt.Errorf("trigger no válido: %s", trigger.String())
-			}
-		}
+	commandNames := make(map[string]bool)
+	for _, cmd := range commands {
+		name := strings.ToUpper(strings.ReplaceAll(cmd.Name(), " ", ""))
+		cmdName := strings.ReplaceAll(cmd.Cmd(), " ", "")
+		workdir := strings.ToUpper(strings.ReplaceAll(cmd.Workdir(), " ", ""))
 
-		triggerNames := make(map[string]struct{})
-		for _, trigger := range triggers {
-			if _, exists := triggerNames[trigger.String()]; exists {
-				return StepDefinition{}, errors.New("trigger duplicado encontrado")
-			}
-			triggerNames[trigger.String()] = struct{}{}
+		uniqueKey := fmt.Sprintf("%s-%s-%s", name, cmdName, workdir)
+		if commandNames[uniqueKey] {
+			return nil, errors.New("comando duplicados dentro del mismo paso: " + uniqueKey)
 		}
-	} else {
-		triggersCommon := []defVos.TriggerDefinition{
-			defVos.TriggerFromString(shared.ScopeRecipe),
-			defVos.TriggerFromString(shared.ScopeCode),
-			defVos.TriggerFromString(shared.ScopeVars),
-		}
-
-		if name == shared.StepSupply {
-			triggers = []defVos.TriggerDefinition{
-				defVos.TriggerFromString(shared.ScopeRecipe),
-				defVos.TriggerFromString(shared.ScopeVars),
-			}
-		}
-
-		if name == shared.StepTest {
-			triggers = triggersCommon
-		}
-
-		if name == shared.StepPackage {
-			triggers = triggersCommon
-		}
-		if name == shared.StepDeploy {
-			triggers = triggersCommon
-		}
+		commandNames[uniqueKey] = true
 	}
 
-	commandNames := make(map[string]struct{})
-	for _, command := range commands {
-		if _, exists := commandNames[command.Name()]; exists {
-			return StepDefinition{}, fmt.Errorf("comando name %s duplicado", command.Name())
-		}
-		commandNames[command.Name()] = struct{}{}
-	}
-
-	cmds := make(map[string]struct{})
-	for _, command := range commands {
-		cmdWorkdirItem := command.Workdir() + command.Cmd()
-		cmdWorkdirItem = strings.TrimSpace(cmdWorkdirItem)
-		if _, exists := cmds[cmdWorkdirItem]; exists {
-			return StepDefinition{}, fmt.Errorf("comando %s duplicado in %s", command.Cmd(), command.Workdir())
-		}
-		cmds[cmdWorkdirItem] = struct{}{}
-	}
-
-	variableNames := make(map[string]struct{})
+	variablesNames := make(map[string]bool)
 	for _, variable := range variables {
-		if _, exists := variableNames[variable.Name()]; exists {
-			return StepDefinition{}, fmt.Errorf("variable %s duplicada", variable.Name())
+		name := strings.ReplaceAll(variable.Name(), " ", "")
+		if variablesNames[name] {
+			return nil, errors.New("variable duplicada: " + name)
 		}
-		variableNames[variable.Name()] = struct{}{}
+		variablesNames[name] = true
 	}
 
-	triggersCopy := make([]defVos.TriggerDefinition, len(triggers))
-	copy(triggersCopy, triggers)
-
-	commandsCopy := make([]defVos.CommandDefinition, len(commands))
-	copy(commandsCopy, commands)
-
-	variablesCopy := make([]defVos.VariableDefinition, len(variables))
-	copy(variablesCopy, variables)
-
-	return StepDefinition{
+	return &StepDefinition{
 		name:      name,
-		triggers:  triggersCopy,
-		commands:  commandsCopy,
-		variables: variablesCopy,
+		commands:  commands,
+		variables: variables,
 	}, nil
 }
 
-func (sd StepDefinition) Name() string {
-	return sd.name
+func (s *StepDefinition) NameDef() vos.StepNameDefinition {
+	return s.name
 }
 
-func (sd StepDefinition) TriggersInt() []int {
-	triggersInt := make([]int, len(sd.triggers))
-	for i, trigger := range sd.triggers {
-		triggersInt[i] = int(trigger)
-	}
-	return triggersInt
+func (s *StepDefinition) CommandsDef() []vos.CommandDefinition {
+	return s.commands
 }
 
-func (sd StepDefinition) Commands() []defVos.CommandDefinition {
-	commandsCopy := make([]defVos.CommandDefinition, len(sd.commands))
-	copy(commandsCopy, sd.commands)
-	return commandsCopy
-}
-
-func (sd StepDefinition) Variables() []defVos.VariableDefinition {
-	variablesCopy := make([]defVos.VariableDefinition, len(sd.variables))
-	copy(variablesCopy, sd.variables)
-	return variablesCopy
+func (s *StepDefinition) VariablesDef() []vos.VariableDefinition {
+	return s.variables
 }

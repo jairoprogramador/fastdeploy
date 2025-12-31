@@ -6,55 +6,43 @@ import (
 	"path/filepath"
 
 	applic "github.com/jairoprogramador/fastdeploy-core/internal/application"
-	appPor "github.com/jairoprogramador/fastdeploy-core/internal/application/ports"
-
-	iLogRep "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/logger/repository"
-	iLogSer "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/logger/service"
-
+	defServ "github.com/jairoprogramador/fastdeploy-core/internal/domain/definition/services"
+	exeServ "github.com/jairoprogramador/fastdeploy-core/internal/domain/execution/services"
+	staServ "github.com/jairoprogramador/fastdeploy-core/internal/domain/state/services"
+	verServ "github.com/jairoprogramador/fastdeploy-core/internal/domain/versioning/services"
+	iDefini "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/definition"
+	iExecut "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/execution"
+	iState "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/state"
+	iVersi "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/versioning"
+	iLgSer "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/logger/service"
+	iLgRep "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/logger/repository"
 	iProje "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/project"
-
-	iExecu "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/execution"
-
-	iStaRep "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/state/repository"
-	iStaSer "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/state/services"
-
-	iAppli "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/application"
-
-	iDefin "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/definition"
 
 	"github.com/spf13/viper"
 )
 
 type ServiceFactory interface {
-	BuildLogService() appPor.LoggerService
-	BuildExecutorService() *applic.AppExecutionService
+	BuildExecutionOrchestrator() (*applic.ExecutionOrchestrator, error)
+	BuildLogService() *applic.LoggerService
 	PathAppProject() string
 }
 
 type Factory struct {
-	pathRepositoriesRoot string
-	pathProjectsRoot     string
-	pathStateRoot        string
-	pathAppProject       string
+	pathAppProject    string
+	pathAppFastdeploy string
 }
 
 func NewFactory() (ServiceFactory, error) {
 	fastdeployHome := getFastdeployHome()
 
-	pathRepositoriesRoot := filepath.Join(fastdeployHome, "repositories")
-	pathProjectsRoot := filepath.Join(fastdeployHome, "projects")
-	pathStateRoot := filepath.Join(fastdeployHome, "state")
 	workingDir, err := os.Getwd()
-
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error al obtener el directorio de trabajo: %w", err)
 	}
 
 	return &Factory{
-		pathRepositoriesRoot: pathRepositoriesRoot,
-		pathProjectsRoot:     pathProjectsRoot,
-		pathStateRoot:        pathStateRoot,
-		pathAppProject:       workingDir,
+		pathAppFastdeploy: fastdeployHome,
+		pathAppProject:    workingDir,
 	}, nil
 }
 
@@ -62,41 +50,56 @@ func (f *Factory) PathAppProject() string {
 	return f.pathAppProject
 }
 
-func (f *Factory) BuildLogService() appPor.LoggerService {
-	consolePresenter := iLogSer.NewConsolePresenterService()
-	loggerRepository := iLogRep.NewFileLoggerRepository(f.pathStateRoot)
-	configRepository := iProje.NewYamlConfigRepository()
+func (f *Factory) BuildLogService() *applic.LoggerService {
+	consolePresenter := iLgSer.NewConsolePresenterService()
+	loggerRepository := iLgRep.NewFileLoggerRepository("")
+	configRepository := iProje.NewYAMLProjectRepository()
 
-	return applic.NewAppLoggerService(loggerRepository, configRepository, consolePresenter)
+	return applic.NewLoggerService(loggerRepository, configRepository, consolePresenter)
 }
 
-func (f *Factory) BuildExecutorService() *applic.AppExecutionService {
-	varResolver := iExecu.NewResolverService()
-	fingerprintService := iStaSer.NewShaFingerprintService()
-	fileManager := iAppli.NewFileStepWorkspaceService(f.pathProjectsRoot, f.pathRepositoriesRoot)
-	cmdExecutor := iAppli.NewExecCommandService()
-	varsRepository := iStaRep.NewFileVarsRepository(f.pathStateRoot)
-	stateRepository := iStaRep.NewFileFingerprintRepository(f.pathStateRoot)
-	configRepository := iProje.NewYamlConfigRepository()
-	templateRepository := iDefin.NewYamlTemplateRepository(f.pathRepositoriesRoot, cmdExecutor)
-	gitManager := iAppli.NewGitLocalService(cmdExecutor)
+func (f *Factory) BuildExecutionOrchestrator() (*applic.ExecutionOrchestrator, error) {
+	// Infrastructure Layer
+	commandRunner := iExecut.NewShellCommandRunner()
+	fileSystem := iExecut.NewOSFileSystem()
+	gitClonerTemplate := iProje.NewGitClonerTemplate()
+	gitRepository := iVersi.NewGoGitRepository()
+	definitionReader := iDefini.NewYamlDefinitionReader()
+	projectRepository := iProje.NewYAMLProjectRepository()
+	fingerprintService := iState.NewSha256FingerprintService()
+	stateRepository := iState.NewGobStateRepository()
+	copyWorkdir := iExecut.NewCopyWorkdir()
+	varsRepository := iExecut.NewGobVarsRepository()
 
-	loggerRepository := iLogRep.NewFileLoggerRepository(f.pathStateRoot)
-	consolePresenter := iLogSer.NewConsolePresenterService()
-	logger := applic.NewAppLoggerService(loggerRepository, configRepository, consolePresenter)
+	// Domain & Application Services
+	projectService := applic.NewProjectService(projectRepository)
+	workspaceService := applic.NewWorkspaceService()
+	versionCalculator := verServ.NewVersionCalculator(gitRepository)
+	planBuilder := defServ.NewPlanBuilder(definitionReader)
+	stateManager := staServ.NewStateManager(stateRepository)
+	interpolator := exeServ.NewInterpolator()
+	fileProcessor := exeServ.NewFileProcessor(fileSystem, interpolator)
+	outputExtractor := exeServ.NewOutputExtractor()
+	commandExecutor := exeServ.NewCommandExecutor(commandRunner, fileProcessor, interpolator, outputExtractor)
+	variableResolver := exeServ.NewVariableResolver(interpolator)
+	stepExecutor := exeServ.NewStepExecutor(commandExecutor, variableResolver)
 
-	return applic.NewAppExecutionService(
-		varResolver,
+	orchestrator := applic.NewExecutionOrchestrator(
+		f.pathAppProject,
+		f.pathAppFastdeploy,
+		projectService,
+		workspaceService,
+		gitClonerTemplate,
+		versionCalculator,
+		planBuilder,
 		fingerprintService,
-		fileManager,
-		cmdExecutor,
+		stateManager,
+		stepExecutor,
+		copyWorkdir,
 		varsRepository,
-		stateRepository,
-		configRepository,
-		templateRepository,
-		gitManager,
-		logger,
+		gitRepository,
 	)
+	return orchestrator, nil
 }
 
 func getFastdeployHome() string {

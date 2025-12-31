@@ -1,27 +1,36 @@
 package mapper
 
 import (
-	proEnt "github.com/jairoprogramador/fastdeploy-core/internal/domain/project/entities"
-	iProDto "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/project/dto"
+	"github.com/jairoprogramador/fastdeploy-core/internal/domain/project/ports"
+	"github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/project/dto"
 )
 
-func ProjectToDomain(dto iProDto.ProjectDTO) (*proEnt.Project, error) {
-	return proEnt.NewProject(
-		proEnt.ProjectID(dto.ID),
-		dto.Name,
-		dto.Version,
-		dto.Description,
-		dto.Team,
-		dto.Organization)
+func ProjectToDto(data *ports.ProjectConfigDTO) dto.FdConfigDTO {
+	return dto.FdConfigDTO{
+		Project: dto.ProjectDTO{
+			ID:           data.ID,
+			Name:         data.Name,
+			Organization: data.Organization,
+			Team:         data.Team,
+			Description:  data.Description,
+			Version:      data.Version,
+		},
+		Template: dto.TemplateDTO{
+			URL: data.TemplateURL,
+			Ref: data.TemplateRef,
+		},
+	}
 }
 
-func ProjectToDTO(project *proEnt.Project) iProDto.ProjectDTO {
-	return iProDto.ProjectDTO{
-		ID: string(project.ID()),
-		Name: project.Name(),
-		Version: project.Version(),
-		Description: project.Description(),
-		Team: project.Team(),
-		Organization: project.Organization(),
+func ProjectToDomain(fdConfig dto.FdConfigDTO) *ports.ProjectConfigDTO {
+	return &ports.ProjectConfigDTO{
+		ID:           fdConfig.Project.ID,
+		Name:         fdConfig.Project.Name,
+		Organization: fdConfig.Project.Organization,
+		Team:         fdConfig.Project.Team,
+		Description:  fdConfig.Project.Description,
+		Version:      fdConfig.Project.Version,
+		TemplateURL:  fdConfig.Template.URL,
+		TemplateRef:  fdConfig.Template.Ref,
 	}
 }
