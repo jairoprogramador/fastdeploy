@@ -155,3 +155,40 @@ func (r *GoGitRepository) GetLastSemverTag(ctx context.Context, repoPath string)
 	lastVersion := versions[len(versions)-1]
 	return lastVersion.Original(), nil
 }
+
+// CreateTagForCommit crea un nuevo tag apuntando a un commit específico.
+// Devuelve un error si el tag ya existe o el commit no se encuentra.
+func (r *GoGitRepository) CreateTagForCommit(ctx context.Context, repoPath string, commitHash string, tagName string) error {
+	repo, err := git.PlainOpen(repoPath)
+	if err != nil {
+		return fmt.Errorf("error al abrir el repositorio: %w", err)
+	}
+
+	// 1. Validar que el commit existe.
+	hash := plumbing.NewHash(commitHash)
+	if _, err := repo.CommitObject(hash); err != nil {
+		return fmt.Errorf("no se pudo encontrar el commit con hash '%s': %w", commitHash, err)
+	}
+
+	// 2. Verificar que el tag no exista previamente.
+	tagRefName := plumbing.ReferenceName("refs/tags/" + tagName)
+	_, err = repo.Reference(tagRefName, true)
+	if err == nil {
+		// No hay error, significa que el tag ya existe.
+		return fmt.Errorf("el tag '%s' ya existe en el repositorio", tagName)
+	}
+	// Si el error es 'plumbing.ErrReferenceNotFound', es el escenario esperado.
+	// Cualquier otro error es un problema real.
+	if err != plumbing.ErrReferenceNotFound {
+		return fmt.Errorf("error al verificar la existencia del tag '%s': %w", tagName, err)
+	}
+
+	// 3. Crear el tag (referencia lightweight).
+	ref := plumbing.NewHashReference(tagRefName, hash)
+
+	if err := repo.Storer.SetReference(ref); err != nil {
+		return fmt.Errorf("no se pudo crear el tag '%s': %w", tagName, err)
+	}
+
+	return nil
+}

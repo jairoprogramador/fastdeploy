@@ -7,10 +7,11 @@ import (
 )
 
 type Step struct {
-	workspaceStep string // falta, es la dirccion donde se copia la platilla
-	name          string
-	commands      []vos.Command
-	variables     vos.VariableSet
+	workspaceStep   string
+	workspaceShared string
+	name            string
+	commands        []vos.Command
+	variables       vos.VariableSet
 }
 
 type StepOption func(*Step)
@@ -53,12 +54,22 @@ func WithWorkspaceStep(workspaceRoot string) StepOption {
 	}
 }
 
+func WithWorkspaceShared(workspaceShared string) StepOption {
+	return func(s *Step) {
+		s.workspaceShared = workspaceShared
+	}
+}
+
 func (sd Step) Name() string {
 	return sd.name
 }
 
 func (sd Step) WorkspaceStep() string {
 	return sd.workspaceStep
+}
+
+func (sd Step) WorkspaceShared() string {
+	return sd.workspaceShared
 }
 
 func (sd Step) Commands() []vos.Command {

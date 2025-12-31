@@ -45,7 +45,7 @@ func (m *MockStepCommandExecutor) Execute(
 	ctx context.Context,
 	command vos.Command,
 	currentVars vos.VariableSet,
-	workspaceStep string,
+	workspaceStep, workspaceShared string,
 ) *vos.ExecutionResult {
 	args := m.Called(ctx, command, currentVars, workspaceStep)
 	return args.Get(0).(*vos.ExecutionResult)

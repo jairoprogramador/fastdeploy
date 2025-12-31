@@ -5,5 +5,5 @@ import (
 )
 
 type CopyWorkdir interface {
-	Copy(ctx context.Context, source, destination string) error
+	Copy(ctx context.Context, source, destination string, isShared bool) error
 }

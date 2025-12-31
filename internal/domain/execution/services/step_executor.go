@@ -47,13 +47,17 @@ func (se *StepExecutor) Execute(
 	stepWorkdirVar, _ := vos.NewOutputVar("step_workdir", stepWorkdir, false)
 	cumulativeVars.Add(stepWorkdirVar)
 
+	sharedWorkdir := step.WorkspaceShared()
+	sharedWorkdirVar, _ := vos.NewOutputVar("shared_workdir", sharedWorkdir, false)
+	cumulativeVars.Add(sharedWorkdirVar)
+
 	var finalError error
 	finalStatus := vos.Success
 
 	outputVars := vos.NewVariableSet()
 
 	for _, command := range step.Commands() {
-		cmdResult := se.commandExecutor.Execute(ctx, command, cumulativeVars, stepWorkdir)
+		cmdResult := se.commandExecutor.Execute(ctx, command, cumulativeVars, stepWorkdir, sharedWorkdir)
 
 		if cmdResult.Logs != "" {
 			cumulativeLogs.WriteString(fmt.Sprintf("  - comando: '%s'\n", command.Name()))

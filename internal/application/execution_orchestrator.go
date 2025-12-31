@@ -31,6 +31,7 @@ type ExecutionOrchestrator struct {
 	stepExecutor       exePrt.StepExecutor
 	copyWorkdir        exePrt.CopyWorkdir
 	varsRepository     exePrt.VarsRepository
+	gitRepository      verPrt.GitRepository
 }
 
 // NewExecutionOrchestrator crea una nueva instancia del orquestador.
@@ -47,6 +48,7 @@ func NewExecutionOrchestrator(
 	stepExecutor exePrt.StepExecutor,
 	copyWorkdir exePrt.CopyWorkdir,
 	varsRepository exePrt.VarsRepository,
+	gitRepository verPrt.GitRepository,
 ) *ExecutionOrchestrator {
 	return &ExecutionOrchestrator{
 		projectPath:        projectPath,
@@ -61,6 +63,7 @@ func NewExecutionOrchestrator(
 		stepExecutor:       stepExecutor,
 		copyWorkdir:        copyWorkdir,
 		varsRepository:     varsRepository,
+		gitRepository:      gitRepository,
 	}
 }
 
@@ -130,11 +133,6 @@ func (o *ExecutionOrchestrator) ExecutePlan(ctx context.Context, stepName, envNa
 		varsStep, err := o.varsRepository.Get(varsStepPath)
 		if err != nil {
 			return fmt.Errorf("error al obtener las variables del paso '%s' en el entorno '%s': %w", stepDef.NameDef().Name(), environment, err)
-		}else {
-			fmt.Printf("  - variables del paso '%s' en el entorno '%s':\n", stepDef.NameDef().Name(), environment)
-			for _, v := range varsStep {
-				fmt.Printf("  - variable: '%s' = '%s'\n", v.Name(), v.Value())
-			}
 		}
 		cumulativeVars.AddAll(varsStep)
 
@@ -142,11 +140,6 @@ func (o *ExecutionOrchestrator) ExecutePlan(ctx context.Context, stepName, envNa
 		varsShared, err := o.varsRepository.Get(varsSharedPath)
 		if err != nil {
 			return fmt.Errorf("error al obtener las variables del paso '%s' en el entorno 'shared': %w", stepDef.NameDef().Name(), err)
-		} else {
-			fmt.Printf("  - variables del paso '%s' en el entorno 'shared':\n", stepDef.NameDef().Name())
-			for _, v := range varsShared {
-				fmt.Printf("  - variable: '%s' = '%s'\n", v.Name(), v.Value())
-			}
 		}
 		cumulativeVars.AddAll(varsShared)
 
@@ -155,13 +148,19 @@ func (o *ExecutionOrchestrator) ExecutePlan(ctx context.Context, stepName, envNa
 			continue // Saltar al siguiente paso
 		}
 
-		stepPathEnv := workspace.ScopeWorkdirPath(planDef.Environment().String(), stepDef.NameDef().Name())
-		err = o.copyWorkdir.Copy(ctx, workspace.StepTemplatePath(stepDef.NameDef().FullName()), stepPathEnv)
+		envStepPath := workspace.ScopeWorkdirPath(planDef.Environment().String(), stepDef.NameDef().Name())
+		err = o.copyWorkdir.Copy(ctx, workspace.StepTemplatePath(stepDef.NameDef().FullName()), envStepPath, false)
 		if err != nil {
-			return fmt.Errorf("error al copiar el paso '%s' al workspace: %w", stepPathEnv, err)
+			return fmt.Errorf("error al copiar el paso '%s' al workspace: %w", envStepPath, err)
 		}
 
-		execStep, err := mapToExecutionStep(stepDef, stepPathEnv)
+		sharedStepPath := workspace.ScopeWorkdirPath(exeVos.SharedScope, stepDef.NameDef().Name())
+		err = o.copyWorkdir.Copy(ctx, workspace.StepTemplatePath(stepDef.NameDef().FullName()), sharedStepPath, true)
+		if err != nil {
+			return fmt.Errorf("error al copiar el paso '%s' al workspace: %w", sharedStepPath, err)
+		}
+
+		execStep, err := mapToExecutionStep(stepDef, envStepPath, sharedStepPath)
 		if err != nil {
 			return fmt.Errorf("error al mapear la definición del paso '%s': %w", stepDef.NameDef().Name(), err)
 		}
@@ -204,6 +203,14 @@ func (o *ExecutionOrchestrator) ExecutePlan(ctx context.Context, stepName, envNa
 		if err := o.stateManager.UpdateState(stateTablePath, fingerprints); err != nil {
 			// Esto es una advertencia. El flujo principal fue exitoso, pero el estado no se guardó.
 			fmt.Printf("ADVERTENCIA: no se pudo guardar el estado del paso '%s'. Se re-ejecutará la próxima vez. Error: %v\n", stepDef.NameDef().Name(), err)
+		}
+	}
+
+	if stepName == "deploy" {
+		// 4. Crear el tag del commit
+		err = o.gitRepository.CreateTagForCommit(ctx, o.projectPath, commit.String(), version.String())
+		if err != nil {
+			fmt.Printf("ADVERTENCIA: no se pudo crear el tag del commit. Error: %v\n", err)
 		}
 	}
 

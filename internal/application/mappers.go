@@ -9,7 +9,7 @@ import (
 	execVos "github.com/jairoprogramador/fastdeploy-core/internal/domain/execution/vos"
 )
 
-func mapToExecutionStep(defStep *defEnt.StepDefinition, workspaceStep string) (*execEnt.Step, error) {
+func mapToExecutionStep(defStep *defEnt.StepDefinition, workspaceStep, workspaceShared string) (*execEnt.Step, error) {
 	execCmds, err := mapToExecutionCommands(defStep.CommandsDef())
 	if err != nil {
 		return nil, fmt.Errorf("error al mapear los comandos para el paso '%s': %w", defStep.NameDef().Name(), err)
@@ -25,6 +25,7 @@ func mapToExecutionStep(defStep *defEnt.StepDefinition, workspaceStep string) (*
 		execEnt.WithCommands(execCmds),
 		execEnt.WithVariables(execVars),
 		execEnt.WithWorkspaceStep(workspaceStep),
+		execEnt.WithWorkspaceShared(workspaceShared),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error al crear el paso de ejecución para '%s': %w", defStep.NameDef().Name(), err)

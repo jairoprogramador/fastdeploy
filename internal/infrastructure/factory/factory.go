@@ -97,6 +97,7 @@ func (f *Factory) BuildExecutionOrchestrator() (*applic.ExecutionOrchestrator, e
 		stepExecutor,
 		copyWorkdir,
 		varsRepository,
+		gitRepository,
 	)
 	return orchestrator, nil
 }

@@ -2,6 +2,7 @@ package ports
 
 import (
 	"context"
+
 	"github.com/jairoprogramador/fastdeploy-core/internal/domain/versioning/vos"
 )
 
@@ -15,4 +16,7 @@ type GitRepository interface {
 
 	// GetLastSemverTag obtiene el último tag que sigue el formato de versionado semántico.
 	GetLastSemverTag(ctx context.Context, repoPath string) (string, error)
+
+	// CreateTagForCommit crea un nuevo tag apuntando a un commit específico.
+	CreateTagForCommit(ctx context.Context, repoPath string, commitHash string, tagName string) error
 }

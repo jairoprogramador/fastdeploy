@@ -28,6 +28,8 @@ func NewShellCommandRunner() ports.CommandRunner {
 func (r *ShellCommandRunner) Run(ctx context.Context, command string, workDir string) (*vos.CommandResult, error) {
 	var cmd *exec.Cmd
 
+	fmt.Printf("Ejecutando comando: '%s' en el directorio: '%s'\n", command, workDir)
+
 	if runtime.GOOS == "windows" {
 		cmd = exec.CommandContext(ctx, "cmd", "/C", command)
 	} else {

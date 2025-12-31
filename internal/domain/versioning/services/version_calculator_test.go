@@ -15,6 +15,7 @@ type mockGitRepository struct {
 	GetLastCommitFunc      func(ctx context.Context, repoPath string) (*vos.Commit, error)
 	GetLastSemverTagFunc   func(ctx context.Context, repoPath string) (string, error)
 	GetCommitsSinceTagFunc func(ctx context.Context, repoPath, tag string) ([]*vos.Commit, error)
+	CreateTagForCommitFunc func(ctx context.Context, repoPath string, commitHash string, tagName string) error
 }
 
 func (m *mockGitRepository) GetLastCommit(ctx context.Context, repoPath string) (*vos.Commit, error) {
@@ -36,6 +37,13 @@ func (m *mockGitRepository) GetCommitsSinceTag(ctx context.Context, repoPath, ta
 		return m.GetCommitsSinceTagFunc(ctx, repoPath, tag)
 	}
 	return nil, nil
+}
+
+func (m *mockGitRepository) CreateTagForCommit(ctx context.Context, repoPath string, commitHash string, tagName string) error {
+	if m.CreateTagForCommitFunc != nil {
+		return m.CreateTagForCommitFunc(ctx, repoPath, commitHash, tagName)
+	}
+	return nil
 }
 
 func TestVersionCalculator_CalculateNextVersion(t *testing.T) {

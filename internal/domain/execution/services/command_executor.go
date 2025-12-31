@@ -35,17 +35,23 @@ func (ce *CommandExecutor) Execute(
 	ctx context.Context,
 	command vos.Command,
 	currentVars vos.VariableSet,
-	workspaceStep string) *vos.ExecutionResult {
+	workspaceStep, workspaceShared string) *vos.ExecutionResult {
+
+	workspaceMain := workspaceStep
+	isShared := filepath.Base(command.Workdir()) == vos.SharedScope
+	if isShared {
+		workspaceMain = workspaceShared
+	}
 
 	absPathsFiles := make([]string, len(command.TemplateFiles()))
 	for i, filePath := range command.TemplateFiles() {
-		absPathsFiles[i] = filepath.Join(workspaceStep, command.Workdir(), filePath)
+		absPathsFiles[i] = filepath.Join(workspaceMain, command.Workdir(), filePath)
 	}
 
 	if err := ce.fileProcessor.Process(absPathsFiles, currentVars); err != nil {
 		return &vos.ExecutionResult{Status: vos.Failure, Error: fmt.Errorf("falló al procesar las plantillas: %w", err)}
 	}
-	defer ce.fileProcessor.Restore()
+	//defer ce.fileProcessor.Restore()
 
 	interpolatedCmd, err := ce.interpolator.Interpolate(command.Cmd(), currentVars)
 	if err != nil {
@@ -54,8 +60,11 @@ func (ce *CommandExecutor) Execute(
 
 	execDir := ""
 	if command.Workdir() != "" {
-		execDir = filepath.Join(workspaceStep, command.Workdir())
+		execDir = filepath.Join(workspaceMain, command.Workdir())
 	}
+	/* for _, varCmd := range currentVars {
+		fmt.Printf("  - Variable del comando: %s = %s\n", varCmd.Name(), varCmd.Value())
+	} */
 	cmdResult, err := ce.runner.Run(ctx, interpolatedCmd, execDir)
 	if err != nil {
 		return &vos.ExecutionResult{Status: vos.Failure, Error: fmt.Errorf("no se pudo iniciar el comando: %w", err)}
@@ -88,8 +97,6 @@ func (ce *CommandExecutor) Execute(
 
 	outputVars := vos.NewVariableSet()
 	if len(extractedVars) > 0 {
-		isShared := filepath.Base(command.Workdir()) == vos.SharedScope
-
 		for name, value := range extractedVars {
 			outputVar, err := vos.NewOutputVar(name, value.Value(), isShared)
 			if err != nil {

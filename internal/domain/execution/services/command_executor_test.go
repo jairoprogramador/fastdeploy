@@ -84,7 +84,7 @@ func TestCommandExecutor_Execute_Success(t *testing.T) {
 	fileProcessor.On("Restore").Return(nil).Once()
 
 	// Act
-	result := executor.Execute(ctx, cmd, vars, pathRoot)
+	result := executor.Execute(ctx, cmd, vars, pathRoot, pathRoot)
 
 	// Assert
 	require.NotNil(t, result)
@@ -155,7 +155,7 @@ func TestCommandExecutor_Execute_ErrorScenarios(t *testing.T) {
 
 			tc.setupMocks(runner, fileProcessor, interpolator, outputExtractor)
 
-			result := executor.Execute(context.Background(), cmd, vos.VariableSet{}, "/app")
+			result := executor.Execute(context.Background(), cmd, vos.VariableSet{}, "/app", "/app")
 
 			require.NotNil(t, result.Error)
 			assert.Equal(t, vos.Failure, result.Status)
