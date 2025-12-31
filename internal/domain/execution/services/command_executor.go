@@ -62,9 +62,8 @@ func (ce *CommandExecutor) Execute(
 	if command.Workdir() != "" {
 		execDir = filepath.Join(workspaceMain, command.Workdir())
 	}
-	/* for _, varCmd := range currentVars {
-		fmt.Printf("  - Variable del comando: %s = %s\n", varCmd.Name(), varCmd.Value())
-	} */
+
+	fmt.Printf("Ejecutando: '%s'\n", command.Name())
 	cmdResult, err := ce.runner.Run(ctx, interpolatedCmd, execDir)
 	if err != nil {
 		return &vos.ExecutionResult{Status: vos.Failure, Error: fmt.Errorf("no se pudo iniciar el comando: %w", err)}
