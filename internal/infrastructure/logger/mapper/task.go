@@ -1,9 +1,9 @@
 package mapper
 
 import (
-	"github.com/jairoprogramador/fastdeploy-core/internal/domain/logger/entities"
-	"github.com/jairoprogramador/fastdeploy-core/internal/domain/logger/vos"
-	"github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/logger/dto"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/logger/entities"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/logger/vos"
+	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/logger/dto"
 )
 
 func TaskToDTO(task *entities.TaskRecord) dto.TaskDTO {

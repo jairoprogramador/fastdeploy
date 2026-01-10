@@ -5,9 +5,9 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/jairoprogramador/fastdeploy-core/internal/application"
-	"github.com/jairoprogramador/fastdeploy-core/internal/domain/project/ports"
-	"github.com/jairoprogramador/fastdeploy-core/internal/domain/project/vos"
+	"github.com/jairoprogramador/fastdeploy/internal/application"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/project/ports"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/project/vos"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

@@ -3,7 +3,7 @@ package entities
 import (
 	"errors"
 
-	"github.com/jairoprogramador/fastdeploy-core/internal/domain/execution/vos"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/execution/vos"
 )
 
 type Step struct {

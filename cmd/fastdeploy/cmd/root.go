@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/factory"
+	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/factory"
 )
 
 var (

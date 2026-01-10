@@ -7,13 +7,13 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	appDto "github.com/jairoprogramador/fastdeploy-core/internal/application/dto"
+	appDto "github.com/jairoprogramador/fastdeploy/internal/application/dto"
 
-	logAgg "github.com/jairoprogramador/fastdeploy-core/internal/domain/logger/aggregates"
-	logPor "github.com/jairoprogramador/fastdeploy-core/internal/domain/logger/ports"
+	logAgg "github.com/jairoprogramador/fastdeploy/internal/domain/logger/aggregates"
+	logPor "github.com/jairoprogramador/fastdeploy/internal/domain/logger/ports"
 
-	ilogDto "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/logger/dto"
-	ilogMap "github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/logger/mapper"
+	ilogDto "github.com/jairoprogramador/fastdeploy/internal/infrastructure/logger/dto"
+	ilogMap "github.com/jairoprogramador/fastdeploy/internal/infrastructure/logger/mapper"
 )
 
 type FileLoggerRepository struct {

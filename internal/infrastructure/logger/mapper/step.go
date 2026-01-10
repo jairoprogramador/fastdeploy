@@ -3,9 +3,9 @@ package mapper
 import (
 	"errors"
 
-	"github.com/jairoprogramador/fastdeploy-core/internal/domain/logger/entities"
-	"github.com/jairoprogramador/fastdeploy-core/internal/domain/logger/vos"
-	"github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/logger/dto"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/logger/entities"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/logger/vos"
+	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/logger/dto"
 )
 
 func StepToDTO(step *entities.StepRecord) dto.StepDTO {

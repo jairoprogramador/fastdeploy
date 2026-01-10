@@ -1,5 +1,5 @@
 version: 2
-project_name: fastdeploy-core
+project_name: fastdeploy
 
 builds:
   - id: fastdeploy
@@ -33,12 +33,12 @@ archives:
 
 nfpms:
   - id: fastdeploy
-    package_name: fastdeploy-core
+    package_name: fastdeploy
     file_name_template: '{{ .PackageName }}_{{ .Os }}_{{ .Arch }}{{ with .Arm }}v{{ . }}{{ end }}{{ with .Mips }}_{{ . }}{{ end }}{{ if not (eq .Amd64 "v1") }}{{ .Amd64 }}{{ end }}'
     ids: [fastdeploy]
     maintainer: "Jairo <jairo.jggc@gmail.com>"
     description: "CLI multiplataforma para despliegues automáticos y rápidos de aplicaciones"
-    homepage: "https://github.com/jairoprogramador/fastdeploy-core"
+    homepage: "https://github.com/jairoprogramador/fastdeploy"
     license: Apache License
     formats:
       - deb
@@ -46,17 +46,17 @@ nfpms:
       - apk
 
 homebrew_casks:
-  - name: fastdeploy-core
+  - name: fastdeploy
     ids:
       - archive
     repository:
       owner: jairoprogramador
-      name: homebrew-fastdeploy-core
+      name: homebrew-fastdeploy
       token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
     commit_author:
       name: Jairo Galvez
       email: jairo.jggc@gmail.com
-    homepage: "https://github.com/jairoprogramador/fastdeploy-core"
+    homepage: "https://github.com/jairoprogramador/fastdeploy"
     description: "CLI multiplataforma para despliegues automáticos y rápidos de aplicaciones"
     binary: fd
 

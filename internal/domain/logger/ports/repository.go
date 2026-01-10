@@ -1,8 +1,8 @@
 package ports
 
 import (
-	"github.com/jairoprogramador/fastdeploy-core/internal/application/dto"
-	"github.com/jairoprogramador/fastdeploy-core/internal/domain/logger/aggregates"
+	"github.com/jairoprogramador/fastdeploy/internal/application/dto"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/logger/aggregates"
 )
 
 type LoggerRepository interface {

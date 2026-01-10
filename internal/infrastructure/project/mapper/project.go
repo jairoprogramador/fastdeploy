@@ -1,8 +1,8 @@
 package mapper
 
 import (
-	"github.com/jairoprogramador/fastdeploy-core/internal/domain/project/ports"
-	"github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/project/dto"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/project/ports"
+	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/project/dto"
 )
 
 func ProjectToDto(data *ports.ProjectConfigDTO) dto.FdConfigDTO {

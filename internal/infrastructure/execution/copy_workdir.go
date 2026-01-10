@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/jairoprogramador/fastdeploy-core/internal/domain/execution/ports"
-	"github.com/jairoprogramador/fastdeploy-core/internal/domain/execution/vos"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/execution/ports"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/execution/vos"
 )
 
 type CopyWorkdir struct{}

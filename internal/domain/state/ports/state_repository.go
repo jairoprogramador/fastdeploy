@@ -1,7 +1,7 @@
 package ports
 
 import (
-	"github.com/jairoprogramador/fastdeploy-core/internal/domain/state/aggregates"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/state/aggregates"
 )
 
 type StateRepository interface {

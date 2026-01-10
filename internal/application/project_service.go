@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/jairoprogramador/fastdeploy-core/internal/domain/project/aggregates"
-	"github.com/jairoprogramador/fastdeploy-core/internal/domain/project/ports"
-	"github.com/jairoprogramador/fastdeploy-core/internal/domain/project/vos"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/project/aggregates"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/project/ports"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/project/vos"
 )
 
 type ProjectService struct {
