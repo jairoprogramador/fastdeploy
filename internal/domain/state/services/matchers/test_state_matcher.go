@@ -3,8 +3,8 @@ package matchers
 import (
 	"time"
 
-	"github.com/jairoprogramador/fastdeploy-core/internal/domain/state/aggregates"
-	"github.com/jairoprogramador/fastdeploy-core/internal/domain/state/vos"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/state/aggregates"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/state/vos"
 )
 
 type TestStateMatcher struct {

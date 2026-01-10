@@ -10,8 +10,8 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/jairoprogramador/fastdeploy-core/internal/domain/execution/ports"
-	"github.com/jairoprogramador/fastdeploy-core/internal/domain/execution/vos"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/execution/ports"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/execution/vos"
 )
 
 var ansiRegex = regexp.MustCompile(`\x1b\[[0-9;]*[a-zA-Z]`)

@@ -1,4 +1,4 @@
-module github.com/jairoprogramador/fastdeploy-core
+module github.com/jairoprogramador/fastdeploy
 
 go 1.23.0
 

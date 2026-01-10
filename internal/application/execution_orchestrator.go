@@ -3,17 +3,17 @@ package application
 import (
 	"context"
 	"fmt"
-	defAgg "github.com/jairoprogramador/fastdeploy-core/internal/domain/definition/aggregates"
-	defPrt "github.com/jairoprogramador/fastdeploy-core/internal/domain/definition/ports"
-	defVos "github.com/jairoprogramador/fastdeploy-core/internal/domain/definition/vos"
-	exePrt "github.com/jairoprogramador/fastdeploy-core/internal/domain/execution/ports"
-	exeVos "github.com/jairoprogramador/fastdeploy-core/internal/domain/execution/vos"
-	proAgg "github.com/jairoprogramador/fastdeploy-core/internal/domain/project/aggregates"
-	proPrt "github.com/jairoprogramador/fastdeploy-core/internal/domain/project/ports"
-	staPrt "github.com/jairoprogramador/fastdeploy-core/internal/domain/state/ports"
-	staVos "github.com/jairoprogramador/fastdeploy-core/internal/domain/state/vos"
-	verPrt "github.com/jairoprogramador/fastdeploy-core/internal/domain/versioning/ports"
-	worAgg "github.com/jairoprogramador/fastdeploy-core/internal/domain/workspace/aggregates"
+	defAgg "github.com/jairoprogramador/fastdeploy/internal/domain/definition/aggregates"
+	defPrt "github.com/jairoprogramador/fastdeploy/internal/domain/definition/ports"
+	defVos "github.com/jairoprogramador/fastdeploy/internal/domain/definition/vos"
+	exePrt "github.com/jairoprogramador/fastdeploy/internal/domain/execution/ports"
+	exeVos "github.com/jairoprogramador/fastdeploy/internal/domain/execution/vos"
+	proAgg "github.com/jairoprogramador/fastdeploy/internal/domain/project/aggregates"
+	proPrt "github.com/jairoprogramador/fastdeploy/internal/domain/project/ports"
+	staPrt "github.com/jairoprogramador/fastdeploy/internal/domain/state/ports"
+	staVos "github.com/jairoprogramador/fastdeploy/internal/domain/state/vos"
+	verPrt "github.com/jairoprogramador/fastdeploy/internal/domain/versioning/ports"
+	worAgg "github.com/jairoprogramador/fastdeploy/internal/domain/workspace/aggregates"
 )
 
 // ExecutionOrchestrator orquesta la ejecución de un plan completo,

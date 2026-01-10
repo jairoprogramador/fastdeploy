@@ -1,7 +1,7 @@
 package ports
 
 import "context"
-import "github.com/jairoprogramador/fastdeploy-core/internal/domain/execution/vos"
+import "github.com/jairoprogramador/fastdeploy/internal/domain/execution/vos"
 
 
 type CommandRunner interface {

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/jairoprogramador/fastdeploy-core/cmd/fastdeploy/cmd"
+	"github.com/jairoprogramador/fastdeploy/cmd/fastdeploy/cmd"
 )
 
 func main() {

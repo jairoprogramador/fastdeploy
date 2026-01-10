@@ -1,8 +1,8 @@
 package mapper
 
 import (
-	"github.com/jairoprogramador/fastdeploy-core/internal/domain/logger/vos"
-	"github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/logger/dto"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/logger/vos"
+	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/logger/dto"
 )
 
 func OutputToDTO(output *vos.OutputLine) dto.OutputDTO {

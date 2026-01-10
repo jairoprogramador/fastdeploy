@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jairoprogramador/fastdeploy-core/internal/domain/logger/vos"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/logger/vos"
 )
 
 type TaskRecord struct {

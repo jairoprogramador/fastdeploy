@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/jairoprogramador/fastdeploy-core/internal/domain/logger/entities"
-	"github.com/jairoprogramador/fastdeploy-core/internal/domain/logger/vos"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/logger/entities"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/logger/vos"
 )
 
 type Logger struct {

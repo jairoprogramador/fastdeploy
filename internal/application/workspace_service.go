@@ -1,8 +1,8 @@
 package application
 
 import (
-	"github.com/jairoprogramador/fastdeploy-core/internal/domain/workspace/aggregates"
-	"github.com/jairoprogramador/fastdeploy-core/internal/domain/workspace/vos"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/workspace/aggregates"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/workspace/vos"
 )
 
 // WorkspaceService es responsable de crear y gestionar el agregado Workspace.

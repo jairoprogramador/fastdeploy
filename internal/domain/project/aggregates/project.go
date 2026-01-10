@@ -1,7 +1,7 @@
 package aggregates
 
 import (
-	"github.com/jairoprogramador/fastdeploy-core/internal/domain/project/vos"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/project/vos"
 )
 
 type Project struct {

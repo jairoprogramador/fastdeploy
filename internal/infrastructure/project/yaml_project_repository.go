@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/jairoprogramador/fastdeploy-core/internal/domain/project/ports"
-	"github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/project/dto"
-	"github.com/jairoprogramador/fastdeploy-core/internal/infrastructure/project/mapper"
+	"github.com/jairoprogramador/fastdeploy/internal/domain/project/ports"
+	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/project/dto"
+	"github.com/jairoprogramador/fastdeploy/internal/infrastructure/project/mapper"
 
 	"gopkg.in/yaml.v3"
 )
